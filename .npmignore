@@ -1,0 +1,60 @@
+# Source files (we only ship dist)
+src/
+tests/
+
+# Development files
+.env
+.env.local
+.env.*.local
+*.log
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Testing
+coverage/
+.nyc_output/
+jest.config.*
+.jest/
+__tests__/
+*.test.ts
+*.spec.ts
+
+# Development configs
+.eslintrc*
+.prettierrc*
+tsconfig.json
+tsconfig.*.json
+
+# Documentation sources
+docs/
+*.md
+!README.md
+!CHANGELOG.md
+!LICENSE
+
+# Misc
+.DS_Store
+Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local storage
+filter-storage/
+local/
+tmp/

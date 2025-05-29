@@ -1,0 +1,106 @@
+{
+  "name": "@democratize-technology/vikunja-mcp",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server for Vikunja task management",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "vikunja-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "test": "jest --silent",
+    "test:watch": "jest --watch --silent",
+    "test:coverage": "jest --coverage --silent",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "format:src": "prettier --write 'src/**/*.ts'",
+    "format:tests": "prettier --write 'tests/**/*.ts'",
+    "format": "npm run format:src && npm run format:tests",
+    "prepublishOnly": "npm run lint && npm run test && npm run build",
+    "prepare": "npm run build",
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor",
+    "version:major": "npm version major"
+  },
+  "keywords": [
+    "mcp",
+    "vikunja",
+    "task-management",
+    "model-context-protocol",
+    "ai-assistant",
+    "todo",
+    "productivity",
+    "automation"
+  ],
+  "author": "Jeremy Green",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/democratize-technology/vikunja-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/democratize-technology/vikunja-mcp/issues"
+  },
+  "homepage": "https://github.com/democratize-technology/vikunja-mcp#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "dotenv": "^16.0.0",
+    "node-fetch": "^2.7.0",
+    "node-vikunja": "^0.4.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "prettier": "^3.0.0",
+    "ts-jest": "^29.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/tests"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.ts",
+      "**/?(*.)+(spec|test).ts"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/**/*.d.ts",
+      "!src/**/__tests__/**",
+      "!src/client.ts",
+      "!src/index.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 98,
+        "lines": 95,
+        "statements": 95
+      }
+    }
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
