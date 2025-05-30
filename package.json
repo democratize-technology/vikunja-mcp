@@ -58,7 +58,8 @@
     "dotenv": "^16.0.0",
     "node-fetch": "^2.7.0",
     "node-vikunja": "^0.4.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "zod": "^3.25.42"
   },
   "devDependencies": {
     "@types/jest": "^29.0.0",
