@@ -7,159 +7,26 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../../auth/AuthManager';
 import { MCPError, ErrorCode } from '../../types/index';
-import '../../types/index'; // Import type extensions
-import type { StandardTaskResponse } from '../../types/index';
 import { getVikunjaClient } from '../../client';
 import { logger } from '../../utils/logger';
-import { filterStorage } from '../../storage/FilterStorage';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
-import { parseFilterString } from '../../utils/filters';
-import type { FilterExpression } from '../../types/filters';
-import type { FilterParams } from './types';
-import { applyFilter } from './filters';
-import { validateId } from './validation';
-import type { Task } from 'node-vikunja';
 
-// Import all operation handlers
-import { createTask, getTask, updateTask, deleteTask } from './crud';
-import { bulkCreateTasks, bulkUpdateTasks, bulkDeleteTasks } from './bulk-operations';
+// Import new typed handlers
+import { 
+  handleCreateTask,
+  handleListTasks,
+  handleUpdateTask,
+  handleDeleteTask,
+  handleBulkCreateTasks,
+  handleBulkUpdateTasks,
+  handleBulkDeleteTasks
+} from './handlers';
+
+// Import legacy handlers that haven't been migrated yet
 import { assignUsers, unassignUsers, listAssignees } from './assignees';
 import { handleComment } from './comments';
 import { addReminder, removeReminder, listReminders } from './reminders';
 
-/**
- * List tasks with optional filtering
- */
-async function listTasks(args: {
-  projectId?: number;
-  page?: number;
-  perPage?: number;
-  search?: string;
-  sort?: string;
-  filter?: string;
-  filterId?: string;
-  allProjects?: boolean;
-  done?: boolean;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const params: FilterParams = {};
-
-  try {
-    let tasks;
-    let filterExpression: FilterExpression | null = null;
-    let filterString: string | undefined;
-
-    // Build query parameters
-    if (args.page !== undefined) params.page = args.page;
-    if (args.perPage !== undefined) params.per_page = args.perPage;
-    if (args.search !== undefined) params.s = args.search;
-    if (args.sort !== undefined) params.sort_by = args.sort;
-
-    // Handle filter - either direct filter string or saved filter ID
-    if (args.filterId) {
-      const savedFilter = await filterStorage.get(args.filterId);
-      if (!savedFilter) {
-        throw new MCPError(
-          ErrorCode.VALIDATION_ERROR,
-          `Filter with id ${args.filterId} not found`,
-        );
-      }
-      filterString = savedFilter.filter;
-    } else if (args.filter !== undefined) {
-      filterString = args.filter;
-    }
-
-    // Parse the filter string for client-side filtering
-    if (filterString) {
-      const parseResult = parseFilterString(filterString);
-      if (parseResult.error) {
-        throw new MCPError(
-          ErrorCode.VALIDATION_ERROR,
-          `Invalid filter syntax: ${parseResult.error.message}${parseResult.error.context ? `\n${parseResult.error.context}` : ''}`,
-        );
-      }
-      filterExpression = parseResult.expression;
-
-      // Log that we're using client-side filtering due to known issue
-      logger.info('Using client-side filtering due to Vikunja API filter parameter being ignored', {
-        filter: filterString,
-      });
-    }
-
-    const client = await getVikunjaClient();
-
-    // Determine which endpoint to use
-    // Don't pass the filter parameter to the API since it's ignored
-    if (args.projectId && !args.allProjects) {
-      // Validate project ID
-      validateId(args.projectId, 'projectId');
-      // Get tasks for specific project
-      tasks = await client.tasks.getTasksForProject(args.projectId, params);
-    } else {
-      // Get all tasks across all projects
-      tasks = await client.tasks.getAll(params);
-    }
-
-    // Apply client-side filtering if we have a filter expression
-    if (filterExpression) {
-      const originalCount = tasks.length;
-      tasks = applyFilter(tasks, filterExpression);
-      logger.debug('Applied client-side filter', {
-        originalCount,
-        filteredCount: tasks.length,
-        filter: filterString,
-      });
-    }
-
-    // Filter by done status if specified (this is a simpler filter that works)
-    if (args.done !== undefined) {
-      tasks = tasks.filter((task: Task) => task.done === args.done);
-    }
-
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'list',
-      message: `Found ${tasks.length} tasks${filterString ? ' (filtered client-side)' : ''}`,
-      tasks: tasks,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        count: tasks.length,
-        ...(filterString && {
-          filter: filterString,
-          clientSideFiltering: true,
-          filteringNote: 'Client-side filtering applied due to Vikunja API limitation',
-        }),
-      },
-    };
-
-    logger.debug('Tasks tool response', { subcommand: 'list', itemCount: tasks.length });
-
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
-        },
-      ],
-    };
-  } catch (error) {
-    if (error instanceof MCPError) {
-      throw error;
-    }
-
-    // Log the full error for debugging filter issues
-    logger.error('Task list error:', {
-      error: error instanceof Error ? error.message : String(error),
-      params: params,
-      filter: args.filter,
-      filterId: args.filterId,
-    });
-
-    throw new MCPError(
-      ErrorCode.API_ERROR,
-      `Failed to list tasks: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-}
 
 /**
  * Handle file attachments (not supported)
@@ -263,20 +130,71 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
         await getVikunjaClient();
 
         switch (args.subcommand) {
-          case 'list':
-            return listTasks(args as Parameters<typeof listTasks>[0]);
+          case 'list': {
+            const vikunjaClient = await getVikunjaClient();
+            const result = await handleListTasks({ ...args, operation: 'list' }, vikunjaClient);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
 
-          case 'create':
-            return createTask(args as Parameters<typeof createTask>[0]);
+          case 'create': {
+            const vikunjaClient = await getVikunjaClient();
+            const result = await handleCreateTask({ ...args, operation: 'create' }, vikunjaClient);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
 
-          case 'get':
-            return getTask(args as Parameters<typeof getTask>[0]);
+          case 'get': {
+            const vikunjaClient = await getVikunjaClient();
+            // Map 'get' to the list handler with specific ID
+            const result = await handleListTasks({ filter: `id = ${args.id}`, operation: 'list' }, vikunjaClient);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result.tasks?.[0] || { error: 'Task not found' }, null, 2),
+                },
+              ],
+            };
+          }
 
-          case 'update':
-            return updateTask(args as Parameters<typeof updateTask>[0]);
+          case 'update': {
+            const vikunjaClient = await getVikunjaClient();
+            const result = await handleUpdateTask({ ...args, operation: 'update' }, vikunjaClient);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
 
-          case 'delete':
-            return deleteTask(args as Parameters<typeof deleteTask>[0]);
+          case 'delete': {
+            const vikunjaClient = await getVikunjaClient();
+            const result = await handleDeleteTask({ ...args, operation: 'delete' }, vikunjaClient);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
 
           case 'assign':
             return assignUsers(args as Parameters<typeof assignUsers>[0]);
@@ -293,14 +211,44 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
           case 'attach':
             return handleAttach();
 
-          case 'bulk-update':
-            return bulkUpdateTasks(args as Parameters<typeof bulkUpdateTasks>[0]);
+          case 'bulk-update': {
+            const vikunjaClient = await getVikunjaClient();
+            const result = await handleBulkUpdateTasks({ ...args, operation: 'bulk-update' }, vikunjaClient);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
 
-          case 'bulk-delete':
-            return bulkDeleteTasks(args as Parameters<typeof bulkDeleteTasks>[0]);
+          case 'bulk-delete': {
+            const vikunjaClient = await getVikunjaClient();
+            const result = await handleBulkDeleteTasks({ ...args, operation: 'bulk-delete' }, vikunjaClient);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
 
-          case 'bulk-create':
-            return bulkCreateTasks(args as Parameters<typeof bulkCreateTasks>[0]);
+          case 'bulk-create': {
+            const vikunjaClient = await getVikunjaClient();
+            const result = await handleBulkCreateTasks({ ...args, operation: 'bulk-create' }, vikunjaClient);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
 
           // Handle relation subcommands
           case 'relate':

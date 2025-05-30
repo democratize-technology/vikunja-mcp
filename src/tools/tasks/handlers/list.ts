@@ -14,6 +14,8 @@ import { validateId } from '../validation';
 import { applyFilter } from '../filters';
 import type { FilterExpression } from '../../../types/filters';
 import { ListTasksSchema } from '../../../types/schemas/tasks';
+import { handleZodError } from '../../../utils/zod-error-handler';
+import { z } from 'zod';
 
 /**
  * Handle task listing with validation and proper error handling
@@ -176,13 +178,8 @@ export async function handleListTasks(
     }
 
     // Handle Zod validation errors
-    if (error instanceof Error && error.name === 'ZodError') {
-      const zodError = error as unknown as { errors: Array<{ path: Array<string | number>, message: string }> };
-      const firstError = zodError.errors[0];
-      throw new MCPError(
-        ErrorCode.VALIDATION_ERROR,
-        firstError ? `${firstError.path.join('.')}: ${firstError.message}` : 'Validation failed'
-      );
+    if (error instanceof z.ZodError) {
+      throw handleZodError(error);
     }
 
     // Handle other errors
@@ -190,20 +187,9 @@ export async function handleListTasks(
       error: error instanceof Error ? error.message : String(error)
     });
 
-    return {
-      success: false,
-      operation: 'list',
-      message: 'Failed to list tasks',
-      tasks: [],
-      metadata: {
-        timestamp: new Date().toISOString(),
-        count: 0
-      },
-      error: {
-        code: ErrorCode.API_ERROR,
-        message: error instanceof Error ? error.message : String(error),
-        details: error
-      }
-    };
+    throw new MCPError(
+      ErrorCode.API_ERROR,
+      error instanceof Error ? error.message : 'Failed to list tasks'
+    );
   }
 }

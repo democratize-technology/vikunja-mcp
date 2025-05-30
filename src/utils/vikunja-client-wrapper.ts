@@ -2,7 +2,7 @@
  * Type-safe wrapper for node-vikunja client to handle missing type definitions
  */
 
-import type { VikunjaClient, Task, GetTasksParams } from 'node-vikunja';
+import type { VikunjaClient, Task, GetTasksParams, Project, Label } from 'node-vikunja';
 
 /**
  * Extended task service interface with proper types for methods that exist at runtime
@@ -24,13 +24,45 @@ export interface ExtendedTaskService {
   removeLabelsFromTask(taskId: number, labelIds: number[]): Promise<void>;
   addAssigneeToTask(taskId: number, userId: number): Promise<void>;
   removeAssigneeFromTask(taskId: number, userId: number): Promise<void>;
+  
+  // Additional methods used in the codebase
+  createTaskComment(taskId: number, comment: { comment: string }): Promise<unknown>;
+  getTaskComments(taskId: number): Promise<unknown[]>;
+  updateTaskLabels(taskId: number, labels: { labels: number[] }): Promise<void>;
+  bulkUpdateTasks(updates: unknown): Promise<unknown>;
+  bulkAssignUsersToTask(taskId: number, data: { assignees: number[] }): Promise<unknown>;
+  removeUserFromTask(taskId: number, userId: number): Promise<void>;
 }
 
 /**
- * Extended client interface with proper task service types
+ * Extended project service interface
  */
-export interface ExtendedVikunjaClient extends Omit<VikunjaClient, 'tasks'> {
+export interface ExtendedProjectService {
+  getProject(projectId: number): Promise<Project | null>;
+  getProjects(params?: unknown): Promise<Project[]>;
+  createProject(project: Partial<Project>): Promise<Project>;
+  updateProject(projectId: number, project: Partial<Project>): Promise<Project>;
+  deleteProject(projectId: number): Promise<void>;
+}
+
+/**
+ * Extended label service interface
+ */
+export interface ExtendedLabelService {
+  getLabel(labelId: number): Promise<Label | null>;
+  getLabels(params?: unknown): Promise<Label[]>;
+  createLabel(label: Partial<Label>): Promise<Label>;
+  updateLabel(labelId: number, label: Partial<Label>): Promise<Label>;
+  deleteLabel(labelId: number): Promise<void>;
+}
+
+/**
+ * Extended client interface with proper service types
+ */
+export interface ExtendedVikunjaClient extends Omit<VikunjaClient, 'tasks' | 'projects' | 'labels'> {
   tasks: ExtendedTaskService;
+  projects: ExtendedProjectService;
+  labels: ExtendedLabelService;
 }
 
 /**

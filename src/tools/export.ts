@@ -15,6 +15,7 @@ import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getVikunjaClient } from '../client';
 import type { Project, Task, Label, User, VikunjaClient } from 'node-vikunja';
 import { logger } from '../utils/logger';
+import { wrapVikunjaClient } from '../utils/vikunja-client-wrapper';
 
 /**
  * Validates that an ID is a positive integer
@@ -47,9 +48,7 @@ async function exportProjectRecursive(
   includeChildren: boolean = false,
   visitedIds: Set<number> = new Set(),
 ): Promise<ProjectExportData> {
-  // Type assertion needed because node-vikunja types are incomplete
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-  const vikunjaClient = client as any;
+  const vikunjaClient = wrapVikunjaClient(client);
   // Prevent infinite recursion
   if (visitedIds.has(projectId)) {
     throw new MCPError(
@@ -60,15 +59,13 @@ async function exportProjectRecursive(
   visitedIds.add(projectId);
 
   // Get project details
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-  const project = (await vikunjaClient.projects.getProject(projectId)) as Project | null;
+  const project = await vikunjaClient.projects.getProject(projectId);
   if (!project) {
     throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${projectId} not found`);
   }
 
   // Get all tasks for the project
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-  const tasks = (await vikunjaClient.tasks.getTasksForProject(projectId)) as Task[];
+  const tasks = await vikunjaClient.tasks.getTasksForProject(projectId);
 
   // Get all labels used in the project
   const labelIds = new Set<number>();
@@ -86,8 +83,7 @@ async function exportProjectRecursive(
   const labels: Label[] = [];
   for (const labelId of labelIds) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const label = (await vikunjaClient.labels.getLabel(labelId)) as Label | null;
+      const label = await vikunjaClient.labels.getLabel(labelId);
       if (label) {
         labels.push(label);
       }
@@ -108,9 +104,8 @@ async function exportProjectRecursive(
 
   // Export child projects if requested
   if (includeChildren && project.id) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const allProjects = (await vikunjaClient.projects.getProjects({})) as Project[];
-    const childProjects = allProjects.filter((p) => p.parent_project_id === project.id);
+    const allProjects = await vikunjaClient.projects.getProjects({});
+    const childProjects = allProjects.filter((p: Project) => p.parent_project_id === project.id);
 
     if (childProjects.length > 0) {
       exportData.child_projects = [];
@@ -165,7 +160,6 @@ export function registerExportTool(server: McpServer, authManager: AuthManager):
         const client = await getVikunjaClient();
 
         // Export the project data
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const exportData = await exportProjectRecursive(client, projectId, includeChildren);
 
         // Format the output as JSON

@@ -12,6 +12,8 @@ import { AUTH_ERROR_MESSAGES } from '../constants';
 import { convertRepeatConfiguration } from '../validation';
 import { UpdateTaskSchema } from '../../../types/schemas/tasks';
 import { wrapVikunjaClient } from '../../../utils/vikunja-client-wrapper';
+import { handleZodError } from '../../../utils/zod-error-handler';
+import { z } from 'zod';
 
 /**
  * Handle task update with validation and proper error handling
@@ -236,13 +238,8 @@ export async function handleUpdateTask(
     }
 
     // Handle Zod validation errors
-    if (error instanceof Error && error.name === 'ZodError') {
-      const zodError = error as unknown as { errors: Array<{ path: Array<string | number>, message: string }> };
-      const firstError = zodError.errors[0];
-      throw new MCPError(
-        ErrorCode.VALIDATION_ERROR,
-        firstError ? `${firstError.path.join('.')}: ${firstError.message}` : 'Validation failed'
-      );
+    if (error instanceof z.ZodError) {
+      throw handleZodError(error);
     }
 
     // Handle other errors
@@ -250,20 +247,9 @@ export async function handleUpdateTask(
       error: error instanceof Error ? error.message : String(error)
     });
 
-    return {
-      success: false,
-      operation: 'update',
-      message: 'Failed to update task',
-      task: {} as Task,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        affectedFields: []
-      },
-      error: {
-        code: ErrorCode.API_ERROR,
-        message: error instanceof Error ? error.message : String(error),
-        details: error
-      }
-    };
+    throw new MCPError(
+      ErrorCode.API_ERROR,
+      error instanceof Error ? error.message : 'Failed to update task'
+    );
   }
 }
