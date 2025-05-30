@@ -34,12 +34,14 @@ export async function assignUsers(args: {
     args.assignees.forEach((id) => validateId(id, 'assignee ID'));
 
     const client = await getVikunjaClient();
+    const taskId = args.id;
+    const assigneeIds = args.assignees;
 
     // Assign users to the task with retry logic
     try {
       await withRetry(
-        () => client.tasks.bulkAssignUsersToTask(args.id, {
-          user_ids: args.assignees,
+        () => client.tasks.bulkAssignUsersToTask(taskId, {
+          user_ids: assigneeIds,
         }),
         {
           ...RETRY_CONFIG.AUTH_ERRORS,
@@ -111,12 +113,14 @@ export async function unassignUsers(args: {
     args.assignees.forEach((id) => validateId(id, 'assignee ID'));
 
     const client = await getVikunjaClient();
+    const taskId = args.id;
+    const assigneeIds = args.assignees;
 
     // Remove users from the task with retry logic
-    for (const userId of args.assignees) {
+    for (const userId of assigneeIds) {
       try {
         await withRetry(
-          () => client.tasks.removeUserFromTask(args.id, userId),
+          () => client.tasks.removeUserFromTask(taskId, userId),
           {
             ...RETRY_CONFIG.AUTH_ERRORS,
             shouldRetry: (error) => isAuthenticationError(error)

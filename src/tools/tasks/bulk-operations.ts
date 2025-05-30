@@ -761,9 +761,11 @@ export async function bulkCreateTasks(args: {
             if (createdTask.id) {
               try {
                 if (taskData.labels && taskData.labels.length > 0) {
+                  const taskId = createdTask.id;
+                  const labelIds = taskData.labels;
                   await withRetry(
-                    () => client.tasks.updateTaskLabels(createdTask.id, {
-                      label_ids: taskData.labels,
+                    () => client.tasks.updateTaskLabels(taskId, {
+                      label_ids: labelIds,
                     }),
                     {
                       ...RETRY_CONFIG.AUTH_ERRORS,
@@ -773,10 +775,12 @@ export async function bulkCreateTasks(args: {
                 }
 
                 if (taskData.assignees && taskData.assignees.length > 0) {
+                  const taskId = createdTask.id;
+                  const assigneeIds = taskData.assignees;
                   try {
                     await withRetry(
-                      () => client.tasks.bulkAssignUsersToTask(createdTask.id, {
-                        user_ids: taskData.assignees,
+                      () => client.tasks.bulkAssignUsersToTask(taskId, {
+                        user_ids: assigneeIds,
                       }),
                       {
                         ...RETRY_CONFIG.AUTH_ERRORS,

@@ -73,10 +73,12 @@ export async function createTask(args: {
     try {
       // If labels were provided, add them with retry logic
       if (args.labels && args.labels.length > 0 && createdTask.id) {
+        const taskId = createdTask.id;
+        const labelIds = args.labels;
         try {
           await withRetry(
-            () => client.tasks.updateTaskLabels(createdTask.id, {
-              label_ids: args.labels,
+            () => client.tasks.updateTaskLabels(taskId, {
+              label_ids: labelIds,
             }),
             {
               ...RETRY_CONFIG.AUTH_ERRORS,
@@ -98,10 +100,12 @@ export async function createTask(args: {
 
       // If assignees were provided, assign them with retry logic
       if (args.assignees && args.assignees.length > 0 && createdTask.id) {
+        const taskId = createdTask.id;
+        const assigneeIds = args.assignees;
         try {
           await withRetry(
-            () => client.tasks.bulkAssignUsersToTask(createdTask.id, {
-              user_ids: args.assignees,
+            () => client.tasks.bulkAssignUsersToTask(taskId, {
+              user_ids: assigneeIds,
             }),
             {
               ...RETRY_CONFIG.AUTH_ERRORS,
