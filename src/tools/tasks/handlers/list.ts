@@ -68,14 +68,17 @@ export async function handleListTasks(
     if (validated.projectId) {
       validateId(validated.projectId, 'projectId');
       
-      const listParams: Record<string, unknown> = {
-        page: validated.page || 1,
-        per_page: validated.perPage || 50
-      };
+      const listParams: Record<string, unknown> = {};
+      
+      if (validated.page !== undefined) {
+        listParams.page = validated.page;
+      }
+      if (validated.perPage !== undefined) {
+        listParams.per_page = validated.perPage;
+      }
 
       if (validated.sort) {
-        listParams.sort_by = validated.sort.split(',');
-        listParams.order_by = validated.sort.includes('desc') ? ['desc'] : ['asc'];
+        listParams.sort_by = validated.sort;
       }
 
       if (validated.search) {
@@ -92,14 +95,17 @@ export async function handleListTasks(
       );
     } else {
       // Get all tasks across projects
-      const allParams: Record<string, unknown> = {
-        page: validated.page || 1,
-        per_page: validated.perPage || 50
-      };
+      const allParams: Record<string, unknown> = {};
+      
+      if (validated.page !== undefined) {
+        allParams.page = validated.page;
+      }
+      if (validated.perPage !== undefined) {
+        allParams.per_page = validated.perPage;
+      }
 
       if (validated.sort) {
-        allParams.sort_by = validated.sort.split(',');
-        allParams.order_by = validated.sort.includes('desc') ? ['desc'] : ['asc'];
+        allParams.sort_by = validated.sort;
       }
 
       if (validated.search) {

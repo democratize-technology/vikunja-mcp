@@ -40,10 +40,19 @@ export async function handleCreateTask(
     // Prepare task data
     const taskData: Record<string, unknown> = {
       title: validated.title,
-      description: validated.description,
-      due_date: validated.dueDate,
-      priority: validated.priority
+      project_id: validated.projectId
     };
+    
+    // Only add optional fields if they are defined
+    if (validated.description !== undefined) {
+      taskData.description = validated.description;
+    }
+    if (validated.dueDate !== undefined) {
+      taskData.due_date = validated.dueDate;
+    }
+    if (validated.priority !== undefined) {
+      taskData.priority = validated.priority;
+    }
 
     // Handle repeating tasks
     if (validated.repeatAfter && validated.repeatMode) {

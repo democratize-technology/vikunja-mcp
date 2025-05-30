@@ -10,7 +10,6 @@ import { MCPError, ErrorCode } from '../../types/index';
 import { getVikunjaClient } from '../../client';
 import { logger } from '../../utils/logger';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
-import { cleanArgs } from '../../utils/clean-args';
 
 // Import new typed handlers
 import { 
@@ -133,7 +132,7 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
         switch (args.subcommand) {
           case 'list': {
             const vikunjaClient = await getVikunjaClient();
-            const result = await handleListTasks({ ...cleanArgs(args), operation: 'list' } as any, vikunjaClient);
+            const result = await handleListTasks({ ...args, operation: 'list' } as any, vikunjaClient);
             return {
               content: [
                 {
@@ -149,7 +148,7 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
             if (!args.projectId || !args.title) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'projectId and title are required');
             }
-            const result = await handleCreateTask({ ...cleanArgs(args), operation: 'create', projectId: args.projectId, title: args.title } as any, vikunjaClient);
+            const result = await handleCreateTask({ ...args, operation: 'create', projectId: args.projectId, title: args.title } as any, vikunjaClient);
             return {
               content: [
                 {
@@ -166,7 +165,7 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
             if (!args.id) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'id is required');
             }
-            const result = await handleListTasks({ ...cleanArgs(args), filter: `id = ${args.id}`, operation: 'list' } as any, vikunjaClient);
+            const result = await handleListTasks({ ...args, filter: `id = ${args.id}`, operation: 'list' } as any, vikunjaClient);
             return {
               content: [
                 {
@@ -182,7 +181,7 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
             if (!args.id) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'id is required');
             }
-            const result = await handleUpdateTask({ ...cleanArgs(args), operation: 'update', id: args.id } as any, vikunjaClient);
+            const result = await handleUpdateTask({ ...args, operation: 'update', id: args.id } as any, vikunjaClient);
             return {
               content: [
                 {
@@ -198,7 +197,7 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
             if (!args.id) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'id is required');
             }
-            const result = await handleDeleteTask({ ...cleanArgs(args), operation: 'delete', id: args.id } as any, vikunjaClient);
+            const result = await handleDeleteTask({ ...args, operation: 'delete', id: args.id } as any, vikunjaClient);
             return {
               content: [
                 {
@@ -229,7 +228,7 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
             if (!args.taskIds || !args.field) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'taskIds and field are required');
             }
-            const result = await handleBulkUpdateTasks({ ...cleanArgs(args), operation: 'bulk-update', taskIds: args.taskIds, field: args.field as any, value: args.value } as any, vikunjaClient);
+            const result = await handleBulkUpdateTasks({ ...args, operation: 'bulk-update', taskIds: args.taskIds, field: args.field as any, value: args.value } as any, vikunjaClient);
             return {
               content: [
                 {
@@ -245,7 +244,7 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
             if (!args.taskIds) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'taskIds is required');
             }
-            const result = await handleBulkDeleteTasks({ ...cleanArgs(args), operation: 'bulk-delete', taskIds: args.taskIds } as any, vikunjaClient);
+            const result = await handleBulkDeleteTasks({ ...args, operation: 'bulk-delete', taskIds: args.taskIds } as any, vikunjaClient);
             return {
               content: [
                 {
@@ -261,7 +260,7 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
             if (!args.projectId || !args.tasks) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'projectId and tasks are required');
             }
-            const result = await handleBulkCreateTasks({ ...cleanArgs(args), operation: 'bulk-create', projectId: args.projectId, tasks: args.tasks } as any, vikunjaClient);
+            const result = await handleBulkCreateTasks({ ...args, operation: 'bulk-create', projectId: args.projectId, tasks: args.tasks } as any, vikunjaClient);
             return {
               content: [
                 {
