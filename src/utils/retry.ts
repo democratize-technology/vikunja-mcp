@@ -49,7 +49,7 @@ export async function withRetry<T>(
     }
   }
   
-  throw lastError!;
+  throw lastError;
 }
 
 export function isTransientError(error: unknown): boolean {
