@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Retry configuration for different error types (3 retries for auth, 5 for network)
 - Error messages now include retry count information for transparency
 - Comprehensive test coverage for retry utility
+- Specific request/response types for all operations to improve type safety (#5)
+  - Base operation types in `src/types/operations/base.ts`
+  - Operation-specific types for tasks, projects, labels, users, and teams
+  - Type guards for runtime type checking
+  - Zod schemas for runtime validation of task operations
+- Typed operation handlers for tasks with proper error handling
+  - Separate handlers for create, list, update, delete, and bulk operations
+  - Consistent response format across all operations
+  - Better error messages with validation details
 
 ### Changed
 - Refactored `src/tools/tasks.ts` from a single 2,300+ line file into a modular structure with separate files for:
@@ -26,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Type definitions (`types.ts`)
 - Improved code organization and maintainability while preserving 100% functionality
 - No breaking changes - all existing functionality remains intact
+
+### Dependencies
+- Added `zod` for runtime validation of operation inputs
 
 ## [0.1.0] - 2025-05-29
 
