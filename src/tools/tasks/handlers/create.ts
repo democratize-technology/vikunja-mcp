@@ -5,7 +5,7 @@
 import type { VikunjaClient, Task } from 'node-vikunja';
 import type { CreateTaskRequest, CreateTaskResponse } from '../../../types/operations/tasks';
 import { MCPError, ErrorCode } from '../../../types/errors';
-import '../../../types/index'; // Import type extensions
+import { wrapVikunjaClient } from '../../../utils/vikunja-client-wrapper';
 import { logger } from '../../../utils/logger';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
@@ -20,6 +20,7 @@ export async function handleCreateTask(
   request: CreateTaskRequest,
   client: VikunjaClient
 ): Promise<CreateTaskResponse> {
+  const extendedClient = wrapVikunjaClient(client);
   try {
     // Validate input using Zod schema
     const validated = CreateTaskSchema.parse({
@@ -51,7 +52,7 @@ export async function handleCreateTask(
 
     // Create the task
     const task = await withRetry(
-      () => client.tasks.createTask(validated.projectId, taskData as any),
+      () => extendedClient.tasks.createTask(validated.projectId, taskData as Partial<Task>),
       {
         ...RETRY_CONFIG,
         shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -64,11 +65,12 @@ export async function handleCreateTask(
 
     // Add labels if provided
     if (validated.labels && validated.labels.length > 0 && task.id !== undefined) {
+      const taskId = task.id;
       try {
         // Add labels one by one
         for (const labelId of validated.labels) {
           await withRetry(
-            () => client.tasks.addLabelToTask(task.id as number, labelId),
+            () => extendedClient.tasks.addLabelToTask(taskId, labelId),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -86,10 +88,11 @@ export async function handleCreateTask(
 
     // Add assignees if provided
     if (validated.assignees && validated.assignees.length > 0 && task.id !== undefined) {
+      const taskId = task.id;
       try {
         for (const assigneeId of validated.assignees) {
           await withRetry(
-            () => client.tasks.addAssigneeToTask(task.id as number, assigneeId),
+            () => extendedClient.tasks.addAssigneeToTask(taskId, assigneeId),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -107,9 +110,10 @@ export async function handleCreateTask(
 
     // Fetch the complete task with all relationships
     if (task.id !== undefined) {
+      const taskId = task.id;
       try {
         completeTask = await withRetry(
-          () => client.tasks.getTask(task.id as number),
+          () => extendedClient.tasks.getTask(taskId),
           {
             ...RETRY_CONFIG,
             shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)

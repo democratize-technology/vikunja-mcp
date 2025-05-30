@@ -22,6 +22,7 @@ import {
   BulkUpdateTasksSchema,
   BulkDeleteTasksSchema 
 } from '../../../types/schemas/tasks';
+import { wrapVikunjaClient } from '../../../utils/vikunja-client-wrapper';
 
 /**
  * Handle bulk task creation
@@ -30,6 +31,8 @@ export async function handleBulkCreateTasks(
   request: BulkCreateTasksRequest,
   client: VikunjaClient
 ): Promise<BulkCreateTasksResponse> {
+  const extendedClient = wrapVikunjaClient(client);
+  
   try {
     // Validate input using Zod schema
     const validated = BulkCreateTasksSchema.parse({
@@ -63,18 +66,23 @@ export async function handleBulkCreateTasks(
 
         // Create the task
         const task = await withRetry(
-          () => client.tasks.createTask(validated.projectId, createData as any),
+          () => extendedClient.tasks.createTask(validated.projectId, createData as Partial<Task>),
           {
             ...RETRY_CONFIG,
             shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
           }
         );
 
+        if (!task.id) {
+          throw new Error('Task created without ID');
+        }
+        const taskId = task.id;
+        
         // Add labels if provided
         if (taskData.labels && taskData.labels.length > 0) {
           for (const labelId of taskData.labels) {
             await withRetry(
-              () => (client.tasks as any).addLabelToTask(task.id, labelId),
+              () => extendedClient.tasks.addLabelToTask(taskId, labelId),
               {
                 ...RETRY_CONFIG,
                 shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -87,7 +95,7 @@ export async function handleBulkCreateTasks(
         if (taskData.assignees && taskData.assignees.length > 0) {
           for (const assigneeId of taskData.assignees) {
             await withRetry(
-              () => (client.tasks as any).addAssigneeToTask(task.id, assigneeId),
+              () => extendedClient.tasks.addAssigneeToTask(taskId, assigneeId),
               {
                 ...RETRY_CONFIG,
                 shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -98,14 +106,14 @@ export async function handleBulkCreateTasks(
 
         // Fetch complete task
         const completeTask = await withRetry(
-          () => (client.tasks as any).getTask(task.id),
+          () => extendedClient.tasks.getTask(taskId),
           {
             ...RETRY_CONFIG,
             shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
           }
         );
 
-        createdTasks.push(completeTask as Task);
+        createdTasks.push(completeTask);
       } catch (error) {
         failures.push({
           index: i,
@@ -161,6 +169,8 @@ export async function handleBulkUpdateTasks(
   request: BulkUpdateTasksRequest,
   client: VikunjaClient
 ): Promise<BulkUpdateTasksResponse> {
+  const extendedClient = wrapVikunjaClient(client);
+  
   try {
     // Validate input using Zod schema
     const validated = BulkUpdateTasksSchema.parse({
@@ -202,7 +212,7 @@ export async function handleBulkUpdateTasks(
         if (validated.field === 'assignees' || validated.field === 'labels') {
           // Handle assignees and labels separately
           const task = await withRetry(
-            () => (client.tasks as any).getTask(taskId),
+            () => extendedClient.tasks.getTask(taskId),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -211,12 +221,12 @@ export async function handleBulkUpdateTasks(
 
           if (validated.field === 'assignees') {
             const newAssignees = validated.value as number[];
-            const currentAssignees = (task as any).assignees?.map((a: any) => a.id) || [];
+            const currentAssignees = task.assignees?.map(a => a.id) || [];
 
             // Remove current assignees
             for (const assigneeId of currentAssignees) {
               await withRetry(
-                () => (client.tasks as any).removeAssigneeFromTask(taskId, assigneeId),
+                () => extendedClient.tasks.removeAssigneeFromTask(taskId, assigneeId),
                 {
                   ...RETRY_CONFIG,
                   shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -227,7 +237,7 @@ export async function handleBulkUpdateTasks(
             // Add new assignees
             for (const assigneeId of newAssignees) {
               await withRetry(
-                () => (client.tasks as any).addAssigneeToTask(taskId, assigneeId),
+                () => extendedClient.tasks.addAssigneeToTask(taskId, assigneeId),
                 {
                   ...RETRY_CONFIG,
                   shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -236,12 +246,12 @@ export async function handleBulkUpdateTasks(
             }
           } else {
             const newLabels = validated.value as number[];
-            const currentLabels = (task as any).labels?.map((l: any) => l.id) || [];
+            const currentLabels = task.labels?.map(l => l.id) || [];
 
             // Remove current labels
             if (currentLabels.length > 0) {
               await withRetry(
-                () => (client.tasks as any).removeLabelsFromTask(taskId, currentLabels),
+                () => extendedClient.tasks.removeLabelsFromTask(taskId, currentLabels.filter((id): id is number => id !== undefined)),
                 {
                   ...RETRY_CONFIG,
                   shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -252,7 +262,7 @@ export async function handleBulkUpdateTasks(
             // Add new labels
             if (newLabels.length > 0) {
               await withRetry(
-                () => (client.tasks as any).addLabelsToTask(taskId, newLabels),
+                () => extendedClient.tasks.addLabelsToTask(taskId, newLabels),
                 {
                   ...RETRY_CONFIG,
                   shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -263,7 +273,7 @@ export async function handleBulkUpdateTasks(
         } else {
           // Update other fields
           await withRetry(
-            () => (client.tasks as any).updateTask(taskId, updateData as any),
+            () => extendedClient.tasks.updateTask(taskId, updateData as Partial<Task>),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -274,13 +284,13 @@ export async function handleBulkUpdateTasks(
         // Fetch updated task
         try {
           const updatedTask = await withRetry(
-            () => (client.tasks as any).getTask(taskId),
+            () => extendedClient.tasks.getTask(taskId),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
             }
           );
-          updatedTasks.push(updatedTask as Task);
+          updatedTasks.push(updatedTask);
         } catch (fetchError) {
           fetchErrors++;
           logger.warn('Failed to fetch task after update', {
@@ -340,6 +350,8 @@ export async function handleBulkDeleteTasks(
   request: BulkDeleteTasksRequest,
   client: VikunjaClient
 ): Promise<BulkDeleteTasksResponse> {
+  const extendedClient = wrapVikunjaClient(client);
+  
   try {
     // Validate input using Zod schema
     const validated = BulkDeleteTasksSchema.parse({
@@ -353,7 +365,7 @@ export async function handleBulkDeleteTasks(
     for (const taskId of validated.taskIds) {
       try {
         await withRetry(
-          () => (client.tasks as any).deleteTask(taskId),
+          () => extendedClient.tasks.deleteTask(taskId),
           {
             ...RETRY_CONFIG,
             shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)

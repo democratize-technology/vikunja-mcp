@@ -11,6 +11,7 @@ import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { convertRepeatConfiguration } from '../validation';
 import { UpdateTaskSchema } from '../../../types/schemas/tasks';
+import { wrapVikunjaClient } from '../../../utils/vikunja-client-wrapper';
 
 /**
  * Handle task update with validation and proper error handling
@@ -19,6 +20,8 @@ export async function handleUpdateTask(
   request: UpdateTaskRequest,
   client: VikunjaClient
 ): Promise<UpdateTaskResponse> {
+  const extendedClient = wrapVikunjaClient(client);
+  
   try {
     // Validate input using Zod schema
     const validated = UpdateTaskSchema.parse({
@@ -36,7 +39,7 @@ export async function handleUpdateTask(
 
     // Get the current task first to track changes
     const currentTask = await withRetry(
-      () => client.tasks.getTask(validated.id),
+      () => extendedClient.tasks.getTask(validated.id),
       {
         ...RETRY_CONFIG,
         shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -117,7 +120,7 @@ export async function handleUpdateTask(
     // Update the task if there are changes
     if (Object.keys(updateData).length > 0) {
       await withRetry(
-        () => (client.tasks as any).updateTask(validated.id, updateData),
+        () => extendedClient.tasks.updateTask(validated.id, updateData as Partial<Task>),
         {
           ...RETRY_CONFIG,
           shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -127,14 +130,15 @@ export async function handleUpdateTask(
 
     // Handle label updates
     if (validated.labels !== undefined) {
+      const newLabels = validated.labels;
       const currentLabelIds = currentTask.labels?.map(l => l.id) || [];
-      const labelsChanged = JSON.stringify(currentLabelIds.sort()) !== JSON.stringify(validated.labels.sort());
+      const labelsChanged = JSON.stringify(currentLabelIds.sort()) !== JSON.stringify(newLabels.sort());
       
       if (labelsChanged) {
         // Remove current labels
         if (currentLabelIds.length > 0) {
           await withRetry(
-            () => (client.tasks as any).removeLabelsFromTask(validated.id, currentLabelIds),
+            () => extendedClient.tasks.removeLabelsFromTask(validated.id, currentLabelIds.filter((id): id is number => id !== undefined)),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -143,9 +147,9 @@ export async function handleUpdateTask(
         }
 
         // Add new labels
-        if (validated.labels.length > 0) {
+        if (newLabels.length > 0) {
           await withRetry(
-            () => (client.tasks as any).addLabelsToTask(validated.id, validated.labels),
+            () => extendedClient.tasks.addLabelsToTask(validated.id, newLabels),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -169,7 +173,7 @@ export async function handleUpdateTask(
         // Remove current assignees
         for (const assigneeId of currentAssigneeIds) {
           await withRetry(
-            () => (client.tasks as any).removeAssigneeFromTask(validated.id, assigneeId),
+            () => extendedClient.tasks.removeAssigneeFromTask(validated.id, assigneeId),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -180,7 +184,7 @@ export async function handleUpdateTask(
         // Add new assignees
         for (const assigneeId of validated.assignees) {
           await withRetry(
-            () => (client.tasks as any).addAssigneeToTask(validated.id, assigneeId),
+            () => extendedClient.tasks.addAssigneeToTask(validated.id, assigneeId),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -197,7 +201,7 @@ export async function handleUpdateTask(
 
     // Fetch the complete updated task
     const completeTask = await withRetry(
-      () => client.tasks.getTask(validated.id),
+      () => extendedClient.tasks.getTask(validated.id),
       {
         ...RETRY_CONFIG,
         shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)

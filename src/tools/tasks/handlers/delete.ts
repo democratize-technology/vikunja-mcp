@@ -10,6 +10,7 @@ import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { DeleteTaskSchema } from '../../../types/schemas/tasks';
+import { wrapVikunjaClient } from '../../../utils/vikunja-client-wrapper';
 
 /**
  * Handle task deletion with validation and proper error handling
@@ -18,6 +19,8 @@ export async function handleDeleteTask(
   request: DeleteTaskRequest,
   client: VikunjaClient
 ): Promise<DeleteTaskResponse> {
+  const extendedClient = wrapVikunjaClient(client);
+  
   try {
     // Validate input using Zod schema
     const validated = DeleteTaskSchema.parse({
@@ -26,7 +29,7 @@ export async function handleDeleteTask(
 
     // Delete the task
     await withRetry(
-      () => client.tasks.deleteTask(validated.id),
+      () => extendedClient.tasks.deleteTask(validated.id),
       {
         ...RETRY_CONFIG,
         shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)

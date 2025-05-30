@@ -7,10 +7,12 @@ import type { ListTasksRequest, ListTasksResponse } from '../../../types/operati
 import { MCPError, ErrorCode } from '../../../types/errors';
 import { logger } from '../../../utils/logger';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
+import { wrapVikunjaClient } from '../../../utils/vikunja-client-wrapper';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { validateId } from '../validation';
 import { applyFilter } from '../filters';
+import type { FilterExpression } from '../../../types/filters';
 import { ListTasksSchema } from '../../../types/schemas/tasks';
 
 /**
@@ -20,6 +22,7 @@ export async function handleListTasks(
   request: ListTasksRequest,
   client: VikunjaClient
 ): Promise<ListTasksResponse> {
+  const extendedClient = wrapVikunjaClient(client);
   try {
     // Validate input using Zod schema
     const validated = ListTasksSchema.parse({
@@ -38,15 +41,17 @@ export async function handleListTasks(
 
     // If using a saved filter
     if (validated.filterId) {
+      // Filters are not properly typed in node-vikunja
+      const clientWithFilters = client as VikunjaClient & { filters: { getAll: () => Promise<Array<{ id: number; title: string; filters?: { filter_query?: string } }>> } };
       const filters = await withRetry(
-        () => (client as any).filters.getAll(),
+        () => clientWithFilters.filters.getAll(),
         {
           ...RETRY_CONFIG,
           shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
         }
       );
 
-      const savedFilter = (filters as any[]).find((f: any) => f.id === parseInt(validated.filterId || '0'));
+      const savedFilter = filters.find((f) => f.id === parseInt(validated.filterId || '0'));
       if (!savedFilter) {
         throw new MCPError(ErrorCode.NOT_FOUND, `Filter with ID ${validated.filterId} not found`);
       }
@@ -75,8 +80,9 @@ export async function handleListTasks(
         listParams.s = validated.search;
       }
 
+      const projectId = validated.projectId;
       tasks = await withRetry(
-        () => (client as any).tasks.getTasksForProject(validated.projectId, listParams),
+        () => extendedClient.tasks.getTasksForProject(projectId, listParams),
         {
           ...RETRY_CONFIG,
           shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -99,7 +105,7 @@ export async function handleListTasks(
       }
 
       tasks = await withRetry(
-        () => (client as any).tasks.getAll(allParams),
+        () => extendedClient.tasks.getAll(allParams),
         {
           ...RETRY_CONFIG,
           shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -114,7 +120,7 @@ export async function handleListTasks(
     if (validated.filter) {
       try {
         // Parse filter and apply
-        const filterExpression = JSON.parse(validated.filter);
+        const filterExpression = JSON.parse(validated.filter) as FilterExpression;
         tasks = applyFilter(tasks, filterExpression);
         clientSideFiltering = true;
       } catch (filterError) {
