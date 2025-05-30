@@ -5,6 +5,7 @@
 import type { VikunjaClient, Task } from 'node-vikunja';
 import type { CreateTaskRequest, CreateTaskResponse } from '../../../types/operations/tasks';
 import { MCPError, ErrorCode } from '../../../types/errors';
+import '../../../types/index'; // Import type extensions
 import { logger } from '../../../utils/logger';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
@@ -62,12 +63,12 @@ export async function handleCreateTask(
     let completeTask: Task = task;
 
     // Add labels if provided
-    if (validated.labels && validated.labels.length > 0) {
+    if (validated.labels && validated.labels.length > 0 && task.id !== undefined) {
       try {
         // Add labels one by one
         for (const labelId of validated.labels) {
           await withRetry(
-            () => (client.tasks as any).addLabelToTask(task.id!, labelId),
+            () => client.tasks.addLabelToTask(task.id as number, labelId),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -84,11 +85,11 @@ export async function handleCreateTask(
     }
 
     // Add assignees if provided
-    if (validated.assignees && validated.assignees.length > 0) {
+    if (validated.assignees && validated.assignees.length > 0 && task.id !== undefined) {
       try {
         for (const assigneeId of validated.assignees) {
           await withRetry(
-            () => (client.tasks as any).addAssigneeToTask(task.id!, assigneeId),
+            () => client.tasks.addAssigneeToTask(task.id as number, assigneeId),
             {
               ...RETRY_CONFIG,
               shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
@@ -105,20 +106,22 @@ export async function handleCreateTask(
     }
 
     // Fetch the complete task with all relationships
-    try {
-      completeTask = await withRetry(
-        () => client.tasks.getTask(task.id!),
-        {
-          ...RETRY_CONFIG,
-          shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
-        }
-      );
-    } catch (fetchError) {
-      logger.warn('Failed to fetch complete task after creation', {
-        taskId: task.id,
-        error: fetchError instanceof Error ? fetchError.message : String(fetchError)
-      });
-      completeTask = task;
+    if (task.id !== undefined) {
+      try {
+        completeTask = await withRetry(
+          () => client.tasks.getTask(task.id as number),
+          {
+            ...RETRY_CONFIG,
+            shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
+          }
+        );
+      } catch (fetchError) {
+        logger.warn('Failed to fetch complete task after creation', {
+          taskId: task.id,
+          error: fetchError instanceof Error ? fetchError.message : String(fetchError)
+        });
+        completeTask = task;
+      }
     }
 
     return {

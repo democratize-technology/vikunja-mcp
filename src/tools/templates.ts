@@ -7,6 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
+import '../types/index'; // Import type extensions
 import { getVikunjaClient } from '../client';
 import type { Project, Task } from 'node-vikunja';
 import { filterStorage as storage } from '../storage/FilterStorage';
@@ -77,7 +78,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
               const project = await client.projects.getProject(args.projectId);
 
               // Get all tasks in the project
-              const tasks = await (client.tasks as any).getTasksForProject(args.projectId);
+              const tasks = await client.tasks.getTasksForProject(args.projectId);
 
               // Validate hex color if present
               if (project.hex_color && !/^#[0-9A-Fa-f]{6}$/.test(project.hex_color)) {
@@ -103,14 +104,14 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
                       hex_color: project.hex_color,
                     }),
                 },
-                tasks: tasks.map((task: any) => ({
+                tasks: tasks.map((task) => ({
                   title: task.title,
                   ...(task.description && { description: task.description }),
                   ...(task.labels &&
                     task.labels.length > 0 && {
                       labels: task.labels
-                        .map((l: any) => l.id)
-                        .filter((id: any): id is number => id !== undefined),
+                        .map((l) => l.id)
+                        .filter((id): id is number => id !== undefined),
                     }),
                   ...(task.due_date && { due_date: task.due_date }),
                   ...(task.priority !== undefined && { priority: task.priority }),

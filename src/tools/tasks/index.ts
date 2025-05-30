@@ -7,6 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../../auth/AuthManager';
 import { MCPError, ErrorCode } from '../../types/index';
+import '../../types/index'; // Import type extensions
 import type { StandardTaskResponse } from '../../types/index';
 import { getVikunjaClient } from '../../client';
 import { logger } from '../../utils/logger';
@@ -92,10 +93,10 @@ async function listTasks(args: {
       // Validate project ID
       validateId(args.projectId, 'projectId');
       // Get tasks for specific project
-      tasks = await (client.tasks as any).getTasksForProject(args.projectId, params);
+      tasks = await client.tasks.getTasksForProject(args.projectId, params);
     } else {
       // Get all tasks across all projects
-      tasks = await (client.tasks as any).getAll(params);
+      tasks = await client.tasks.getAll(params);
     }
 
     // Apply client-side filtering if we have a filter expression

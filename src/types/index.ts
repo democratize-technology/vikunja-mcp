@@ -2,6 +2,33 @@
  * Type exports
  */
 
+// Type extensions for node-vikunja
+import type { Task, GetTasksParams } from 'node-vikunja';
+
+declare module 'node-vikunja' {
+  interface TaskService {
+    /**
+     * Get all tasks (alias for getAllTasks)
+     */
+    getAll(params?: GetTasksParams): Promise<Task[]>;
+    
+    /**
+     * Get tasks for a specific project (alias for getProjectTasks)
+     */
+    getTasksForProject(projectId: number, params?: GetTasksParams): Promise<Task[]>;
+    
+    /**
+     * Add a label to a task using label ID
+     */
+    addLabelToTask(taskId: number, labelId: number): Promise<void>;
+    
+    /**
+     * Add an assignee to a task using user ID
+     */
+    addAssigneeToTask(taskId: number, userId: number): Promise<void>;
+  }
+}
+
 // Export from vikunja
 export {
   type LoginCredentials,

@@ -46,7 +46,7 @@ export async function handleListTasks(
         }
       );
 
-      const savedFilter = (filters as any[]).find((f: any) => f.id === parseInt(validated.filterId!));
+      const savedFilter = (filters as any[]).find((f: any) => f.id === parseInt(validated.filterId || '0'));
       if (!savedFilter) {
         throw new MCPError(ErrorCode.NOT_FOUND, `Filter with ID ${validated.filterId} not found`);
       }
