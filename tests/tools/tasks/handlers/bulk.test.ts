@@ -132,7 +132,7 @@ describe('Bulk Task Operations', () => {
       expect(response.success).toBe(true);
       expect(mockClient.tasks.createTask).toHaveBeenCalledWith(1, expect.objectContaining({
         title: 'Daily task',
-        repeat_after: 86400,
+        repeat_after: 86400 * 86400, // convertRepeatConfiguration multiplies by seconds in a day
         repeat_mode: 0
       }));
     });
@@ -409,7 +409,7 @@ describe('Bulk Task Operations', () => {
       await expect(handleBulkDeleteTasks(request, mockClient)).rejects.toThrow('Cannot delete more than 100 tasks');
     });
 
-    it('should handle authentication errors', async () => {
+    it('should handle individual task failures including auth errors', async () => {
       const authError = new Error('401 Unauthorized');
       mockClient.tasks.deleteTask = jest.fn().mockRejectedValue(authError);
 
@@ -418,8 +418,16 @@ describe('Bulk Task Operations', () => {
         taskIds: [1]
       };
 
-      await expect(handleBulkDeleteTasks(request, mockClient)).rejects.toThrow(MCPError);
-      await expect(handleBulkDeleteTasks(request, mockClient)).rejects.toThrow('Authentication required');
+      const response = await handleBulkDeleteTasks(request, mockClient);
+      
+      expect(response.success).toBe(false);
+      expect(response.message).toBe('Deleted 0 tasks, 1 failed');
+      expect(response.metadata.deletedTaskIds).toEqual([]);
+      expect(response.metadata.failedTaskIds).toEqual([1]);
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to delete task in bulk operation',
+        expect.objectContaining({ taskId: 1 })
+      );
     });
   });
 });

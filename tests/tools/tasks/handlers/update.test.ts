@@ -147,7 +147,7 @@ describe('handleUpdateTask', () => {
       expect(response.metadata.affectedFields).toContain('repeatAfter');
       expect(response.metadata.affectedFields).toContain('repeatMode');
       expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(1, {
-        repeat_after: 86400,
+        repeat_after: 86400 * 86400, // convertRepeatConfiguration multiplies by seconds in a day
         repeat_mode: 0
       });
     });

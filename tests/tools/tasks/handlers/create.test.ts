@@ -113,7 +113,7 @@ describe('handleCreateTask', () => {
         description: undefined,
         due_date: undefined,
         priority: undefined,
-        repeat_after: 86400,
+        repeat_after: 86400 * 86400, // convertRepeatConfiguration multiplies by seconds in a day
         repeat_mode: 0
       });
     });
