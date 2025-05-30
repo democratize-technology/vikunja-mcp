@@ -1,0 +1,851 @@
+/**
+ * Bulk operations for tasks
+ */
+
+import type { StandardTaskResponse } from '../../types/index';
+import { MCPError, ErrorCode } from '../../types/index';
+import { getVikunjaClient } from '../../client';
+import type { Task } from 'node-vikunja';
+import { logger } from '../../utils/logger';
+import { isAuthenticationError } from '../../utils/auth-error-handler';
+import {
+  AUTH_ERROR_MESSAGES,
+  BULK_OPERATION_BATCH_SIZE,
+  MAX_BULK_OPERATION_TASKS,
+} from './constants';
+import { validateDateString, validateId, convertRepeatConfiguration } from './validation';
+
+/**
+ * Process an array in batches
+ */
+async function processBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  processor: (batch: T[]) => Promise<R[]>,
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await processor(batch);
+    results.push(...batchResults);
+  }
+  return results;
+}
+
+/**
+ * Bulk update tasks
+ */
+export async function bulkUpdateTasks(args: {
+  taskIds?: number[];
+  field?: string;
+  value?: unknown;
+}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  try {
+    if (!args.taskIds || args.taskIds.length === 0) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        'taskIds array is required for bulk update operation',
+      );
+    }
+
+    if (!args.field) {
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'field is required for bulk update operation');
+    }
+
+    if (args.value === undefined) {
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'value is required for bulk update operation');
+    }
+
+    // Check max tasks limit
+    if (args.taskIds.length > MAX_BULK_OPERATION_TASKS) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        `Too many tasks for bulk operation. Maximum allowed: ${MAX_BULK_OPERATION_TASKS}. Consider breaking into smaller batches.`,
+      );
+    }
+
+    // Validate all task IDs
+    args.taskIds.forEach((id) => validateId(id, 'task ID'));
+
+    // Store taskIds in const after validation for TypeScript
+    const taskIds = args.taskIds;
+
+    // Preprocess value to handle common type coercion issues
+    // MCP might pass boolean values as strings
+    if (args.field === 'done' && typeof args.value === 'string') {
+      const originalValue = args.value;
+      if (args.value === 'true') {
+        args.value = true;
+      } else if (args.value === 'false') {
+        args.value = false;
+      }
+      logger.debug('Preprocessed done field value', {
+        originalValue: originalValue,
+        processedValue: args.value,
+      });
+    }
+
+    // Handle numeric fields that might come as strings
+    if (
+      (args.field === 'priority' ||
+        args.field === 'project_id' ||
+        args.field === 'repeat_after') &&
+      typeof args.value === 'string'
+    ) {
+      const originalValue = args.value;
+      const numValue = Number(args.value);
+      if (!isNaN(numValue)) {
+        args.value = numValue;
+        logger.debug(`Preprocessed ${args.field} field value`, {
+          originalValue: originalValue,
+          processedValue: args.value,
+        });
+      }
+    }
+
+    // Validate the field and value based on allowed fields
+    const allowedFields = [
+      'done',
+      'priority',
+      'due_date',
+      'project_id',
+      'assignees',
+      'labels',
+      'repeat_after',
+      'repeat_mode',
+    ];
+    if (!allowedFields.includes(args.field)) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        `Invalid field: ${args.field}. Allowed fields: ${allowedFields.join(', ')}`,
+      );
+    }
+
+    // Additional validation based on field type
+    if (args.field === 'priority' && typeof args.value === 'number') {
+      if (args.value < 0 || args.value > 5) {
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Priority must be between 0 and 5');
+      }
+    }
+
+    if (args.field === 'due_date' && typeof args.value === 'string') {
+      validateDateString(args.value, 'due_date');
+    }
+
+    if (args.field === 'project_id' && typeof args.value === 'number') {
+      validateId(args.value, 'project_id');
+    }
+
+    // Type validation for array fields
+    if (args.field === 'assignees' || args.field === 'labels') {
+      if (!Array.isArray(args.value)) {
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, `${args.field} must be an array of numbers`);
+      }
+      const valueArray = args.value as number[];
+      valueArray.forEach((id) => validateId(id, `${args.field} ID`));
+    }
+
+    // Type validation for boolean field
+    if (args.field === 'done') {
+      logger.debug('Bulk update done field validation', {
+        value: args.value,
+        typeOfValue: typeof args.value,
+        isBoolean: typeof args.value === 'boolean',
+      });
+      if (typeof args.value !== 'boolean') {
+        throw new MCPError(
+          ErrorCode.VALIDATION_ERROR,
+          'done field must be a boolean value (true or false)',
+        );
+      }
+    }
+
+    // Validation for recurring fields
+    if (args.field === 'repeat_after' && typeof args.value === 'number') {
+      if (args.value < 0) {
+        throw new MCPError(
+          ErrorCode.VALIDATION_ERROR,
+          'repeat_after must be a non-negative number',
+        );
+      }
+    }
+
+    if (args.field === 'repeat_mode' && typeof args.value === 'string') {
+      const validModes = ['day', 'week', 'month', 'year'];
+      if (!validModes.includes(args.value)) {
+        throw new MCPError(
+          ErrorCode.VALIDATION_ERROR,
+          `Invalid repeat_mode: ${args.value}. Valid modes: ${validModes.join(', ')}`,
+        );
+      }
+    }
+
+    const client = await getVikunjaClient();
+
+    // Use the proper bulk update API endpoint
+    try {
+      // Build the bulk update operation using TaskBulkOperation interface
+      const bulkOperation = {
+        task_ids: taskIds,
+        field: args.field,
+        value: args.value,
+      };
+
+      // Special handling for repeat_mode conversion
+      if (args.field === 'repeat_mode' && typeof args.value === 'string') {
+        const modeMap: Record<string, number> = {
+          default: 0,
+          month: 1,
+          from_current: 2,
+        };
+        bulkOperation.value = modeMap[args.value] ?? args.value;
+      }
+
+      // Call the proper bulk update API
+      logger.debug('Calling bulkUpdateTasks API', { bulkOperation });
+      const bulkUpdateResult = await client.tasks.bulkUpdateTasks(bulkOperation);
+
+      // Handle inconsistent return types from the bulk update API
+      // Sometimes it returns Message object, sometimes Task[] array
+      let updatedTasks: Task[] = [];
+      let bulkUpdateSuccessful = false;
+
+      if (Array.isArray(bulkUpdateResult)) {
+        // API returned Task[] array - verify the updates were actually applied
+        if (bulkUpdateResult.length > 0) {
+          bulkUpdateSuccessful = true;
+
+          // Check if the returned tasks have the expected values
+          for (const task of bulkUpdateResult) {
+            switch (args.field) {
+              case 'priority':
+                if (task.priority !== args.value) {
+                  logger.warn('Bulk update API returned task with unchanged priority', {
+                    taskId: task.id,
+                    expectedPriority: args.value,
+                    actualPriority: task.priority,
+                  });
+                  bulkUpdateSuccessful = false;
+                }
+                break;
+              case 'done':
+                if (task.done !== args.value) {
+                  logger.warn('Bulk update API returned task with unchanged done status', {
+                    taskId: task.id,
+                    expectedDone: args.value,
+                    actualDone: task.done,
+                  });
+                  bulkUpdateSuccessful = false;
+                }
+                break;
+              case 'due_date':
+                if (task.due_date !== args.value) {
+                  logger.warn('Bulk update API returned task with unchanged due date', {
+                    taskId: task.id,
+                    expectedDueDate: args.value,
+                    actualDueDate: task.due_date,
+                  });
+                  bulkUpdateSuccessful = false;
+                }
+                break;
+              case 'project_id':
+                if (task.project_id !== args.value) {
+                  logger.warn('Bulk update API returned task with unchanged project ID', {
+                    taskId: task.id,
+                    expectedProjectId: args.value,
+                    actualProjectId: task.project_id,
+                  });
+                  bulkUpdateSuccessful = false;
+                }
+                break;
+            }
+            if (!bulkUpdateSuccessful) break;
+          }
+
+          if (bulkUpdateSuccessful) {
+            updatedTasks = bulkUpdateResult;
+          }
+        }
+      } else if (
+        bulkUpdateResult &&
+        typeof bulkUpdateResult === 'object' &&
+        'message' in bulkUpdateResult
+      ) {
+        // API returned Message object - treat as success but need to fetch updated tasks
+        logger.debug('Bulk update API returned message object', { result: bulkUpdateResult });
+        bulkUpdateSuccessful = true;
+      }
+
+      if (!bulkUpdateSuccessful) {
+        // Bulk update didn't actually update the values, throw an error to trigger fallback
+        throw new Error('Bulk update API reported success but did not update task values');
+      }
+
+      // If we don't have the updated tasks yet (Message response), fetch them
+      if (updatedTasks.length === 0) {
+        const fetchResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
+          const results = await Promise.allSettled(batch.map((id) => client.tasks.getTask(id)));
+          return results;
+        });
+
+        updatedTasks = fetchResults
+          .filter((result): result is PromiseFulfilledResult<Task> => result.status === 'fulfilled')
+          .map((result) => result.value);
+      }
+
+      const response: StandardTaskResponse = {
+        success: true,
+        operation: 'update',
+        message: `Successfully updated ${taskIds.length} tasks`,
+        tasks: updatedTasks,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          count: taskIds.length,
+          affectedFields: [args.field],
+        },
+      };
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(response, null, 2),
+          },
+        ],
+      };
+    } catch (bulkError) {
+      // If bulk update fails, fall back to individual updates
+      logger.warn('Bulk update API failed, falling back to individual updates', {
+        error: bulkError instanceof Error ? bulkError.message : String(bulkError),
+        field: args.field,
+        value: args.value,
+        valueType: typeof args.value,
+        taskIds: taskIds,
+      });
+
+      // Perform bulk update using individual task updates as fallback
+      const updateResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
+        const results = await Promise.allSettled(
+          batch.map(async (taskId) => {
+            // Fetch current task to preserve required fields
+            const currentTask = await client.tasks.getTask(taskId);
+
+            // Build update object based on field, preserving existing data
+            const updateData: Task = { ...currentTask };
+
+            switch (args.field) {
+              case 'done':
+                updateData.done = args.value as boolean;
+                break;
+              case 'priority':
+                updateData.priority = args.value as number;
+                break;
+              case 'due_date':
+                updateData.due_date = args.value as string;
+                break;
+              case 'project_id':
+                updateData.project_id = args.value as number;
+                break;
+              case 'assignees':
+                // For assignees, we need to handle the user assignment separately
+                // This is a limitation of the current API
+                break;
+              case 'labels':
+                // For labels, we need to handle the label assignment separately
+                // This is a limitation of the current API
+                break;
+              case 'repeat_after':
+                updateData.repeat_after = args.value as number;
+                break;
+              case 'repeat_mode':
+                // The repeat_mode field in the API expects a number
+                // But TypeScript types might be out of sync
+                Object.assign(updateData, { repeat_mode: args.value });
+                break;
+            }
+
+            // Update the task
+            const updatedTask = await client.tasks.updateTask(taskId, updateData);
+
+            // Handle assignees and labels separately if needed
+            if (args.field === 'assignees' && Array.isArray(args.value)) {
+              try {
+                // Replace all assignees with the new list
+                const currentTaskWithAssignees = await client.tasks.getTask(taskId);
+                const currentAssigneeIds = currentTaskWithAssignees.assignees?.map((a) => a.id) || [];
+                const newAssigneeIds = args.value as number[];
+
+                // Add new assignees first to avoid leaving task unassigned
+                if (newAssigneeIds.length > 0) {
+                  await client.tasks.bulkAssignUsersToTask(taskId, {
+                    user_ids: newAssigneeIds,
+                  });
+                }
+
+                // Remove old assignees only after new ones are successfully added
+                for (const userId of currentAssigneeIds) {
+                  try {
+                    await client.tasks.removeUserFromTask(taskId, userId);
+                  } catch (removeError) {
+                    // Check if it's an auth error on remove
+                    if (isAuthenticationError(removeError)) {
+                      throw new MCPError(
+                        ErrorCode.API_ERROR,
+                        AUTH_ERROR_MESSAGES.ASSIGNEE_REMOVE_PARTIAL,
+                      );
+                    }
+                    throw removeError;
+                  }
+                }
+              } catch (assigneeError) {
+                // Check if it's an auth error
+                if (isAuthenticationError(assigneeError)) {
+                  throw new MCPError(ErrorCode.API_ERROR, AUTH_ERROR_MESSAGES.ASSIGNEE_BULK_UPDATE);
+                }
+                throw assigneeError;
+              }
+            }
+            if (args.field === 'labels' && Array.isArray(args.value)) {
+              await client.tasks.updateTaskLabels(taskId, {
+                label_ids: args.value as number[],
+              });
+            }
+
+            return updatedTask;
+          }),
+        );
+        return results;
+      });
+
+      // Check for any failures
+      const failures = updateResults
+        .map((result, index) => ({ result, id: taskIds[index] }))
+        .filter(({ result }) => result.status === 'rejected');
+
+      if (failures.length > 0) {
+        const failedIds = failures.map((f) => f.id);
+        const successCount = taskIds.length - failures.length;
+
+        // Check if all failures are due to assignee auth errors
+        if (args.field === 'assignees') {
+          const authFailures = failures.filter(({ result }) => {
+            const reason = (result as PromiseRejectedResult).reason as unknown;
+            return (
+              reason instanceof MCPError &&
+              reason.message.includes('Assignee operations may have authentication issues')
+            );
+          });
+
+          if (authFailures.length === failures.length) {
+            // All failures are auth-related
+            throw new MCPError(
+              ErrorCode.API_ERROR,
+              'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
+                'This is a known limitation that prevents bulk updating assignees.',
+            );
+          }
+        }
+
+        // If some succeeded, report partial success
+        if (successCount > 0) {
+          logger.warn('Bulk update partially failed', {
+            successCount,
+            failedCount: failures.length,
+            failedIds,
+          });
+        } else {
+          // All failed
+          throw new MCPError(
+            ErrorCode.API_ERROR,
+            `Bulk update failed. Could not update any tasks. Failed IDs: ${failedIds.join(', ')}`,
+          );
+        }
+      }
+
+      // Fetch updated tasks to show results using batching and allSettled
+      const fetchResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
+        const results = await Promise.allSettled(batch.map((id) => client.tasks.getTask(id)));
+        return results;
+      });
+
+      const updatedTasks = fetchResults
+        .filter((result): result is PromiseFulfilledResult<Task> => result.status === 'fulfilled')
+        .map((result) => result.value);
+
+      const failedFetches = fetchResults.filter(
+        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      ).length;
+
+      const response: StandardTaskResponse = {
+        success: true,
+        operation: 'update',
+        message: `Successfully updated ${taskIds.length} tasks${failedFetches > 0 ? ` (${failedFetches} tasks could not be fetched after update)` : ''}`,
+        tasks: updatedTasks,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          affectedFields: [args.field],
+          count: taskIds.length,
+          ...(failedFetches > 0 && { fetchErrors: failedFetches }),
+        },
+      };
+
+      logger.debug('Bulk update completed', {
+        taskCount: taskIds.length,
+        field: args.field,
+        fetchErrors: failedFetches,
+      });
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(response, null, 2),
+          },
+        ],
+      };
+    }
+  } catch (error) {
+    if (error instanceof MCPError) {
+      throw error;
+    }
+    throw new MCPError(
+      ErrorCode.API_ERROR,
+      `Failed to bulk update tasks: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+/**
+ * Bulk delete tasks
+ */
+export async function bulkDeleteTasks(args: {
+  taskIds?: number[];
+}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  try {
+    if (!args.taskIds || args.taskIds.length === 0) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        'taskIds array is required for bulk delete operation',
+      );
+    }
+
+    // Store taskIds in a const for TypeScript
+    const taskIds = args.taskIds;
+
+    // Check max tasks limit
+    if (taskIds.length > MAX_BULK_OPERATION_TASKS) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        `Too many tasks for bulk operation. Maximum allowed: ${MAX_BULK_OPERATION_TASKS}. Consider breaking into smaller batches.`,
+      );
+    }
+
+    // Validate all task IDs
+    taskIds.forEach((id) => validateId(id, 'task ID'));
+
+    const client = await getVikunjaClient();
+
+    // Fetch tasks before deletion for response metadata using batching
+    const fetchResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
+      const results = await Promise.allSettled(batch.map((id) => client.tasks.getTask(id)));
+      return results;
+    });
+
+    const tasksToDelete = fetchResults
+      .filter((result): result is PromiseFulfilledResult<Task> => result.status === 'fulfilled')
+      .map((result) => result.value);
+
+    // Delete tasks in batches
+    const deletionResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
+      const results = await Promise.allSettled(batch.map((id) => client.tasks.deleteTask(id)));
+      return results;
+    });
+
+    // Check for any failures
+    const failures = deletionResults
+      .map((result, index) => ({ result, id: taskIds[index] }))
+      .filter(({ result }) => result.status === 'rejected');
+
+    if (failures.length > 0) {
+      const failedIds = failures.map((f) => f.id);
+      const successCount = taskIds.length - failures.length;
+
+      // If some succeeded, report partial success
+      if (successCount > 0) {
+        const response: StandardTaskResponse = {
+          success: false,
+          operation: 'delete',
+          message: `Bulk delete partially completed. Successfully deleted ${successCount} tasks. Failed to delete task IDs: ${failedIds.join(', ')}`,
+          metadata: {
+            timestamp: new Date().toISOString(),
+            count: successCount,
+            failedCount: failures.length,
+            failedIds: failedIds.filter((id): id is number => id !== undefined),
+            previousState: tasksToDelete,
+          },
+        };
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(response, null, 2),
+            },
+          ],
+        };
+      } else {
+        // All failed
+        throw new MCPError(
+          ErrorCode.API_ERROR,
+          `Bulk delete failed. Could not delete any tasks. Failed IDs: ${failedIds.join(', ')}`,
+        );
+      }
+    }
+
+    const response: StandardTaskResponse = {
+      success: true,
+      operation: 'delete',
+      message: `Successfully deleted ${taskIds.length} tasks`,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        count: taskIds.length,
+        previousState: tasksToDelete,
+      },
+    };
+
+    logger.debug('Bulk delete completed', {
+      taskCount: taskIds.length,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(response, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    if (error instanceof MCPError) {
+      throw error;
+    }
+    throw new MCPError(
+      ErrorCode.API_ERROR,
+      `Failed to bulk delete tasks: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+/**
+ * Bulk create tasks
+ */
+export async function bulkCreateTasks(args: {
+  projectId?: number;
+  tasks?: Array<{
+    title: string;
+    description?: string;
+    dueDate?: string;
+    priority?: number;
+    labels?: number[];
+    assignees?: number[];
+    repeatAfter?: number;
+    repeatMode?: 'day' | 'week' | 'month' | 'year';
+  }>;
+}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  try {
+    if (!args.projectId) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        'projectId is required for bulk create operation',
+      );
+    }
+    validateId(args.projectId, 'projectId');
+
+    if (!args.tasks || args.tasks.length === 0) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        'tasks array is required and must contain at least one task',
+      );
+    }
+
+    // Check max tasks limit
+    if (args.tasks.length > MAX_BULK_OPERATION_TASKS) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        `Too many tasks for bulk operation. Maximum allowed: ${MAX_BULK_OPERATION_TASKS}. Consider breaking into smaller batches.`,
+      );
+    }
+
+    // Validate all tasks have required fields
+    args.tasks.forEach((task, index) => {
+      if (!task.title || task.title.trim() === '') {
+        throw new MCPError(
+          ErrorCode.VALIDATION_ERROR,
+          `Task at index ${index} must have a non-empty title`,
+        );
+      }
+
+      // Validate optional fields
+      if (task.dueDate) {
+        validateDateString(task.dueDate, `tasks[${index}].dueDate`);
+      }
+
+      if (task.assignees) {
+        task.assignees.forEach((id) => validateId(id, `tasks[${index}].assignee ID`));
+      }
+
+      if (task.labels) {
+        task.labels.forEach((id) => validateId(id, `tasks[${index}].label ID`));
+      }
+    });
+
+    const client = await getVikunjaClient();
+
+    // Create tasks in batches
+    const projectId = args.projectId; // TypeScript knows this is defined due to earlier check
+    const creationResults = await processBatches(
+      args.tasks,
+      BULK_OPERATION_BATCH_SIZE,
+      async (batch) => {
+        const results = await Promise.allSettled(
+          batch.map(async (taskData) => {
+            // Create the base task
+            const newTask: Task = {
+              title: taskData.title,
+              project_id: projectId,
+            };
+
+            if (taskData.description !== undefined) newTask.description = taskData.description;
+            if (taskData.dueDate !== undefined) newTask.due_date = taskData.dueDate;
+            if (taskData.priority !== undefined) newTask.priority = taskData.priority;
+            // Handle repeat configuration for bulk create
+            if (taskData.repeatAfter !== undefined || taskData.repeatMode !== undefined) {
+              const repeatConfig = convertRepeatConfiguration(
+                taskData.repeatAfter,
+                taskData.repeatMode,
+              );
+              if (repeatConfig.repeat_after !== undefined)
+                newTask.repeat_after = repeatConfig.repeat_after;
+              if (repeatConfig.repeat_mode !== undefined) {
+                // Use index signature to bypass type mismatch - API expects number but node-vikunja types expect string
+                (newTask as Record<string, unknown>).repeat_mode = repeatConfig.repeat_mode;
+              }
+            }
+
+            // Create the task
+            const createdTask = await client.tasks.createTask(projectId, newTask);
+
+            // Add labels and assignees if provided
+            if (createdTask.id) {
+              try {
+                if (taskData.labels && taskData.labels.length > 0) {
+                  await client.tasks.updateTaskLabels(createdTask.id, {
+                    label_ids: taskData.labels,
+                  });
+                }
+
+                if (taskData.assignees && taskData.assignees.length > 0) {
+                  try {
+                    await client.tasks.bulkAssignUsersToTask(createdTask.id, {
+                      user_ids: taskData.assignees,
+                    });
+                  } catch (assigneeError) {
+                    // Check if it's an auth error
+                    if (isAuthenticationError(assigneeError)) {
+                      throw new MCPError(
+                        ErrorCode.API_ERROR,
+                        'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
+                          'This is a known limitation. The task was created but assignees could not be added. ' +
+                          `Task ID: ${createdTask.id}`,
+                      );
+                    }
+                    throw assigneeError;
+                  }
+                }
+
+                // Fetch the complete task with labels and assignees
+                return await client.tasks.getTask(createdTask.id);
+              } catch (updateError) {
+                // If updating labels/assignees fails, try to clean up
+                try {
+                  await client.tasks.deleteTask(createdTask.id);
+                } catch (deleteError) {
+                  logger.error('Failed to clean up partially created task:', deleteError);
+                }
+                throw updateError;
+              }
+            }
+
+            return createdTask;
+          }),
+        );
+        return results;
+      },
+    );
+
+    // Process results
+    const successfulTasks = creationResults
+      .filter((result): result is PromiseFulfilledResult<Task> => result.status === 'fulfilled')
+      .map((result) => result.value);
+
+    const failedTasks = creationResults
+      .map((result, index) => ({ result, index }))
+      .filter(({ result }) => result.status === 'rejected')
+      .map(({ result, index }) => {
+        const rejectedResult = result as PromiseRejectedResult;
+        const reason = rejectedResult.reason as unknown;
+        return {
+          index,
+          error: reason instanceof Error ? reason.message : String(reason),
+        };
+      });
+
+    if (failedTasks.length > 0 && successfulTasks.length === 0) {
+      // All failed
+      throw new MCPError(
+        ErrorCode.API_ERROR,
+        `Bulk create failed. Could not create any tasks. Errors: ${JSON.stringify(failedTasks)}`,
+      );
+    }
+
+    const response: StandardTaskResponse = {
+      success: failedTasks.length === 0,
+      operation: 'create',
+      message:
+        failedTasks.length > 0
+          ? `Bulk create partially completed. Successfully created ${successfulTasks.length} tasks, ${failedTasks.length} failed.`
+          : `Successfully created ${successfulTasks.length} tasks`,
+      tasks: successfulTasks,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        count: successfulTasks.length,
+        ...(failedTasks.length > 0 && {
+          failedCount: failedTasks.length,
+          failures: failedTasks,
+        }),
+      },
+    };
+
+    logger.debug('Bulk create completed', {
+      successCount: successfulTasks.length,
+      failedCount: failedTasks.length,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(response, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    if (error instanceof MCPError) {
+      throw error;
+    }
+    throw new MCPError(
+      ErrorCode.API_ERROR,
+      `Failed to bulk create tasks: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
