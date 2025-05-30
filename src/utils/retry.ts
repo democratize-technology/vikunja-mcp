@@ -22,14 +22,11 @@ export async function withRetry<T>(
   options: Partial<RetryOptions> = {}
 ): Promise<T> {
   const opts = { ...DEFAULT_RETRY_OPTIONS, ...options };
-  let lastError: unknown;
   
   for (let attempt = 0; attempt <= opts.maxRetries; attempt++) {
     try {
       return await operation();
     } catch (error) {
-      lastError = error;
-      
       if (attempt === opts.maxRetries || !opts.shouldRetry?.(error)) {
         throw error;
       }
@@ -49,7 +46,9 @@ export async function withRetry<T>(
     }
   }
   
-  throw lastError;
+  // This should never be reached due to the loop logic
+  /* istanbul ignore next */
+  throw new Error('Unexpected retry loop exit');
 }
 
 export function isTransientError(error: unknown): boolean {
