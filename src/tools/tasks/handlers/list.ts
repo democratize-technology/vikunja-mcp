@@ -1,0 +1,201 @@
+/**
+ * Handler for listing tasks with proper type safety
+ */
+
+import type { VikunjaClient, Task } from 'node-vikunja';
+import type { ListTasksRequest, ListTasksResponse } from '../../../types/operations/tasks';
+import { MCPError, ErrorCode } from '../../../types/errors';
+import { logger } from '../../../utils/logger';
+import { isAuthenticationError } from '../../../utils/auth-error-handler';
+import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
+import { AUTH_ERROR_MESSAGES } from '../constants';
+import { validateId } from '../validation';
+import { filterTasks } from '../filters';
+import { ListTasksSchema } from '../../../types/schemas/tasks';
+
+/**
+ * Handle task listing with validation and proper error handling
+ */
+export async function handleListTasks(
+  request: ListTasksRequest,
+  client: VikunjaClient
+): Promise<ListTasksResponse> {
+  try {
+    // Validate input using Zod schema
+    const validated = ListTasksSchema.parse({
+      projectId: request.projectId,
+      filter: request.filter,
+      filterId: request.filterId,
+      page: request.page,
+      perPage: request.perPage,
+      sort: request.sort,
+      search: request.search,
+      allProjects: request.allProjects,
+      done: request.done
+    });
+
+    let tasks: Task[] = [];
+
+    // If using a saved filter
+    if (validated.filterId) {
+      const filters = await withRetry(
+        () => client.filters.getAll(),
+        {
+          ...RETRY_CONFIG,
+          shouldRetry: (error: Error) => isAuthenticationError(error)
+        }
+      );
+
+      const savedFilter = filters.find(f => f.id === parseInt(validated.filterId!));
+      if (!savedFilter) {
+        throw new MCPError(ErrorCode.NOT_FOUND, `Filter with ID ${validated.filterId} not found`);
+      }
+
+      // Apply the saved filter's query
+      if (savedFilter.filters?.filter_query) {
+        validated.filter = savedFilter.filters.filter_query;
+      }
+    }
+
+    // Fetch tasks based on context
+    if (validated.projectId) {
+      validateId(validated.projectId, 'projectId');
+      
+      const listParams: Record<string, unknown> = {
+        page: validated.page || 1,
+        per_page: validated.perPage || 50
+      };
+
+      if (validated.sort) {
+        listParams.sort_by = validated.sort.split(',');
+        listParams.order_by = validated.sort.includes('desc') ? ['desc'] : ['asc'];
+      }
+
+      if (validated.search) {
+        listParams.s = validated.search;
+      }
+
+      tasks = await withRetry(
+        () => client.tasks.getTasksForProject(validated.projectId!, listParams),
+        {
+          ...RETRY_CONFIG,
+          shouldRetry: (error: Error) => isAuthenticationError(error)
+        }
+      );
+    } else {
+      // Get all tasks across projects
+      const allParams: Record<string, unknown> = {
+        page: validated.page || 1,
+        per_page: validated.perPage || 50
+      };
+
+      if (validated.sort) {
+        allParams.sort_by = validated.sort.split(',');
+        allParams.order_by = validated.sort.includes('desc') ? ['desc'] : ['asc'];
+      }
+
+      if (validated.search) {
+        allParams.s = validated.search;
+      }
+
+      tasks = await withRetry(
+        () => client.tasks.getAll(allParams),
+        {
+          ...RETRY_CONFIG,
+          shouldRetry: (error: Error) => isAuthenticationError(error)
+        }
+      );
+    }
+
+    // Apply client-side filtering
+    let clientSideFiltering = false;
+    let filteringNote: string | undefined;
+
+    if (validated.filter) {
+      const filterResult = filterTasks(tasks, validated.filter);
+      tasks = filterResult.tasks;
+      clientSideFiltering = true;
+      filteringNote = filterResult.warnings.length > 0 
+        ? filterResult.warnings.join(', ')
+        : undefined;
+    }
+
+    // Apply done filter if specified
+    if (validated.done !== undefined) {
+      tasks = tasks.filter(task => task.done === validated.done);
+      clientSideFiltering = true;
+    }
+
+    // Calculate pagination metadata
+    const totalItems = tasks.length;
+    const page = validated.page || 1;
+    const perPage = validated.perPage || 50;
+    const totalPages = Math.ceil(totalItems / perPage);
+
+    return {
+      success: true,
+      operation: 'list',
+      message: `Retrieved ${tasks.length} tasks`,
+      tasks,
+      data: tasks,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        count: tasks.length,
+        filter: validated.filter,
+        clientSideFiltering,
+        filteringNote,
+        page,
+        perPage,
+        totalPages,
+        totalItems,
+        hasNext: page < totalPages,
+        hasPrevious: page > 1
+      }
+    };
+  } catch (error) {
+    // Handle authentication errors
+    if (error instanceof Error && isAuthenticationError(error)) {
+      logger.error('Authentication error listing tasks', { error: error.message });
+      throw new MCPError(
+        ErrorCode.AUTHENTICATION_ERROR,
+        AUTH_ERROR_MESSAGES.NOT_AUTHENTICATED
+      );
+    }
+
+    // Re-throw MCPErrors
+    if (error instanceof MCPError) {
+      throw error;
+    }
+
+    // Handle Zod validation errors
+    if (error instanceof Error && error.name === 'ZodError') {
+      const zodError = error as { errors: Array<{ path: string[], message: string }> };
+      const firstError = zodError.errors[0];
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        firstError ? `${firstError.path.join('.')}: ${firstError.message}` : 'Validation failed'
+      );
+    }
+
+    // Handle other errors
+    logger.error('Failed to list tasks', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+
+    return {
+      success: false,
+      operation: 'list',
+      message: 'Failed to list tasks',
+      tasks: [],
+      metadata: {
+        timestamp: new Date().toISOString(),
+        count: 0
+      },
+      error: {
+        code: ErrorCode.API_ERROR,
+        message: error instanceof Error ? error.message : String(error),
+        details: error
+      }
+    };
+  }
+}
