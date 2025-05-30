@@ -39,7 +39,7 @@ export async function handleUpdateTask(
       () => client.tasks.getTask(validated.id),
       {
         ...RETRY_CONFIG,
-        shouldRetry: (error: Error) => isAuthenticationError(error)
+        shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
       }
     );
 
@@ -58,25 +58,33 @@ export async function handleUpdateTask(
     if (validated.description !== undefined && validated.description !== currentTask.description) {
       updateData.description = validated.description;
       affectedFields.push('description');
-      previousState.description = currentTask.description;
+      if (currentTask.description !== undefined) {
+        previousState.description = currentTask.description;
+      }
     }
 
     if (validated.dueDate !== undefined) {
       updateData.due_date = validated.dueDate;
       affectedFields.push('dueDate');
-      previousState.due_date = currentTask.due_date;
+      if (currentTask.due_date !== undefined) {
+        previousState.due_date = currentTask.due_date;
+      }
     }
 
     if (validated.priority !== undefined && validated.priority !== currentTask.priority) {
       updateData.priority = validated.priority;
       affectedFields.push('priority');
-      previousState.priority = currentTask.priority;
+      if (currentTask.priority !== undefined) {
+        previousState.priority = currentTask.priority;
+      }
     }
 
     if (validated.done !== undefined && validated.done !== currentTask.done) {
       updateData.done = validated.done;
       affectedFields.push('done');
-      previousState.done = currentTask.done;
+      if (currentTask.done !== undefined) {
+        previousState.done = currentTask.done;
+      }
     }
 
     // Handle repeating configuration
@@ -86,25 +94,33 @@ export async function handleUpdateTask(
         updateData.repeat_after = repeatConfig.repeat_after;
         updateData.repeat_mode = repeatConfig.repeat_mode;
         affectedFields.push('repeatAfter', 'repeatMode');
-        previousState.repeat_after = currentTask.repeat_after;
-        previousState.repeat_mode = currentTask.repeat_mode;
+        if (currentTask.repeat_after !== undefined) {
+          previousState.repeat_after = currentTask.repeat_after;
+        }
+        if (currentTask.repeat_mode !== undefined) {
+          previousState.repeat_mode = currentTask.repeat_mode;
+        }
       } else {
         // Clear repeat configuration
         updateData.repeat_after = 0;
         updateData.repeat_mode = 0;
         affectedFields.push('repeatAfter', 'repeatMode');
-        previousState.repeat_after = currentTask.repeat_after;
-        previousState.repeat_mode = currentTask.repeat_mode;
+        if (currentTask.repeat_after !== undefined) {
+          previousState.repeat_after = currentTask.repeat_after;
+        }
+        if (currentTask.repeat_mode !== undefined) {
+          previousState.repeat_mode = currentTask.repeat_mode;
+        }
       }
     }
 
     // Update the task if there are changes
     if (Object.keys(updateData).length > 0) {
       await withRetry(
-        () => client.tasks.updateTask(validated.id, updateData),
+        () => (client.tasks as any).updateTask(validated.id, updateData),
         {
           ...RETRY_CONFIG,
-          shouldRetry: (error: Error) => isAuthenticationError(error)
+          shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
         }
       );
     }
@@ -118,10 +134,10 @@ export async function handleUpdateTask(
         // Remove current labels
         if (currentLabelIds.length > 0) {
           await withRetry(
-            () => client.tasks.removeLabelsFromTask(validated.id, currentLabelIds),
+            () => (client.tasks as any).removeLabelsFromTask(validated.id, currentLabelIds),
             {
               ...RETRY_CONFIG,
-              shouldRetry: (error: Error) => isAuthenticationError(error)
+              shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
             }
           );
         }
@@ -129,16 +145,18 @@ export async function handleUpdateTask(
         // Add new labels
         if (validated.labels.length > 0) {
           await withRetry(
-            () => client.tasks.addLabelsToTask(validated.id, validated.labels),
+            () => (client.tasks as any).addLabelsToTask(validated.id, validated.labels),
             {
               ...RETRY_CONFIG,
-              shouldRetry: (error: Error) => isAuthenticationError(error)
+              shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
             }
           );
         }
 
         affectedFields.push('labels');
-        previousState.labels = currentTask.labels;
+        if (currentTask.labels !== undefined) {
+          previousState.labels = currentTask.labels;
+        }
       }
     }
 
@@ -151,10 +169,10 @@ export async function handleUpdateTask(
         // Remove current assignees
         for (const assigneeId of currentAssigneeIds) {
           await withRetry(
-            () => client.tasks.removeAssigneeFromTask(validated.id, assigneeId),
+            () => (client.tasks as any).removeAssigneeFromTask(validated.id, assigneeId),
             {
               ...RETRY_CONFIG,
-              shouldRetry: (error: Error) => isAuthenticationError(error)
+              shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
             }
           );
         }
@@ -162,16 +180,18 @@ export async function handleUpdateTask(
         // Add new assignees
         for (const assigneeId of validated.assignees) {
           await withRetry(
-            () => client.tasks.addAssigneeToTask(validated.id, assigneeId),
+            () => (client.tasks as any).addAssigneeToTask(validated.id, assigneeId),
             {
               ...RETRY_CONFIG,
-              shouldRetry: (error: Error) => isAuthenticationError(error)
+              shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
             }
           );
         }
 
         affectedFields.push('assignees');
-        previousState.assignees = currentTask.assignees;
+        if (currentTask.assignees !== undefined) {
+          previousState.assignees = currentTask.assignees;
+        }
       }
     }
 
@@ -180,7 +200,7 @@ export async function handleUpdateTask(
       () => client.tasks.getTask(validated.id),
       {
         ...RETRY_CONFIG,
-        shouldRetry: (error: Error) => isAuthenticationError(error)
+        shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
       }
     );
 
@@ -193,7 +213,7 @@ export async function handleUpdateTask(
       metadata: {
         timestamp: new Date().toISOString(),
         affectedFields,
-        previousState: affectedFields.length > 0 ? previousState : undefined
+        ...(affectedFields.length > 0 && { previousState })
       }
     };
   } catch (error) {
@@ -201,7 +221,7 @@ export async function handleUpdateTask(
     if (error instanceof Error && isAuthenticationError(error)) {
       logger.error('Authentication error updating task', { error: error.message });
       throw new MCPError(
-        ErrorCode.AUTHENTICATION_ERROR,
+        ErrorCode.AUTH_REQUIRED,
         AUTH_ERROR_MESSAGES.NOT_AUTHENTICATED
       );
     }
@@ -213,7 +233,7 @@ export async function handleUpdateTask(
 
     // Handle Zod validation errors
     if (error instanceof Error && error.name === 'ZodError') {
-      const zodError = error as { errors: Array<{ path: string[], message: string }> };
+      const zodError = error as unknown as { errors: Array<{ path: Array<string | number>, message: string }> };
       const firstError = zodError.errors[0];
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,

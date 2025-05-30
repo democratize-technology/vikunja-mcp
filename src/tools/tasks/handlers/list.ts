@@ -10,7 +10,7 @@ import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { validateId } from '../validation';
-import { filterTasks } from '../filters';
+import { applyFilter } from '../filters';
 import { ListTasksSchema } from '../../../types/schemas/tasks';
 
 /**
@@ -39,14 +39,14 @@ export async function handleListTasks(
     // If using a saved filter
     if (validated.filterId) {
       const filters = await withRetry(
-        () => client.filters.getAll(),
+        () => (client as any).filters.getAll(),
         {
           ...RETRY_CONFIG,
-          shouldRetry: (error: Error) => isAuthenticationError(error)
+          shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
         }
       );
 
-      const savedFilter = filters.find(f => f.id === parseInt(validated.filterId!));
+      const savedFilter = (filters as any[]).find((f: any) => f.id === parseInt(validated.filterId!));
       if (!savedFilter) {
         throw new MCPError(ErrorCode.NOT_FOUND, `Filter with ID ${validated.filterId} not found`);
       }
@@ -76,10 +76,10 @@ export async function handleListTasks(
       }
 
       tasks = await withRetry(
-        () => client.tasks.getTasksForProject(validated.projectId!, listParams),
+        () => (client as any).tasks.getTasksForProject(validated.projectId, listParams),
         {
           ...RETRY_CONFIG,
-          shouldRetry: (error: Error) => isAuthenticationError(error)
+          shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
         }
       );
     } else {
@@ -99,10 +99,10 @@ export async function handleListTasks(
       }
 
       tasks = await withRetry(
-        () => client.tasks.getAll(allParams),
+        () => (client as any).tasks.getAll(allParams),
         {
           ...RETRY_CONFIG,
-          shouldRetry: (error: Error) => isAuthenticationError(error)
+          shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
         }
       );
     }
@@ -112,12 +112,14 @@ export async function handleListTasks(
     let filteringNote: string | undefined;
 
     if (validated.filter) {
-      const filterResult = filterTasks(tasks, validated.filter);
-      tasks = filterResult.tasks;
-      clientSideFiltering = true;
-      filteringNote = filterResult.warnings.length > 0 
-        ? filterResult.warnings.join(', ')
-        : undefined;
+      try {
+        // Parse filter and apply
+        const filterExpression = JSON.parse(validated.filter) as any;
+        tasks = applyFilter(tasks, filterExpression);
+        clientSideFiltering = true;
+      } catch (filterError) {
+        filteringNote = 'Invalid filter format';
+      }
     }
 
     // Apply done filter if specified
@@ -141,9 +143,9 @@ export async function handleListTasks(
       metadata: {
         timestamp: new Date().toISOString(),
         count: tasks.length,
-        filter: validated.filter,
-        clientSideFiltering,
-        filteringNote,
+        ...(validated.filter && { filter: validated.filter }),
+        ...(clientSideFiltering && { clientSideFiltering }),
+        ...(filteringNote && { filteringNote }),
         page,
         perPage,
         totalPages,
@@ -157,7 +159,7 @@ export async function handleListTasks(
     if (error instanceof Error && isAuthenticationError(error)) {
       logger.error('Authentication error listing tasks', { error: error.message });
       throw new MCPError(
-        ErrorCode.AUTHENTICATION_ERROR,
+        ErrorCode.AUTH_REQUIRED,
         AUTH_ERROR_MESSAGES.NOT_AUTHENTICATED
       );
     }
@@ -169,7 +171,7 @@ export async function handleListTasks(
 
     // Handle Zod validation errors
     if (error instanceof Error && error.name === 'ZodError') {
-      const zodError = error as { errors: Array<{ path: string[], message: string }> };
+      const zodError = error as unknown as { errors: Array<{ path: Array<string | number>, message: string }> };
       const firstError = zodError.errors[0];
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,

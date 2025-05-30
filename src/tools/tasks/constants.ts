@@ -4,6 +4,7 @@
 
 // Error message constants
 export const AUTH_ERROR_MESSAGES = {
+  NOT_AUTHENTICATED: 'Authentication required. Please authenticate with Vikunja first.',
   ASSIGNEE_CREATE:
     'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
     'This is a known limitation. The task was created but assignees could not be added.',

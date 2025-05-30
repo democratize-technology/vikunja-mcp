@@ -43,6 +43,7 @@ export async function handleBulkCreateTasks(
     // Create tasks one by one
     for (let i = 0; i < validated.tasks.length; i++) {
       const taskData = validated.tasks[i];
+      if (!taskData) continue;
       
       try {
         // Prepare task data
@@ -62,32 +63,34 @@ export async function handleBulkCreateTasks(
 
         // Create the task
         const task = await withRetry(
-          () => client.tasks.createTask(validated.projectId, createData),
+          () => client.tasks.createTask(validated.projectId, createData as any),
           {
             ...RETRY_CONFIG,
-            shouldRetry: (error: Error) => isAuthenticationError(error)
+            shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
           }
         );
 
         // Add labels if provided
         if (taskData.labels && taskData.labels.length > 0) {
-          await withRetry(
-            () => client.tasks.addLabelsToTask(task.id, taskData.labels || []),
-            {
-              ...RETRY_CONFIG,
-              shouldRetry: (error: Error) => isAuthenticationError(error)
-            }
-          );
+          for (const labelId of taskData.labels) {
+            await withRetry(
+              () => (client.tasks as any).addLabelToTask(task.id, labelId),
+              {
+                ...RETRY_CONFIG,
+                shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
+              }
+            );
+          }
         }
 
         // Add assignees if provided
         if (taskData.assignees && taskData.assignees.length > 0) {
           for (const assigneeId of taskData.assignees) {
             await withRetry(
-              () => client.tasks.addAssigneeToTask(task.id, assigneeId),
+              () => (client.tasks as any).addAssigneeToTask(task.id, assigneeId),
               {
                 ...RETRY_CONFIG,
-                shouldRetry: (error: Error) => isAuthenticationError(error)
+                shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
               }
             );
           }
@@ -95,14 +98,14 @@ export async function handleBulkCreateTasks(
 
         // Fetch complete task
         const completeTask = await withRetry(
-          () => client.tasks.getTask(task.id),
+          () => (client.tasks as any).getTask(task.id),
           {
             ...RETRY_CONFIG,
-            shouldRetry: (error: Error) => isAuthenticationError(error)
+            shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
           }
         );
 
-        createdTasks.push(completeTask);
+        createdTasks.push(completeTask as Task);
       } catch (error) {
         failures.push({
           index: i,
@@ -121,8 +124,10 @@ export async function handleBulkCreateTasks(
       metadata: {
         timestamp: new Date().toISOString(),
         count: createdTasks.length,
-        failedCount: failures.length > 0 ? failures.length : undefined,
-        failures: failures.length > 0 ? failures : undefined
+        ...(failures.length > 0 && {
+          failedCount: failures.length,
+          failures: failures
+        })
       }
     };
   } catch (error) {
@@ -130,14 +135,14 @@ export async function handleBulkCreateTasks(
     if (error instanceof Error && isAuthenticationError(error)) {
       logger.error('Authentication error in bulk create', { error: error.message });
       throw new MCPError(
-        ErrorCode.AUTHENTICATION_ERROR,
+        ErrorCode.AUTH_REQUIRED,
         AUTH_ERROR_MESSAGES.NOT_AUTHENTICATED
       );
     }
 
     // Handle Zod validation errors
     if (error instanceof Error && error.name === 'ZodError') {
-      const zodError = error as { errors: Array<{ path: string[], message: string }> };
+      const zodError = error as unknown as { errors: Array<{ path: Array<string | number>, message: string }> };
       const firstError = zodError.errors[0];
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
@@ -197,24 +202,24 @@ export async function handleBulkUpdateTasks(
         if (validated.field === 'assignees' || validated.field === 'labels') {
           // Handle assignees and labels separately
           const task = await withRetry(
-            () => client.tasks.getTask(taskId),
+            () => (client.tasks as any).getTask(taskId),
             {
               ...RETRY_CONFIG,
-              shouldRetry: (error: Error) => isAuthenticationError(error)
+              shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
             }
           );
 
           if (validated.field === 'assignees') {
             const newAssignees = validated.value as number[];
-            const currentAssignees = task.assignees?.map(a => a.id) || [];
+            const currentAssignees = (task as any).assignees?.map((a: any) => a.id) || [];
 
             // Remove current assignees
             for (const assigneeId of currentAssignees) {
               await withRetry(
-                () => client.tasks.removeAssigneeFromTask(taskId, assigneeId),
+                () => (client.tasks as any).removeAssigneeFromTask(taskId, assigneeId),
                 {
                   ...RETRY_CONFIG,
-                  shouldRetry: (error: Error) => isAuthenticationError(error)
+                  shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
                 }
               );
             }
@@ -222,24 +227,24 @@ export async function handleBulkUpdateTasks(
             // Add new assignees
             for (const assigneeId of newAssignees) {
               await withRetry(
-                () => client.tasks.addAssigneeToTask(taskId, assigneeId),
+                () => (client.tasks as any).addAssigneeToTask(taskId, assigneeId),
                 {
                   ...RETRY_CONFIG,
-                  shouldRetry: (error: Error) => isAuthenticationError(error)
+                  shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
                 }
               );
             }
           } else {
             const newLabels = validated.value as number[];
-            const currentLabels = task.labels?.map(l => l.id) || [];
+            const currentLabels = (task as any).labels?.map((l: any) => l.id) || [];
 
             // Remove current labels
             if (currentLabels.length > 0) {
               await withRetry(
-                () => client.tasks.removeLabelsFromTask(taskId, currentLabels),
+                () => (client.tasks as any).removeLabelsFromTask(taskId, currentLabels),
                 {
                   ...RETRY_CONFIG,
-                  shouldRetry: (error: Error) => isAuthenticationError(error)
+                  shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
                 }
               );
             }
@@ -247,10 +252,10 @@ export async function handleBulkUpdateTasks(
             // Add new labels
             if (newLabels.length > 0) {
               await withRetry(
-                () => client.tasks.addLabelsToTask(taskId, newLabels),
+                () => (client.tasks as any).addLabelsToTask(taskId, newLabels),
                 {
                   ...RETRY_CONFIG,
-                  shouldRetry: (error: Error) => isAuthenticationError(error)
+                  shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
                 }
               );
             }
@@ -258,10 +263,10 @@ export async function handleBulkUpdateTasks(
         } else {
           // Update other fields
           await withRetry(
-            () => client.tasks.updateTask(taskId, updateData),
+            () => (client.tasks as any).updateTask(taskId, updateData as any),
             {
               ...RETRY_CONFIG,
-              shouldRetry: (error: Error) => isAuthenticationError(error)
+              shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
             }
           );
         }
@@ -269,13 +274,13 @@ export async function handleBulkUpdateTasks(
         // Fetch updated task
         try {
           const updatedTask = await withRetry(
-            () => client.tasks.getTask(taskId),
+            () => (client.tasks as any).getTask(taskId),
             {
               ...RETRY_CONFIG,
-              shouldRetry: (error: Error) => isAuthenticationError(error)
+              shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
             }
           );
-          updatedTasks.push(updatedTask);
+          updatedTasks.push(updatedTask as Task);
         } catch (fetchError) {
           fetchErrors++;
           logger.warn('Failed to fetch task after update', {
@@ -301,7 +306,7 @@ export async function handleBulkUpdateTasks(
         timestamp: new Date().toISOString(),
         affectedField: validated.field,
         count: updatedTasks.length,
-        fetchErrors: fetchErrors > 0 ? fetchErrors : undefined
+        ...(fetchErrors > 0 && { fetchErrors })
       }
     };
   } catch (error) {
@@ -309,14 +314,14 @@ export async function handleBulkUpdateTasks(
     if (error instanceof Error && isAuthenticationError(error)) {
       logger.error('Authentication error in bulk update', { error: error.message });
       throw new MCPError(
-        ErrorCode.AUTHENTICATION_ERROR,
+        ErrorCode.AUTH_REQUIRED,
         AUTH_ERROR_MESSAGES.NOT_AUTHENTICATED
       );
     }
 
     // Handle Zod validation errors
     if (error instanceof Error && error.name === 'ZodError') {
-      const zodError = error as { errors: Array<{ path: string[], message: string }> };
+      const zodError = error as unknown as { errors: Array<{ path: Array<string | number>, message: string }> };
       const firstError = zodError.errors[0];
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
@@ -348,10 +353,10 @@ export async function handleBulkDeleteTasks(
     for (const taskId of validated.taskIds) {
       try {
         await withRetry(
-          () => client.tasks.deleteTask(taskId),
+          () => (client.tasks as any).deleteTask(taskId),
           {
             ...RETRY_CONFIG,
-            shouldRetry: (error: Error) => isAuthenticationError(error)
+            shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
           }
         );
         deletedTaskIds.push(taskId);
@@ -372,7 +377,7 @@ export async function handleBulkDeleteTasks(
         timestamp: new Date().toISOString(),
         count: deletedTaskIds.length,
         deletedTaskIds,
-        failedTaskIds: failedTaskIds.length > 0 ? failedTaskIds : undefined
+        ...(failedTaskIds.length > 0 && { failedTaskIds })
       }
     };
   } catch (error) {
@@ -380,14 +385,14 @@ export async function handleBulkDeleteTasks(
     if (error instanceof Error && isAuthenticationError(error)) {
       logger.error('Authentication error in bulk delete', { error: error.message });
       throw new MCPError(
-        ErrorCode.AUTHENTICATION_ERROR,
+        ErrorCode.AUTH_REQUIRED,
         AUTH_ERROR_MESSAGES.NOT_AUTHENTICATED
       );
     }
 
     // Handle Zod validation errors
     if (error instanceof Error && error.name === 'ZodError') {
-      const zodError = error as { errors: Array<{ path: string[], message: string }> };
+      const zodError = error as unknown as { errors: Array<{ path: Array<string | number>, message: string }> };
       const firstError = zodError.errors[0];
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,

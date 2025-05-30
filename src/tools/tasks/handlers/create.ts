@@ -50,10 +50,10 @@ export async function handleCreateTask(
 
     // Create the task
     const task = await withRetry(
-      () => client.tasks.createTask(validated.projectId, taskData),
+      () => client.tasks.createTask(validated.projectId, taskData as any),
       {
         ...RETRY_CONFIG,
-        shouldRetry: (error: Error) => isAuthenticationError(error)
+        shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
       }
     );
 
@@ -64,13 +64,16 @@ export async function handleCreateTask(
     // Add labels if provided
     if (validated.labels && validated.labels.length > 0) {
       try {
-        await withRetry(
-          () => client.tasks.addLabelsToTask(task.id, validated.labels!),
-          {
-            ...RETRY_CONFIG,
-            shouldRetry: (error: Error) => isAuthenticationError(error)
-          }
-        );
+        // Add labels one by one
+        for (const labelId of validated.labels) {
+          await withRetry(
+            () => (client.tasks as any).addLabelToTask(task.id!, labelId),
+            {
+              ...RETRY_CONFIG,
+              shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
+            }
+          );
+        }
         labelsAdded = true;
       } catch (labelError) {
         logger.warn('Failed to add labels to task', {
@@ -85,10 +88,10 @@ export async function handleCreateTask(
       try {
         for (const assigneeId of validated.assignees) {
           await withRetry(
-            () => client.tasks.addAssigneeToTask(task.id, assigneeId),
+            () => (client.tasks as any).addAssigneeToTask(task.id!, assigneeId),
             {
               ...RETRY_CONFIG,
-              shouldRetry: (error: Error) => isAuthenticationError(error)
+              shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
             }
           );
         }
@@ -104,10 +107,10 @@ export async function handleCreateTask(
     // Fetch the complete task with all relationships
     try {
       completeTask = await withRetry(
-        () => client.tasks.getTask(task.id),
+        () => client.tasks.getTask(task.id!),
         {
           ...RETRY_CONFIG,
-          shouldRetry: (error: Error) => isAuthenticationError(error)
+          shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
         }
       );
     } catch (fetchError) {
@@ -135,7 +138,7 @@ export async function handleCreateTask(
     if (error instanceof Error && isAuthenticationError(error)) {
       logger.error('Authentication error creating task', { error: error.message });
       throw new MCPError(
-        ErrorCode.AUTHENTICATION_ERROR,
+        ErrorCode.AUTH_REQUIRED,
         AUTH_ERROR_MESSAGES.NOT_AUTHENTICATED
       );
     }
@@ -147,7 +150,7 @@ export async function handleCreateTask(
 
     // Handle Zod validation errors
     if (error instanceof Error && error.name === 'ZodError') {
-      const zodError = error as { errors: Array<{ path: string[], message: string }> };
+      const zodError = error as unknown as { errors: Array<{ path: Array<string | number>, message: string }> };
       const firstError = zodError.errors[0];
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
@@ -164,6 +167,7 @@ export async function handleCreateTask(
       success: false,
       operation: 'create',
       message: 'Failed to create task',
+      task: {} as Task,
       metadata: {
         timestamp: new Date().toISOString()
       },

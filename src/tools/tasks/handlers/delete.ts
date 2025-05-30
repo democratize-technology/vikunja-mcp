@@ -29,7 +29,7 @@ export async function handleDeleteTask(
       () => client.tasks.deleteTask(validated.id),
       {
         ...RETRY_CONFIG,
-        shouldRetry: (error: Error) => isAuthenticationError(error)
+        shouldRetry: (error: unknown) => error instanceof Error && isAuthenticationError(error)
       }
     );
 
@@ -47,7 +47,7 @@ export async function handleDeleteTask(
     if (error instanceof Error && isAuthenticationError(error)) {
       logger.error('Authentication error deleting task', { error: error.message });
       throw new MCPError(
-        ErrorCode.AUTHENTICATION_ERROR,
+        ErrorCode.AUTH_REQUIRED,
         AUTH_ERROR_MESSAGES.NOT_AUTHENTICATED
       );
     }
@@ -59,7 +59,7 @@ export async function handleDeleteTask(
 
     // Handle Zod validation errors
     if (error instanceof Error && error.name === 'ZodError') {
-      const zodError = error as { errors: Array<{ path: string[], message: string }> };
+      const zodError = error as unknown as { errors: Array<{ path: Array<string | number>, message: string }> };
       const firstError = zodError.errors[0];
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
