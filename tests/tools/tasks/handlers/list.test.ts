@@ -65,8 +65,8 @@ describe('handleListTasks', () => {
     // Create mock client
     mockClient = {
       tasks: {
-        getProjectTasks: jest.fn().mockResolvedValue(mockTasks),
-        getAllTasks: jest.fn().mockResolvedValue(mockTasks),
+        getTasksForProject: jest.fn().mockResolvedValue(mockTasks),
+        getAll: jest.fn().mockResolvedValue(mockTasks),
         getTask: jest.fn()
       },
       filters: {
@@ -88,8 +88,8 @@ describe('handleListTasks', () => {
       expect(response.message).toBe('Retrieved 3 tasks');
       expect(response.tasks).toEqual(mockTasks);
       expect(response.metadata.count).toBe(3);
-      expect(response.metadata.clientSideFiltering).toBe(false);
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+      expect(response.metadata.clientSideFiltering).toBeUndefined();
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({
         page: 1,
         per_page: 50
       });
@@ -105,7 +105,7 @@ describe('handleListTasks', () => {
 
       expect(response.success).toBe(true);
       expect(response.tasks).toEqual(mockTasks);
-      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(1, {
+      expect(mockClient.tasks.getTasksForProject).toHaveBeenCalledWith(1, {
         page: 1,
         per_page: 50
       });
@@ -125,7 +125,7 @@ describe('handleListTasks', () => {
       expect(response.metadata.perPage).toBe(25);
       expect(response.metadata.hasNext).toBe(false);
       expect(response.metadata.hasPrevious).toBe(true);
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({
         page: 2,
         per_page: 25
       });
@@ -140,7 +140,7 @@ describe('handleListTasks', () => {
       const response = await handleListTasks(request, mockClient);
 
       expect(response.success).toBe(true);
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({
         page: 1,
         per_page: 50,
         sort_by: ['created', 'desc'],
@@ -157,7 +157,7 @@ describe('handleListTasks', () => {
       const response = await handleListTasks(request, mockClient);
 
       expect(response.success).toBe(true);
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({
         page: 1,
         per_page: 50,
         s: 'important'
@@ -223,7 +223,7 @@ describe('handleListTasks', () => {
       };
 
       await expect(handleListTasks(request, mockClient)).rejects.toThrow(MCPError);
-      await expect(handleListTasks(request, mockClient)).rejects.toThrow('must be a positive number');
+      await expect(handleListTasks(request, mockClient)).rejects.toThrow('Number must be greater than 0');
     });
 
     it('should reject perPage exceeding limit', async () => {
@@ -252,7 +252,7 @@ describe('handleListTasks', () => {
   describe('error handling', () => {
     it('should handle API errors', async () => {
       const apiError = new Error('API Error');
-      mockClient.tasks.getAllTasks = jest.fn().mockRejectedValue(apiError);
+      mockClient.tasks.getAll = jest.fn().mockRejectedValue(apiError);
 
       const request: ListTasksRequest = {
         operation: 'list'
@@ -269,7 +269,7 @@ describe('handleListTasks', () => {
 
     it('should handle authentication errors', async () => {
       const authError = new Error('401 Unauthorized');
-      mockClient.tasks.getAllTasks = jest.fn().mockRejectedValue(authError);
+      mockClient.tasks.getAll = jest.fn().mockRejectedValue(authError);
 
       const request: ListTasksRequest = {
         operation: 'list'
@@ -289,7 +289,7 @@ describe('handleListTasks', () => {
 
       expect(response.success).toBe(true);
       expect(response.metadata.filteringNote).toBe('Invalid filter format');
-      expect(response.metadata.clientSideFiltering).toBe(false);
+      expect(response.metadata.clientSideFiltering).toBeUndefined();
     });
 
     it('should calculate correct pagination metadata', async () => {
@@ -302,7 +302,7 @@ describe('handleListTasks', () => {
         created: '2024-01-01T00:00:00Z',
         updated: '2024-01-01T00:00:00Z'
       }));
-      mockClient.tasks.getAllTasks = jest.fn().mockResolvedValue(manyTasks);
+      mockClient.tasks.getAll = jest.fn().mockResolvedValue(manyTasks);
 
       const request: ListTasksRequest = {
         operation: 'list',

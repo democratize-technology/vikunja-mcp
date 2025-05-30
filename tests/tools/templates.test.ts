@@ -82,7 +82,7 @@ describe('Templates Tool', () => {
         createProject: jest.fn(),
       },
       tasks: {
-        getProjectTasks: jest.fn(),
+        getTasksForProject: jest.fn(),
         createTask: jest.fn(),
         updateTaskLabels: jest.fn(),
       },
@@ -118,7 +118,7 @@ describe('Templates Tool', () => {
   describe('create subcommand', () => {
     it('should create a template from an existing project', async () => {
       mockClient.projects.getProject.mockResolvedValue(mockProject);
-      mockClient.tasks.getProjectTasks.mockResolvedValue([mockTask]);
+      mockClient.tasks.getTasksForProject.mockResolvedValue([mockTask]);
       (mockFilterStorage.create as jest.Mock).mockResolvedValue({
         id: 'filter-123',
         name: 'template_123',
@@ -137,7 +137,7 @@ describe('Templates Tool', () => {
       });
 
       expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
-      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(1);
+      expect(mockClient.tasks.getTasksForProject).toHaveBeenCalledWith(1);
       expect(mockFilterStorage.create).toHaveBeenCalledWith({
         name: expect.stringMatching(/^template_\d+$/),
         filter: expect.any(String),
@@ -178,7 +178,7 @@ describe('Templates Tool', () => {
       ];
 
       mockClient.projects.getProject.mockResolvedValue(minimalProject);
-      mockClient.tasks.getProjectTasks.mockResolvedValue(minimalTasks);
+      mockClient.tasks.getTasksForProject.mockResolvedValue(minimalTasks);
       (mockFilterStorage.create as jest.Mock).mockResolvedValue({
         id: 'filter-123',
         name: 'template_123',
@@ -216,7 +216,7 @@ describe('Templates Tool', () => {
       ];
 
       mockClient.projects.getProject.mockResolvedValue(projectWithLabels);
-      mockClient.tasks.getProjectTasks.mockResolvedValue(tasksWithUndefinedIds);
+      mockClient.tasks.getTasksForProject.mockResolvedValue(tasksWithUndefinedIds);
       (mockFilterStorage.create as jest.Mock).mockResolvedValue({
         id: 'filter-123',
         name: 'template_123',
@@ -269,7 +269,7 @@ describe('Templates Tool', () => {
       ];
 
       mockClient.projects.getProject.mockResolvedValue(project);
-      mockClient.tasks.getProjectTasks.mockResolvedValue(tasks);
+      mockClient.tasks.getTasksForProject.mockResolvedValue(tasks);
       (mockFilterStorage.create as jest.Mock).mockResolvedValue({
         id: 'filter-123',
         name: 'template_123',
@@ -316,7 +316,7 @@ describe('Templates Tool', () => {
       const tasks = [{ id: 1, title: 'Task 1' }];
 
       mockClient.projects.getProject.mockResolvedValue(projectWithInvalidColor);
-      mockClient.tasks.getProjectTasks.mockResolvedValue(tasks);
+      mockClient.tasks.getTasksForProject.mockResolvedValue(tasks);
       (mockFilterStorage.create as jest.Mock).mockResolvedValue({
         id: 'filter-123',
         name: 'template_123',

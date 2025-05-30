@@ -61,8 +61,8 @@ describe('Projects Tool', () => {
     mockClient = {
       getToken: jest.fn().mockReturnValue('test-token'),
       tasks: {
-        getAllTasks: jest.fn(),
-        getProjectTasks: jest.fn(),
+        getAll: jest.fn(),
+        getTasksForProject: jest.fn(),
         createTask: jest.fn(),
         getTask: jest.fn(),
         updateTask: jest.fn(),

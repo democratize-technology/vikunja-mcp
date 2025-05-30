@@ -83,8 +83,8 @@ describe('Tasks Tool - Reminders', () => {
       tasks: {
         getTask: jest.fn(),
         updateTask: jest.fn(),
-        getAllTasks: jest.fn(),
-        getProjectTasks: jest.fn(),
+        getAll: jest.fn(),
+        getTasksForProject: jest.fn(),
         createTask: jest.fn(),
         deleteTask: jest.fn(),
         updateTaskLabels: jest.fn(),

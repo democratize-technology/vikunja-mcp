@@ -68,7 +68,7 @@ async function exportProjectRecursive(
 
   // Get all tasks for the project
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-  const tasks = (await vikunjaClient.tasks.getProjectTasks(projectId)) as Task[];
+  const tasks = (await vikunjaClient.tasks.getTasksForProject(projectId)) as Task[];
 
   // Get all labels used in the project
   const labelIds = new Set<number>();

@@ -71,8 +71,8 @@ describe('Tasks Tool - Authentication Errors', () => {
         getShareAuth: jest.fn(),
       },
       tasks: {
-        getAllTasks: jest.fn(),
-        getProjectTasks: jest.fn(),
+        getAll: jest.fn(),
+        getTasksForProject: jest.fn(),
         createTask: jest.fn(),
         getTask: jest.fn(),
         updateTask: jest.fn(),

@@ -62,8 +62,8 @@ describe('Tasks Tool - Race Condition Fix', () => {
       teams: {} as any,
       shares: {} as any,
       tasks: {
-        getAllTasks: jest.fn(),
-        getProjectTasks: jest.fn(),
+        getAll: jest.fn(),
+        getTasksForProject: jest.fn(),
         createTask: jest.fn(),
         updateTaskLabels: jest.fn(),
         bulkAssignUsersToTask: jest.fn(),

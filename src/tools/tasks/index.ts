@@ -17,6 +17,7 @@ import type { FilterExpression } from '../../types/filters';
 import type { FilterParams } from './types';
 import { applyFilter } from './filters';
 import { validateId } from './validation';
+import type { Task } from 'node-vikunja';
 
 // Import all operation handlers
 import { createTask, getTask, updateTask, deleteTask } from './crud';
@@ -91,10 +92,10 @@ async function listTasks(args: {
       // Validate project ID
       validateId(args.projectId, 'projectId');
       // Get tasks for specific project
-      tasks = await client.tasks.getProjectTasks(args.projectId, params);
+      tasks = await (client.tasks as any).getTasksForProject(args.projectId, params);
     } else {
       // Get all tasks across all projects
-      tasks = await client.tasks.getAllTasks(params);
+      tasks = await (client.tasks as any).getAll(params);
     }
 
     // Apply client-side filtering if we have a filter expression
@@ -110,7 +111,7 @@ async function listTasks(args: {
 
     // Filter by done status if specified (this is a simpler filter that works)
     if (args.done !== undefined) {
-      tasks = tasks.filter((task) => task.done === args.done);
+      tasks = tasks.filter((task: Task) => task.done === args.done);
     }
 
     const response: StandardTaskResponse = {

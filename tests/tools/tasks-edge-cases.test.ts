@@ -61,8 +61,8 @@ describe('Tasks Tool - Edge Cases', () => {
     // Create mocks with correct API methods
     mockClient = {
       tasks: {
-        getAllTasks: jest.fn().mockResolvedValue([]),
-        getProjectTasks: jest.fn().mockResolvedValue([]),
+        getAll: jest.fn().mockResolvedValue([]),
+        getTasksForProject: jest.fn().mockResolvedValue([]),
         createTask: jest.fn(),
         getTask: jest.fn(),
         updateTask: jest.fn(),
@@ -540,7 +540,7 @@ describe('Tasks Tool - Edge Cases', () => {
         is_favorite: false,
       }));
 
-      mockClient.tasks.getProjectTasks.mockResolvedValue(largeTasks);
+      mockClient.tasks.getTasksForProject.mockResolvedValue(largeTasks);
 
       const result = await callTool('list', {
         projectId: 1,
@@ -554,7 +554,7 @@ describe('Tasks Tool - Edge Cases', () => {
       expect(response.metadata.count).toBe(150);
 
       // Verify API was called with pagination params
-      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(1, {
+      expect(mockClient.tasks.getTasksForProject).toHaveBeenCalledWith(1, {
         page: 1,
         per_page: 50,
       });
@@ -587,14 +587,14 @@ describe('Tasks Tool - Edge Cases', () => {
         is_favorite: false,
       }));
 
-      mockClient.tasks.getProjectTasks.mockResolvedValue(sortedTasks);
+      mockClient.tasks.getTasksForProject.mockResolvedValue(sortedTasks);
 
       const result = await callTool('list', {
         projectId: 1,
         sort: 'priority desc, title asc',
       });
 
-      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(1, {
+      expect(mockClient.tasks.getTasksForProject).toHaveBeenCalledWith(1, {
         sort_by: 'priority desc, title asc',
       });
       const response = JSON.parse(result.content[0].text);
@@ -630,7 +630,7 @@ describe('Tasks Tool - Edge Cases', () => {
         },
       ];
 
-      mockClient.tasks.getAllTasks.mockResolvedValue(filteredTasks);
+      mockClient.tasks.getAll.mockResolvedValue(filteredTasks);
 
       const complexFilter =
         'priority >= 8 && done = false && dueDate < 2024-03-01 && (title like "urgent" || description like "important")';
@@ -639,7 +639,7 @@ describe('Tasks Tool - Edge Cases', () => {
         filter: complexFilter,
       });
 
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({});
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -674,20 +674,20 @@ describe('Tasks Tool - Edge Cases', () => {
       }));
 
       // First page
-      mockClient.tasks.getProjectTasks.mockResolvedValueOnce(tasks60.slice(0, 20));
+      mockClient.tasks.getTasksForProject.mockResolvedValueOnce(tasks60.slice(0, 20));
       const page1 = await callTool('list', { projectId: 1, page: 1, perPage: 20 });
       const page1Response = JSON.parse(page1.content[0].text);
       expect(page1Response.tasks).toHaveLength(20);
       expect(page1Response.metadata.count).toBe(20);
 
       // Last page (exactly full)
-      mockClient.tasks.getProjectTasks.mockResolvedValueOnce(tasks60.slice(40, 60));
+      mockClient.tasks.getTasksForProject.mockResolvedValueOnce(tasks60.slice(40, 60));
       const page3 = await callTool('list', { projectId: 1, page: 3, perPage: 20 });
       const page3Response = JSON.parse(page3.content[0].text);
       expect(page3Response.tasks).toHaveLength(20);
 
       // Beyond last page (empty)
-      mockClient.tasks.getProjectTasks.mockResolvedValueOnce([]);
+      mockClient.tasks.getTasksForProject.mockResolvedValueOnce([]);
       const page4 = await callTool('list', { projectId: 1, page: 4, perPage: 20 });
       const page4Response = JSON.parse(page4.content[0].text);
       expect(page4Response.tasks).toHaveLength(0);

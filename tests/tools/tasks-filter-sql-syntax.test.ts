@@ -73,8 +73,8 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
       teams: {} as any,
       shares: {} as any,
       tasks: {
-        getAllTasks: jest.fn(),
-        getProjectTasks: jest.fn(),
+        getAll: jest.fn(),
+        getTasksForProject: jest.fn(),
         createTask: jest.fn(),
         getTask: jest.fn(),
         updateTask: jest.fn(),
@@ -122,12 +122,12 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
       const filter = '(priority >= 4)';
 
       // Mock successful response - the API should handle the filter correctly
-      mockClient.tasks.getAllTasks.mockResolvedValue([mockHighPriorityTask]);
+      mockClient.tasks.getAll.mockResolvedValue([mockHighPriorityTask]);
 
       const result = await callTool('list', { filter });
 
       // Verify that no filter is passed to the API (client-side filtering)
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({});
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -140,7 +140,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
       const filter = '(priority >= 4 && done = false)';
 
       // Mock error response since complex filters can't be converted
-      mockClient.tasks.getAllTasks.mockRejectedValue(new Error('Internal Server Error'));
+      mockClient.tasks.getAll.mockRejectedValue(new Error('Internal Server Error'));
 
       await expect(callTool('list', { filter })).rejects.toThrow(MCPError);
     });
@@ -149,7 +149,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
       const filter = 'priority >= 4 && done = false';
 
       // Complex filter can't be converted
-      mockClient.tasks.getAllTasks.mockRejectedValue(new Error('Internal Server Error'));
+      mockClient.tasks.getAll.mockRejectedValue(new Error('Internal Server Error'));
 
       await expect(callTool('list', { filter })).rejects.toThrow(MCPError);
     });
@@ -157,12 +157,12 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
     it('should handle simple filter expressions', async () => {
       const filter = 'priority >= 4';
 
-      mockClient.tasks.getAllTasks.mockResolvedValue([mockHighPriorityTask]);
+      mockClient.tasks.getAll.mockResolvedValue([mockHighPriorityTask]);
 
       const result = await callTool('list', { filter });
 
       // Should not pass filter to API (client-side filtering)
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({});
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -172,7 +172,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
       const filter = "(priority >= 3 && priority <= 5) || (done = true && updated > '2024-01-01')";
 
       // Complex filter can't be converted
-      mockClient.tasks.getAllTasks.mockRejectedValue(new Error('Internal Server Error'));
+      mockClient.tasks.getAll.mockRejectedValue(new Error('Internal Server Error'));
 
       await expect(callTool('list', { filter })).rejects.toThrow(MCPError);
     });
@@ -181,11 +181,11 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
       const projectId = 42;
       const filter = '(priority >= 4 && done = false)';
 
-      mockClient.tasks.getProjectTasks.mockResolvedValue([mockHighPriorityTask]);
+      mockClient.tasks.getTasksForProject.mockResolvedValue([mockHighPriorityTask]);
 
       const result = await callTool('list', { projectId, filter });
 
-      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(projectId, {});
+      expect(mockClient.tasks.getTasksForProject).toHaveBeenCalledWith(projectId, {});
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -194,7 +194,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
     it('should combine filter with other query parameters', async () => {
       const filter = '(priority >= 4 && done = false)';
 
-      mockClient.tasks.getAllTasks.mockResolvedValue([mockHighPriorityTask]);
+      mockClient.tasks.getAll.mockResolvedValue([mockHighPriorityTask]);
 
       const result = await callTool('list', {
         filter,
@@ -204,7 +204,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
         search: 'urgent',
       });
 
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({
         page: 2,
         per_page: 20,
         sort_by: 'priority',
@@ -219,7 +219,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
       const filter = '(priority >= 4 && done = false)';
 
       // Simulate the Internal Server Error from the issue
-      mockClient.tasks.getAllTasks.mockRejectedValue(new Error('Internal Server Error'));
+      mockClient.tasks.getAll.mockRejectedValue(new Error('Internal Server Error'));
 
       await expect(callTool('list', { filter })).rejects.toThrow(MCPError);
       await expect(callTool('list', { filter })).rejects.toMatchObject({
@@ -270,11 +270,11 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
     testCases.forEach(({ filter, description, expected }) => {
       it(`should handle ${description}`, async () => {
-        mockClient.tasks.getAllTasks.mockResolvedValue([mockHighPriorityTask]);
+        mockClient.tasks.getAll.mockResolvedValue([mockHighPriorityTask]);
 
         const result = await callTool('list', { filter });
 
-        expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith(expected);
+        expect(mockClient.tasks.getAll).toHaveBeenCalledWith(expected);
 
         const response = JSON.parse(result.content[0].text);
         expect(response.success).toBe(true);
@@ -294,11 +294,11 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
     testCases.forEach(({ filter, description }) => {
       it(`should handle ${description}`, async () => {
-        mockClient.tasks.getAllTasks.mockResolvedValue([mockHighPriorityTask]);
+        mockClient.tasks.getAll.mockResolvedValue([mockHighPriorityTask]);
 
         const result = await callTool('list', { filter });
 
-        expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+        expect(mockClient.tasks.getAll).toHaveBeenCalledWith({});
 
         const response = JSON.parse(result.content[0].text);
         expect(response.success).toBe(true);

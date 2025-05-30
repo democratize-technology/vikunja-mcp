@@ -34,7 +34,7 @@ jest.mock('../../src/client', () => ({
       getProjects: jest.fn(),
     },
     tasks: {
-      getProjectTasks: jest.fn(),
+      getTasksForProject: jest.fn(),
     },
     labels: {
       getLabel: jest.fn(),
@@ -125,7 +125,7 @@ describe('Export Tool', () => {
 
         const mockClient = await getVikunjaClient(mockAuthManagerJWT);
         jest.mocked(mockClient.projects.getProject).mockResolvedValue(mockProject);
-        jest.mocked(mockClient.tasks.getProjectTasks).mockResolvedValue([]);
+        jest.mocked(mockClient.tasks.getTasksForProject).mockResolvedValue([]);
 
         const handler = mockServer.tool.mock.calls.find(
           (call) => call[0] === 'vikunja_export_project',
@@ -188,7 +188,7 @@ describe('Export Tool', () => {
       const mockClient = await getVikunjaClient(mockAuthManager);
 
       jest.mocked(mockClient.projects.getProject).mockResolvedValue(mockProject);
-      jest.mocked(mockClient.tasks.getProjectTasks).mockResolvedValue(mockTasks);
+      jest.mocked(mockClient.tasks.getTasksForProject).mockResolvedValue(mockTasks);
       jest
         .mocked(mockClient.labels.getLabel)
         .mockResolvedValueOnce(mockLabels[0])
@@ -264,7 +264,7 @@ describe('Export Tool', () => {
         .mockResolvedValueOnce(mockParentProject)
         .mockResolvedValueOnce(mockChildProject);
       jest.mocked(mockClient.projects.getProjects).mockResolvedValue(mockAllProjects);
-      jest.mocked(mockClient.tasks.getProjectTasks).mockResolvedValue([]);
+      jest.mocked(mockClient.tasks.getTasksForProject).mockResolvedValue([]);
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_export_project',
@@ -315,7 +315,7 @@ describe('Export Tool', () => {
 
       jest.mocked(mockClient.projects.getProject).mockResolvedValue(mockProject);
       jest.mocked(mockClient.projects.getProjects).mockResolvedValue([mockProject]);
-      jest.mocked(mockClient.tasks.getProjectTasks).mockResolvedValue([]);
+      jest.mocked(mockClient.tasks.getTasksForProject).mockResolvedValue([]);
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_export_project',
@@ -383,7 +383,7 @@ describe('Export Tool', () => {
       const mockClient = await getVikunjaClient(mockAuthManager);
 
       jest.mocked(mockClient.projects.getProject).mockResolvedValue(mockProject);
-      jest.mocked(mockClient.tasks.getProjectTasks).mockResolvedValue(mockTasks);
+      jest.mocked(mockClient.tasks.getTasksForProject).mockResolvedValue(mockTasks);
       jest.mocked(mockClient.labels.getLabel).mockRejectedValue(new Error('Label not found'));
 
       const handler = mockServer.tool.mock.calls.find(

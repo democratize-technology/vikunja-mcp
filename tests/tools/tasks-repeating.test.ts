@@ -81,8 +81,8 @@ describe('Tasks Tool - Repeating Tasks', () => {
       teams: {} as any,
       shares: {} as any,
       tasks: {
-        getAllTasks: jest.fn(),
-        getProjectTasks: jest.fn(),
+        getAll: jest.fn(),
+        getTasksForProject: jest.fn(),
         getTask: jest.fn(),
         createTask: jest.fn(),
         updateTask: jest.fn(),

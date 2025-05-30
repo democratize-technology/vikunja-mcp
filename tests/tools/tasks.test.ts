@@ -100,8 +100,8 @@ describe('Tasks Tool', () => {
     mockClient = {
       getToken: jest.fn().mockReturnValue('test-token'),
       tasks: {
-        getAllTasks: jest.fn(),
-        getProjectTasks: jest.fn(),
+        getAll: jest.fn(),
+        getTasksForProject: jest.fn(),
         createTask: jest.fn(),
         getTask: jest.fn(),
         updateTask: jest.fn(),
@@ -183,7 +183,7 @@ describe('Tasks Tool', () => {
         { ...mockTask, done: true },
         { ...mockTask, id: 2, done: false },
       ];
-      mockClient.tasks.getAllTasks.mockResolvedValue(mockTasks);
+      mockClient.tasks.getAll.mockResolvedValue(mockTasks);
 
       const result = await callTool('list', { done: true });
 
@@ -200,7 +200,7 @@ describe('Tasks Tool', () => {
         labels: [{ id: 1, title: 'Important' }],
         assignees: [{ id: 1, username: 'user1' }],
       };
-      mockClient.tasks.getAllTasks.mockResolvedValue([taskWithDetails]);
+      mockClient.tasks.getAll.mockResolvedValue([taskWithDetails]);
 
       const result = await callTool('list');
 
@@ -210,11 +210,11 @@ describe('Tasks Tool', () => {
     });
     it('should list tasks with default options', async () => {
       const mockTasks: Task[] = [mockTask];
-      mockClient.tasks.getAllTasks.mockResolvedValue(mockTasks);
+      mockClient.tasks.getAll.mockResolvedValue(mockTasks);
 
       const result = await callTool('list');
 
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({});
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -225,7 +225,7 @@ describe('Tasks Tool', () => {
 
     it('should list tasks with all options specified', async () => {
       const mockTasks: Task[] = [mockTask];
-      mockClient.tasks.getProjectTasks.mockResolvedValue(mockTasks);
+      mockClient.tasks.getTasksForProject.mockResolvedValue(mockTasks);
 
       const result = await callTool('list', {
         projectId: 1,
@@ -236,7 +236,7 @@ describe('Tasks Tool', () => {
         search: 'urgent',
       });
 
-      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(1, {
+      expect(mockClient.tasks.getTasksForProject).toHaveBeenCalledWith(1, {
         page: 2,
         per_page: 25,
         sort_by: 'dueDate',
@@ -251,13 +251,13 @@ describe('Tasks Tool', () => {
 
     it('should handle multiple sort fields', async () => {
       const mockTasks: Task[] = [mockTask];
-      mockClient.tasks.getAllTasks.mockResolvedValue(mockTasks);
+      mockClient.tasks.getAll.mockResolvedValue(mockTasks);
 
       const result = await callTool('list', {
         sort: 'priority,dueDate',
       });
 
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({
         sort_by: 'priority,dueDate',
       });
 
@@ -273,13 +273,13 @@ describe('Tasks Tool', () => {
     });
 
     it('should handle API errors', async () => {
-      mockClient.tasks.getAllTasks.mockRejectedValue(new Error('API Error'));
+      mockClient.tasks.getAll.mockRejectedValue(new Error('API Error'));
 
       await expect(callTool('list')).rejects.toThrow('Failed to list tasks: API Error');
     });
 
     it('should handle non-Error API errors', async () => {
-      mockClient.tasks.getAllTasks.mockRejectedValue('String error');
+      mockClient.tasks.getAll.mockRejectedValue('String error');
 
       await expect(callTool('list')).rejects.toThrow('Failed to list tasks: String error');
     });
@@ -1337,7 +1337,7 @@ describe('Tasks Tool', () => {
     it('should handle network errors', async () => {
       const networkError = new Error('Network error');
       (networkError as any).code = 'ECONNREFUSED';
-      mockClient.tasks.getAllTasks.mockRejectedValue(networkError);
+      mockClient.tasks.getAll.mockRejectedValue(networkError);
 
       await expect(callTool('list')).rejects.toThrow('Failed to list tasks: Network error');
     });
@@ -1345,14 +1345,14 @@ describe('Tasks Tool', () => {
     it('should handle rate limiting', async () => {
       const rateLimitError = new Error('Rate limit exceeded');
       (rateLimitError as any).response = { status: 429 };
-      mockClient.tasks.getAllTasks.mockRejectedValue(rateLimitError);
+      mockClient.tasks.getAll.mockRejectedValue(rateLimitError);
 
       await expect(callTool('list')).rejects.toThrow('Failed to list tasks: Rate limit exceeded');
     });
 
     it('should handle malformed JSON responses', async () => {
       // This would typically happen at the node-vikunja level
-      mockClient.tasks.getAllTasks.mockRejectedValue(new SyntaxError('Unexpected token'));
+      mockClient.tasks.getAll.mockRejectedValue(new SyntaxError('Unexpected token'));
 
       await expect(callTool('list')).rejects.toThrow('Failed to list tasks: Unexpected token');
     });
@@ -1366,7 +1366,7 @@ describe('Tasks Tool', () => {
     });
 
     it('should handle empty responses gracefully', async () => {
-      mockClient.tasks.getAllTasks.mockResolvedValue([]);
+      mockClient.tasks.getAll.mockResolvedValue([]);
 
       const result = await callTool('list');
       const response = JSON.parse(result.content[0].text);

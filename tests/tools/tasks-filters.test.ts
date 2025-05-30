@@ -89,8 +89,8 @@ describe('Tasks Tool - Filter Integration', () => {
       teams: {} as any,
       shares: {} as any,
       tasks: {
-        getAllTasks: jest.fn(),
-        getProjectTasks: jest.fn(),
+        getAll: jest.fn(),
+        getTasksForProject: jest.fn(),
         createTask: jest.fn(),
         getTask: jest.fn(),
         updateTask: jest.fn(),
@@ -138,7 +138,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const highPriorityTask = { ...mockTask, id: 1, priority: 5 };
       const mediumPriorityTask = { ...mockTask, id: 2, priority: 3 };
       const lowPriorityTask = { ...mockTask, id: 3, priority: 1 };
-      mockClient.tasks.getAllTasks.mockResolvedValue([
+      mockClient.tasks.getAll.mockResolvedValue([
         highPriorityTask,
         mediumPriorityTask,
         lowPriorityTask,
@@ -147,7 +147,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'priority >= 3' });
 
       // Verify no filter was passed to API
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({});
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -166,7 +166,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const task2 = { ...mockTask, id: 2, done: true, priority: 5 };
       const task3 = { ...mockTask, id: 3, done: false, priority: 2 };
       const task4 = { ...mockTask, id: 4, done: false, priority: 5 };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2, task3, task4]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2, task3, task4]);
 
       const result = await callTool('list', {
         filter: '(done = false && priority >= 4) || (done = true && priority = 5)',
@@ -197,7 +197,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const taskDueNextWeek = { ...mockTask, id: 2, due_date: nextWeek.toISOString() };
       const taskNoDueDate = { ...mockTask, id: 3, due_date: null };
 
-      mockClient.tasks.getAllTasks.mockResolvedValue([
+      mockClient.tasks.getAll.mockResolvedValue([
         taskDueTomorrow,
         taskDueNextWeek,
         taskNoDueDate,
@@ -236,7 +236,7 @@ describe('Tasks Tool - Filter Integration', () => {
         ],
       };
 
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2, task3]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2, task3]);
 
       const result = await callTool('list', { filter: 'assignees in 1 && labels in 10' });
 
@@ -250,7 +250,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const task2 = { ...mockTask, id: 2, title: 'Add new feature' };
       const task3 = { ...mockTask, id: 3, title: 'Update documentation' };
 
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2, task3]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2, task3]);
 
       const result = await callTool('list', { filter: 'title like "bug"' });
 
@@ -272,12 +272,12 @@ describe('Tasks Tool - Filter Integration', () => {
       // Return tasks with different priorities to test filtering
       const highPriorityTask = { ...mockTask, id: 1, priority: 5 };
       const lowPriorityTask = { ...mockTask, id: 2, priority: 2 };
-      mockClient.tasks.getAllTasks.mockResolvedValue([highPriorityTask, lowPriorityTask]);
+      mockClient.tasks.getAll.mockResolvedValue([highPriorityTask, lowPriorityTask]);
 
       const result = await callTool('list', { filterId: savedFilter.id });
 
       // Verify the filter was NOT passed to API (due to API limitation)
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({});
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -303,7 +303,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const undoneHighPriorityTask = { ...mockTask, id: 1, done: false, priority: 4 };
       const doneHighPriorityTask = { ...mockTask, id: 2, done: true, priority: 4 };
       const undoneLowPriorityTask = { ...mockTask, id: 3, done: false, priority: 2 };
-      mockClient.tasks.getProjectTasks.mockResolvedValue([
+      mockClient.tasks.getTasksForProject.mockResolvedValue([
         undoneHighPriorityTask,
         doneHighPriorityTask,
         undoneLowPriorityTask,
@@ -315,7 +315,7 @@ describe('Tasks Tool - Filter Integration', () => {
       });
 
       // Verify the filter was NOT passed to API (due to API limitation)
-      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(projectId, {});
+      expect(mockClient.tasks.getTasksForProject).toHaveBeenCalledWith(projectId, {});
 
       const response = JSON.parse(result.content[0].text);
       // Verify client-side filtering worked (done = false && priority >= 3)
@@ -344,7 +344,7 @@ describe('Tasks Tool - Filter Integration', () => {
       // Return tasks with different priorities
       const priority5Task = { ...mockTask, id: 1, priority: 5 };
       const priority1Task = { ...mockTask, id: 2, priority: 1 };
-      mockClient.tasks.getAllTasks.mockResolvedValue([priority5Task, priority1Task]);
+      mockClient.tasks.getAll.mockResolvedValue([priority5Task, priority1Task]);
 
       // Provide both filterId and filter
       const result = await callTool('list', {
@@ -353,7 +353,7 @@ describe('Tasks Tool - Filter Integration', () => {
       });
 
       // Verify no filter was passed to API
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({});
 
       const response = JSON.parse(result.content[0].text);
       // Verify the saved filter was used for client-side filtering
@@ -371,7 +371,7 @@ describe('Tasks Tool - Filter Integration', () => {
       // Return multiple tasks to test pagination with filtering
       const undoneTask = { ...mockTask, id: 1, done: false };
       const doneTask = { ...mockTask, id: 2, done: true };
-      mockClient.tasks.getAllTasks.mockResolvedValue([undoneTask, doneTask]);
+      mockClient.tasks.getAll.mockResolvedValue([undoneTask, doneTask]);
 
       const result = await callTool('list', {
         filterId: savedFilter.id,
@@ -381,7 +381,7 @@ describe('Tasks Tool - Filter Integration', () => {
       });
 
       // Verify filter was NOT passed to API, but other params were
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({
         page: 2,
         per_page: 10,
         sort_by: 'priority',
@@ -403,7 +403,7 @@ describe('Tasks Tool - Filter Integration', () => {
       // Return tasks with different priorities
       const highPriorityTask = { ...mockTask, id: 1, priority: 4, title: 'Urgent task' };
       const lowPriorityTask = { ...mockTask, id: 2, priority: 1, title: 'Not urgent' };
-      mockClient.tasks.getAllTasks.mockResolvedValue([highPriorityTask, lowPriorityTask]);
+      mockClient.tasks.getAll.mockResolvedValue([highPriorityTask, lowPriorityTask]);
 
       const result = await callTool('list', {
         filterId: savedFilter.id,
@@ -411,7 +411,7 @@ describe('Tasks Tool - Filter Integration', () => {
       });
 
       // Verify filter was NOT passed but search was
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+      expect(mockClient.tasks.getAll).toHaveBeenCalledWith({
         s: 'urgent',
       });
 
@@ -429,7 +429,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const doneTask = { ...mockTask, id: 2, done: true };
       const undoneTask = { ...mockTask, id: 3, done: false };
 
-      mockClient.tasks.getAllTasks.mockResolvedValue([doneTask, undoneTask]);
+      mockClient.tasks.getAll.mockResolvedValue([doneTask, undoneTask]);
 
       const result = await callTool('list', {
         filterId: savedFilter.id,
@@ -447,7 +447,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const task1 = { ...mockTask, id: 1, percent_done: 0 };
       const task2 = { ...mockTask, id: 2, percent_done: 50 };
       const task3 = { ...mockTask, id: 3, percent_done: 100 };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2, task3]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2, task3]);
 
       const result = await callTool('list', { filter: 'percentDone >= 50' });
 
@@ -465,7 +465,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const task1 = { ...mockTask, id: 1, created: yesterday.toISOString() };
       const task2 = { ...mockTask, id: 2, created: tomorrow.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'created < now' });
 
@@ -483,7 +483,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const task1 = { ...mockTask, id: 1, updated: lastWeek.toISOString() };
       const task2 = { ...mockTask, id: 2, updated: nextWeek.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'updated > now-3d' });
 
@@ -496,7 +496,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const task1 = { ...mockTask, id: 1, description: 'Important task' };
       const task2 = { ...mockTask, id: 2, description: '' };
       const task3 = { ...mockTask, id: 3, description: 'Another task' };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2, task3]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2, task3]);
 
       const result = await callTool('list', { filter: 'description like "task"' });
 
@@ -506,7 +506,7 @@ describe('Tasks Tool - Filter Integration', () => {
     });
 
     it('should handle invalid field names in filters', async () => {
-      mockClient.tasks.getAllTasks.mockResolvedValue([mockTask]);
+      mockClient.tasks.getAll.mockResolvedValue([mockTask]);
 
       // Invalid field names cause parse errors because they're not recognized tokens
       await expect(callTool('list', { filter: 'invalidField = "test"' })).rejects.toThrow(
@@ -517,7 +517,7 @@ describe('Tasks Tool - Filter Integration', () => {
     it('should handle default case in evaluateCondition', async () => {
       // This tests the default case by creating a malformed AST that bypasses normal parsing
       const task1 = { ...mockTask, id: 1 };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1]);
+      mockClient.tasks.getAll.mockResolvedValue([task1]);
 
       // We need to test the internal logic, so let's use an invalid operator
       await expect(callTool('list', { filter: 'priority INVALID 5' })).rejects.toThrow(
@@ -531,7 +531,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const targetDate = '2024-01-15T00:00:00Z';
       const task1 = { ...mockTask, id: 1, due_date: targetDate };
       const task2 = { ...mockTask, id: 2, due_date: '2024-01-16T00:00:00Z' };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'dueDate = "2024-01-15T00:00:00Z"' });
 
@@ -544,7 +544,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const targetDate = '2024-01-15T00:00:00Z';
       const task1 = { ...mockTask, id: 1, due_date: targetDate };
       const task2 = { ...mockTask, id: 2, due_date: '2024-01-16T00:00:00Z' };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'dueDate != "2024-01-15T00:00:00Z"' });
 
@@ -562,7 +562,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const task1 = { ...mockTask, id: 1, due_date: yesterday.toISOString() };
       const task2 = { ...mockTask, id: 2, due_date: tomorrow.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'dueDate > now' });
 
@@ -583,7 +583,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const task1 = { ...mockTask, id: 1, due_date: yesterday.toISOString() };
       const task2 = { ...mockTask, id: 2, due_date: oneHourFromNow.toISOString() };
       const task3 = { ...mockTask, id: 3, due_date: tomorrow.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2, task3]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2, task3]);
 
       const result = await callTool('list', { filter: 'dueDate >= now' });
 
@@ -601,7 +601,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const task1 = { ...mockTask, id: 1, due_date: yesterday.toISOString() };
       const task2 = { ...mockTask, id: 2, due_date: tomorrow.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'dueDate < now' });
 
@@ -620,7 +620,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const task1 = { ...mockTask, id: 1, due_date: yesterday.toISOString() };
       const task2 = { ...mockTask, id: 2, due_date: now.toISOString() };
       const task3 = { ...mockTask, id: 3, due_date: tomorrow.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2, task3]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2, task3]);
 
       const result = await callTool('list', { filter: 'dueDate <= now' });
 
@@ -631,7 +631,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
     it('should handle invalid date comparison operator', async () => {
       const task1 = { ...mockTask, id: 1, due_date: '2024-01-15T00:00:00Z' };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1]);
+      mockClient.tasks.getAll.mockResolvedValue([task1]);
 
       // Test with an invalid operator that would hit the default case
       await expect(callTool('list', { filter: 'dueDate ~ now' })).rejects.toThrow(
@@ -648,7 +648,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const task1 = { ...mockTask, id: 1, created: thirtySecondsAgo.toISOString() };
       const task2 = { ...mockTask, id: 2, created: thirtySecondsFromNow.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'created > now-60s' });
 
@@ -663,7 +663,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const task1 = { ...mockTask, id: 1, created: fiveMinutesAgo.toISOString() };
       const task2 = { ...mockTask, id: 2, created: tenMinutesAgo.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'created > now-7m' });
 
@@ -679,7 +679,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const task1 = { ...mockTask, id: 1, created: twoHoursAgo.toISOString() };
       const task2 = { ...mockTask, id: 2, created: fourHoursAgo.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'created > now-3h' });
 
@@ -697,7 +697,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const task1 = { ...mockTask, id: 1, created: oneMonthAgo.toISOString() };
       const task2 = { ...mockTask, id: 2, created: threeMonthsAgo.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'created > now-2M' });
 
@@ -715,7 +715,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const task1 = { ...mockTask, id: 1, created: oneYearAgo.toISOString() };
       const task2 = { ...mockTask, id: 2, created: threeYearsAgo.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'created > now-2y' });
 
@@ -733,7 +733,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const task1 = { ...mockTask, id: 1, due_date: yesterday.toISOString() };
       const task2 = { ...mockTask, id: 2, due_date: tomorrow.toISOString() };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'dueDate = now' });
 
@@ -744,7 +744,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
     it('should handle invalid time unit in relative date', async () => {
       const task1 = { ...mockTask, id: 1, due_date: '2024-01-15T00:00:00Z' };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1]);
+      mockClient.tasks.getAll.mockResolvedValue([task1]);
 
       // Invalid relative dates are parsed as literal strings, which won't match any tasks
       const result = await callTool('list', { filter: 'dueDate > now-5x' });
@@ -758,7 +758,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const task1 = { ...mockTask, id: 1, title: 'Important task' };
       const task2 = { ...mockTask, id: 2, title: 'Regular task' };
       const task3 = { ...mockTask, id: 3, title: 'Important task' };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2, task3]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2, task3]);
 
       const result = await callTool('list', { filter: 'title != "Important task"' });
 
@@ -769,7 +769,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
     it('should handle invalid string comparison operator', async () => {
       const task1 = { ...mockTask, id: 1, title: 'Test task' };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1]);
+      mockClient.tasks.getAll.mockResolvedValue([task1]);
 
       // Invalid operators for strings just return false (no match)
       const result = await callTool('list', { filter: 'title > "test"' });
@@ -781,7 +781,7 @@ describe('Tasks Tool - Filter Integration', () => {
   describe('array comparison edge cases', () => {
     it('should handle invalid array comparison operator', async () => {
       const task1 = { ...mockTask, id: 1, labels: [{ id: 1, title: 'bug' }] };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1]);
+      mockClient.tasks.getAll.mockResolvedValue([task1]);
 
       // Invalid operators for arrays just return false (no match)
       const result = await callTool('list', { filter: 'labels = 1' });
@@ -794,7 +794,7 @@ describe('Tasks Tool - Filter Integration', () => {
     it('should handle != operator in evaluateComparison', async () => {
       const task1 = { ...mockTask, id: 1, priority: 5 };
       const task2 = { ...mockTask, id: 2, priority: 3 };
-      mockClient.tasks.getAllTasks.mockResolvedValue([task1, task2]);
+      mockClient.tasks.getAll.mockResolvedValue([task1, task2]);
 
       const result = await callTool('list', { filter: 'priority != 5' });
 
