@@ -114,7 +114,7 @@ export async function handleListTasks(
     if (validated.filter) {
       try {
         // Parse filter and apply
-        const filterExpression = JSON.parse(validated.filter) as any;
+        const filterExpression = JSON.parse(validated.filter);
         tasks = applyFilter(tasks, filterExpression);
         clientSideFiltering = true;
       } catch (filterError) {
