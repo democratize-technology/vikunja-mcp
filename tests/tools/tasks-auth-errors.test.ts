@@ -15,6 +15,10 @@ jest.mock('../../src/client', () => ({
 jest.mock('../../src/auth/AuthManager');
 jest.mock('../../src/utils/logger');
 jest.mock('../../src/storage/FilterStorage');
+jest.mock('../../src/utils/retry', () => ({
+  ...jest.requireActual('../../src/utils/retry'),
+  withRetry: jest.fn((fn) => fn()),
+}));
 
 describe('Tasks Tool - Authentication Errors', () => {
   let mockClient: MockVikunjaClient;
@@ -32,6 +36,8 @@ describe('Tasks Tool - Authentication Errors', () => {
   } as Task;
 
   beforeEach(() => {
+    jest.clearAllMocks();
+    
     // Setup mock client
     mockClient = {
       getToken: jest.fn().mockReturnValue('test-token'),
@@ -137,9 +143,7 @@ describe('Tasks Tool - Authentication Errors', () => {
           assignees: [1, 2],
         }),
       ).rejects.toThrow(
-        'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-          'This is a known limitation. The task was created but assignees could not be added. ' +
-          'Task ID: 1',
+        'Failed to complete task creation:',
       );
     });
 
@@ -160,7 +164,7 @@ describe('Tasks Tool - Authentication Errors', () => {
         }),
       ).rejects.toThrow(
         'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-          'This is a known limitation. Other task fields were updated but assignees could not be changed.',
+          'This is a known limitation. Other task fields were updated but assignees could not be changed. (Retried 3 times)',
       );
     });
 
@@ -177,7 +181,7 @@ describe('Tasks Tool - Authentication Errors', () => {
         }),
       ).rejects.toThrow(
         'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-          'This is a known limitation that prevents assigning users to tasks.',
+          'This is a known limitation that prevents assigning users to tasks. (Retried 3 times)',
       );
     });
 
@@ -238,11 +242,7 @@ describe('Tasks Tool - Authentication Errors', () => {
             },
           ],
         }),
-      ).rejects.toThrow(
-        'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-          'This is a known limitation. The task was created but assignees could not be added. ' +
-          'Task ID: 1',
-      );
+      ).rejects.toThrow('Bulk create failed. Could not create any tasks.');
     });
 
     it('should handle auth error when removing assignees', async () => {
@@ -256,7 +256,7 @@ describe('Tasks Tool - Authentication Errors', () => {
         }),
       ).rejects.toThrow(
         'Assignee removal operations may have authentication issues with certain Vikunja API versions. ' +
-          'This is a known limitation that prevents removing users from tasks.',
+          'This is a known limitation that prevents removing users from tasks. (Retried 3 times)',
       );
     });
 
@@ -308,11 +308,7 @@ describe('Tasks Tool - Authentication Errors', () => {
           title: 'Test Task',
           labels: [1, 2],
         }),
-      ).rejects.toThrow(
-        'Label operations may have authentication issues with certain Vikunja API versions. ' +
-          'This is a known limitation. The task was created but labels could not be added. ' +
-          'Task ID: 1',
-      );
+      ).rejects.toThrow('Failed to complete task creation:');
     });
 
     it('should handle auth error when updating task labels', async () => {

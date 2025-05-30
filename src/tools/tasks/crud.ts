@@ -8,6 +8,7 @@ import { getVikunjaClient } from '../../client';
 import type { Task } from 'node-vikunja';
 import { logger } from '../../utils/logger';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
+import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { AUTH_ERROR_MESSAGES } from './constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from './validation';
 
@@ -70,37 +71,53 @@ export async function createTask(args: {
     let labelsAdded = false;
 
     try {
-      // If labels were provided, add them
+      // If labels were provided, add them with retry logic
       if (args.labels && args.labels.length > 0 && createdTask.id) {
+        const taskId = createdTask.id;
+        const labelIds = args.labels;
         try {
-          await client.tasks.updateTaskLabels(createdTask.id, {
-            label_ids: args.labels,
-          });
+          await withRetry(
+            () => client.tasks.updateTaskLabels(taskId, {
+              label_ids: labelIds,
+            }),
+            {
+              ...RETRY_CONFIG.AUTH_ERRORS,
+              shouldRetry: (error) => isAuthenticationError(error)
+            }
+          );
           labelsAdded = true;
         } catch (labelError) {
-          // Check if it's an auth error
+          // Check if it's an auth error after retries
           if (isAuthenticationError(labelError)) {
             throw new MCPError(
               ErrorCode.API_ERROR,
-              AUTH_ERROR_MESSAGES.LABEL_CREATE + ` Task ID: ${createdTask.id}`,
+              `${AUTH_ERROR_MESSAGES.LABEL_CREATE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times). Task ID: ${createdTask.id}`,
             );
           }
           throw labelError;
         }
       }
 
-      // If assignees were provided, assign them
+      // If assignees were provided, assign them with retry logic
       if (args.assignees && args.assignees.length > 0 && createdTask.id) {
+        const taskId = createdTask.id;
+        const assigneeIds = args.assignees;
         try {
-          await client.tasks.bulkAssignUsersToTask(createdTask.id, {
-            user_ids: args.assignees,
-          });
+          await withRetry(
+            () => client.tasks.bulkAssignUsersToTask(taskId, {
+              user_ids: assigneeIds,
+            }),
+            {
+              ...RETRY_CONFIG.AUTH_ERRORS,
+              shouldRetry: (error) => isAuthenticationError(error)
+            }
+          );
         } catch (assigneeError) {
-          // Check if it's an auth error
+          // Check if it's an auth error after retries
           if (isAuthenticationError(assigneeError)) {
             throw new MCPError(
               ErrorCode.API_ERROR,
-              AUTH_ERROR_MESSAGES.ASSIGNEE_CREATE + ` Task ID: ${createdTask.id}`,
+              `${AUTH_ERROR_MESSAGES.ASSIGNEE_CREATE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times). Task ID: ${createdTask.id}`,
             );
           }
           throw assigneeError;
@@ -347,9 +364,12 @@ export async function updateTask(args: {
           }
         }
       } catch (assigneeError) {
-        // Check if it's an auth error
+        // Check if it's an auth error after retries
         if (isAuthenticationError(assigneeError)) {
-          throw new MCPError(ErrorCode.API_ERROR, AUTH_ERROR_MESSAGES.ASSIGNEE_UPDATE);
+          throw new MCPError(
+            ErrorCode.API_ERROR, 
+            `${AUTH_ERROR_MESSAGES.ASSIGNEE_UPDATE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`
+          );
         }
         throw assigneeError;
       }

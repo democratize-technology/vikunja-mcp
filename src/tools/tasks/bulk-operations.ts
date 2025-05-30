@@ -8,6 +8,7 @@ import { getVikunjaClient } from '../../client';
 import type { Task } from 'node-vikunja';
 import { logger } from '../../utils/logger';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
+import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import {
   AUTH_ERROR_MESSAGES,
   BULK_OPERATION_BATCH_SIZE,
@@ -377,38 +378,59 @@ export async function bulkUpdateTasks(args: {
 
                 // Add new assignees first to avoid leaving task unassigned
                 if (newAssigneeIds.length > 0) {
-                  await client.tasks.bulkAssignUsersToTask(taskId, {
-                    user_ids: newAssigneeIds,
-                  });
+                  await withRetry(
+                    () => client.tasks.bulkAssignUsersToTask(taskId, {
+                      user_ids: newAssigneeIds,
+                    }),
+                    {
+                      ...RETRY_CONFIG.AUTH_ERRORS,
+                      shouldRetry: (error) => isAuthenticationError(error)
+                    }
+                  );
                 }
 
                 // Remove old assignees only after new ones are successfully added
                 for (const userId of currentAssigneeIds) {
                   try {
-                    await client.tasks.removeUserFromTask(taskId, userId);
+                    await withRetry(
+                      () => client.tasks.removeUserFromTask(taskId, userId),
+                      {
+                        ...RETRY_CONFIG.AUTH_ERRORS,
+                        shouldRetry: (error) => isAuthenticationError(error)
+                      }
+                    );
                   } catch (removeError) {
-                    // Check if it's an auth error on remove
+                    // Check if it's an auth error on remove after retries
                     if (isAuthenticationError(removeError)) {
                       throw new MCPError(
                         ErrorCode.API_ERROR,
-                        AUTH_ERROR_MESSAGES.ASSIGNEE_REMOVE_PARTIAL,
+                        `${AUTH_ERROR_MESSAGES.ASSIGNEE_REMOVE_PARTIAL} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`,
                       );
                     }
                     throw removeError;
                   }
                 }
               } catch (assigneeError) {
-                // Check if it's an auth error
+                // Check if it's an auth error after retries
                 if (isAuthenticationError(assigneeError)) {
-                  throw new MCPError(ErrorCode.API_ERROR, AUTH_ERROR_MESSAGES.ASSIGNEE_BULK_UPDATE);
+                  throw new MCPError(
+                    ErrorCode.API_ERROR, 
+                    `${AUTH_ERROR_MESSAGES.ASSIGNEE_BULK_UPDATE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`
+                  );
                 }
                 throw assigneeError;
               }
             }
             if (args.field === 'labels' && Array.isArray(args.value)) {
-              await client.tasks.updateTaskLabels(taskId, {
-                label_ids: args.value as number[],
-              });
+              await withRetry(
+                () => client.tasks.updateTaskLabels(taskId, {
+                  label_ids: args.value as number[],
+                }),
+                {
+                  ...RETRY_CONFIG.AUTH_ERRORS,
+                  shouldRetry: (error) => isAuthenticationError(error)
+                }
+              );
             }
 
             return updatedTask;
@@ -739,24 +761,40 @@ export async function bulkCreateTasks(args: {
             if (createdTask.id) {
               try {
                 if (taskData.labels && taskData.labels.length > 0) {
-                  await client.tasks.updateTaskLabels(createdTask.id, {
-                    label_ids: taskData.labels,
-                  });
+                  const taskId = createdTask.id;
+                  const labelIds = taskData.labels;
+                  await withRetry(
+                    () => client.tasks.updateTaskLabels(taskId, {
+                      label_ids: labelIds,
+                    }),
+                    {
+                      ...RETRY_CONFIG.AUTH_ERRORS,
+                      shouldRetry: (error) => isAuthenticationError(error)
+                    }
+                  );
                 }
 
                 if (taskData.assignees && taskData.assignees.length > 0) {
+                  const taskId = createdTask.id;
+                  const assigneeIds = taskData.assignees;
                   try {
-                    await client.tasks.bulkAssignUsersToTask(createdTask.id, {
-                      user_ids: taskData.assignees,
-                    });
+                    await withRetry(
+                      () => client.tasks.bulkAssignUsersToTask(taskId, {
+                        user_ids: assigneeIds,
+                      }),
+                      {
+                        ...RETRY_CONFIG.AUTH_ERRORS,
+                        shouldRetry: (error) => isAuthenticationError(error)
+                      }
+                    );
                   } catch (assigneeError) {
-                    // Check if it's an auth error
+                    // Check if it's an auth error after retries
                     if (isAuthenticationError(assigneeError)) {
                       throw new MCPError(
                         ErrorCode.API_ERROR,
                         'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
                           'This is a known limitation. The task was created but assignees could not be added. ' +
-                          `Task ID: ${createdTask.id}`,
+                          `(Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times). Task ID: ${createdTask.id}`,
                       );
                     }
                     throw assigneeError;
