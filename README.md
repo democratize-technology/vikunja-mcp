@@ -17,6 +17,7 @@ A Model Context Protocol (MCP) server that enables AI assistants to interact wit
 - **Efficient diff-based updates** for assignees
 - **TypeScript with strict mode** for type safety
 - **Comprehensive error handling** with typed errors
+- **Automatic retry logic** with exponential backoff for transient failures
 
 ## Requirements
 

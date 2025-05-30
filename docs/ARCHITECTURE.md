@@ -34,3 +34,11 @@ Uses singleton pattern for Vikunja client:
 - `MCPError` - Base error class with proper error codes
 - Tool-specific error handling with helpful messages
 - API error translation to user-friendly messages
+
+### Retry Logic
+Implements exponential backoff for transient failures:
+- Authentication errors: 3 retries with 1s initial delay, doubling each time
+- Network errors: 5 retries with 500ms initial delay, 1.5x backoff factor
+- Maximum delay capped at 10s for auth errors, 30s for network errors
+- Non-retryable errors (validation, not found) fail immediately
+- Error messages include retry count for transparency

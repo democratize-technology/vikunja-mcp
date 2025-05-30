@@ -6,6 +6,7 @@ import type { StandardTaskResponse, MinimalTask } from '../../types/index';
 import { MCPError, ErrorCode } from '../../types/index';
 import { getVikunjaClient } from '../../client';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
+import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { AUTH_ERROR_MESSAGES } from './constants';
 import { validateId } from './validation';
 
@@ -34,15 +35,24 @@ export async function assignUsers(args: {
 
     const client = await getVikunjaClient();
 
-    // Assign users to the task
+    // Assign users to the task with retry logic
     try {
-      await client.tasks.bulkAssignUsersToTask(args.id, {
-        user_ids: args.assignees,
-      });
+      await withRetry(
+        () => client.tasks.bulkAssignUsersToTask(args.id, {
+          user_ids: args.assignees,
+        }),
+        {
+          ...RETRY_CONFIG.AUTH_ERRORS,
+          shouldRetry: (error) => isAuthenticationError(error)
+        }
+      );
     } catch (assigneeError) {
-      // Check if it's an auth error
+      // Check if it's an auth error after retries
       if (isAuthenticationError(assigneeError)) {
-        throw new MCPError(ErrorCode.API_ERROR, AUTH_ERROR_MESSAGES.ASSIGNEE_ASSIGN);
+        throw new MCPError(
+          ErrorCode.API_ERROR, 
+          `${AUTH_ERROR_MESSAGES.ASSIGNEE_ASSIGN} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`
+        );
       }
       throw assigneeError;
     }
@@ -102,14 +112,23 @@ export async function unassignUsers(args: {
 
     const client = await getVikunjaClient();
 
-    // Remove users from the task
+    // Remove users from the task with retry logic
     for (const userId of args.assignees) {
       try {
-        await client.tasks.removeUserFromTask(args.id, userId);
+        await withRetry(
+          () => client.tasks.removeUserFromTask(args.id, userId),
+          {
+            ...RETRY_CONFIG.AUTH_ERRORS,
+            shouldRetry: (error) => isAuthenticationError(error)
+          }
+        );
       } catch (removeError) {
-        // Check if it's an auth error
+        // Check if it's an auth error after retries
         if (isAuthenticationError(removeError)) {
-          throw new MCPError(ErrorCode.API_ERROR, AUTH_ERROR_MESSAGES.ASSIGNEE_REMOVE);
+          throw new MCPError(
+            ErrorCode.API_ERROR, 
+            `${AUTH_ERROR_MESSAGES.ASSIGNEE_REMOVE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`
+          );
         }
         throw removeError;
       }

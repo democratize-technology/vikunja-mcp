@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Automatic retry logic with exponential backoff for authentication and network errors
+- Retry configuration for different error types (3 retries for auth, 5 for network)
+- Error messages now include retry count information for transparency
+- Comprehensive test coverage for retry utility
+
 ### Changed
 - Refactored `src/tools/tasks.ts` from a single 2,300+ line file into a modular structure with separate files for:
   - CRUD operations (`crud.ts`)
