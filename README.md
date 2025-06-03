@@ -670,6 +670,30 @@ vikunja_labels.update({
 
 // Delete a label
 vikunja_labels.delete({ id: 1 })
+
+// --- Label Assignment to Tasks ---
+
+// Apply multiple labels to a task
+vikunja_tasks.apply-label({
+  id: 123,
+  labels: [1, 2, 3]  // Apply labels with IDs 1, 2, and 3
+})
+
+// Apply a single label
+vikunja_tasks.apply-label({
+  id: 123,
+  labels: [1]  // Apply just the "research" label
+})
+
+// Remove specific labels from a task
+vikunja_tasks.remove-label({
+  id: 123,
+  labels: [2, 3]  // Remove labels 2 and 3, keep others
+})
+
+// List all labels on a task
+vikunja_tasks.list-labels({ id: 123 })
+// Returns: Task info with detailed label data including colors and descriptions
 ```
 
 ### Team Management Examples
@@ -1046,6 +1070,15 @@ This standardized format ensures:
     - Supports partial updates
     - Can update title, description, hexColor
   - `delete` - Delete a label by ID
+  - `apply-label` - Apply one or more labels to a task
+    - Required: task id, labels array
+    - Supports bulk label application
+  - `remove-label` - Remove one or more labels from a task
+    - Required: task id, labels array
+    - Supports bulk label removal
+  - `list-labels` - List all labels assigned to a task
+    - Required: task id
+    - Returns detailed label information
 
 ### Project Templates ✅
 - `vikunja_templates` - Template operations (fully implemented)

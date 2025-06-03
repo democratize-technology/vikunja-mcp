@@ -24,6 +24,7 @@ import { bulkCreateTasks, bulkUpdateTasks, bulkDeleteTasks } from './bulk-operat
 import { assignUsers, unassignUsers, listAssignees } from './assignees';
 import { handleComment } from './comments';
 import { addReminder, removeReminder, listReminders } from './reminders';
+import { applyLabels, removeLabels, listTaskLabels } from './labels';
 
 /**
  * List tasks with optional filtering
@@ -56,10 +57,7 @@ async function listTasks(args: {
     if (args.filterId) {
       const savedFilter = await filterStorage.get(args.filterId);
       if (!savedFilter) {
-        throw new MCPError(
-          ErrorCode.VALIDATION_ERROR,
-          `Filter with id ${args.filterId} not found`,
-        );
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, `Filter with id ${args.filterId} not found`);
       }
       filterString = savedFilter.filter;
     } else if (args.filter !== undefined) {
@@ -195,6 +193,9 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
         'add-reminder',
         'remove-reminder',
         'list-reminders',
+        'apply-label',
+        'remove-label',
+        'list-labels',
       ]),
       // Task creation/update fields
       title: z.string().optional(),
@@ -320,6 +321,14 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
 
           case 'list-reminders':
             return listReminders(args as Parameters<typeof listReminders>[0]);
+          case 'apply-label':
+            return applyLabels(args as Parameters<typeof applyLabels>[0]);
+
+          case 'remove-label':
+            return removeLabels(args as Parameters<typeof removeLabels>[0]);
+
+          case 'list-labels':
+            return listTaskLabels(args as Parameters<typeof listTaskLabels>[0]);
 
           default:
             throw new MCPError(
