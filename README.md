@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/democratize-technology-vikunja-mcp-badge.png)](https://mseep.ai/app/democratize-technology-vikunja-mcp)
+
 # Vikunja MCP Server
 
 A Model Context Protocol (MCP) server that enables AI assistants to interact with Vikunja task management instances.
