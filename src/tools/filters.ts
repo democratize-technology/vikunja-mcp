@@ -199,7 +199,6 @@ export function registerFiltersTool(server: McpServer): void {
             const name = params.name || (params.title as string);
             logger.debug(`Creating filter with name: ${name}`);
 
-            // Build filter string from filters object if provided
             let filterString = params.filter;
             if (!filterString && params.filters) {
               const builder = new FilterBuilder();
@@ -213,7 +212,6 @@ export function registerFiltersTool(server: McpServer): void {
                   
                   if (!value) continue;
                   
-                  // Convert value to appropriate type based on field
                   let typedValue: string | number | boolean = value;
                   if (field === 'priority' || field === 'percentDone') {
                     typedValue = Number(value);
@@ -236,7 +234,6 @@ export function registerFiltersTool(server: McpServer): void {
               throw new Error('No filter conditions provided');
             }
 
-            // Check if filter with same name exists
             const existing = await filterStorage.findByName(name);
             if (existing) {
               throw new Error(`Filter with name "${name}" already exists`);
