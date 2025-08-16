@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Retry configuration for different error types (3 retries for auth, 5 for network)
 - Error messages now include retry count information for transparency
 - Comprehensive test coverage for retry utility
+- Added label assignment operations for tasks
 
 ### Changed
 - Refactored `src/tools/tasks.ts` from a single 2,300+ line file into a modular structure with separate files for:
