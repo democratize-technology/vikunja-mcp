@@ -10,6 +10,7 @@ import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { cleanupVikunjaClient } from '../client';
 import { logger } from '../utils/logger';
 import { registerToolWithRateLimit } from '../middleware/tool-wrapper';
+import { createSecureConnectionMessage } from '../utils/security';
 
 interface AuthArgs {
   subcommand: 'connect' | 'status' | 'refresh' | 'disconnect';
@@ -37,8 +38,8 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager): v
               );
             }
 
-            const tokenPreview = args.apiToken.substring(0, 10) + '...';
-            logger.debug('Auth connect attempt - URL: %s, token preview: %s', args.apiUrl, tokenPreview);
+            const secureMessage = createSecureConnectionMessage(args.apiUrl, args.apiToken);
+            logger.debug('Auth connect attempt: %s', secureMessage);
 
             // Check if already authenticated
             const currentStatus = authManager.getStatus();
