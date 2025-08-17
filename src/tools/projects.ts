@@ -9,6 +9,12 @@ import type { AuthManager } from '../auth/AuthManager';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getVikunjaClient } from '../client';
 import type { Project, ProjectListParams, LinkSharing, LinkShareAuth } from 'node-vikunja';
+import { 
+  handleStatusCodeError, 
+  transformApiError, 
+  createAuthRequiredError, 
+  createValidationError 
+} from '../utils/error-handler';
 
 /**
  * Validates that an ID is a positive integer
@@ -142,10 +148,7 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
       try {
         // Check authentication
         if (!authManager.isAuthenticated()) {
-          throw new MCPError(
-            ErrorCode.AUTH_REQUIRED,
-            'Authentication required. Please use vikunja_auth.connect first.',
-          );
+          throw createAuthRequiredError();
         }
 
         const client = await getVikunjaClient();
@@ -178,16 +181,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to list projects: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw transformApiError(error, 'Failed to list projects');
             }
           }
 
           case 'get': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -210,24 +210,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 404
-              ) {
-                throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${args.id} not found`);
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to get project: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw handleStatusCodeError(error, 'get project', args.id);
             }
           }
 
           case 'create': {
             if (!args.title) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project title is required');
+              throw createValidationError('Project title is required');
             }
 
             try {
@@ -243,9 +232,8 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 const parentDepth = calculateProjectDepth(args.parentProjectId, allProjects);
 
                 if (parentDepth >= MAX_PROJECT_DEPTH - 1) {
-                  throw new MCPError(
-                    ErrorCode.VALIDATION_ERROR,
-                    `Cannot create project at this depth. Maximum allowed depth is ${MAX_PROJECT_DEPTH} levels. Parent project is already at depth ${parentDepth + 1}.`,
+                  throw createValidationError(
+                    `Cannot create project at this depth. Maximum allowed depth is ${MAX_PROJECT_DEPTH} levels. Parent project is already at depth ${parentDepth + 1}.`
                   );
                 }
 
@@ -276,16 +264,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to create project: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw transformApiError(error, 'Failed to create project');
             }
           }
 
           case 'update': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -304,9 +289,8 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                   const parentDepth = calculateProjectDepth(args.parentProjectId, allProjects);
 
                   if (parentDepth >= MAX_PROJECT_DEPTH - 1) {
-                    throw new MCPError(
-                      ErrorCode.VALIDATION_ERROR,
-                      `Cannot update project to this parent. Maximum allowed depth is ${MAX_PROJECT_DEPTH} levels. Target parent is already at depth ${parentDepth + 1}.`,
+                    throw createValidationError(
+                      `Cannot update project to this parent. Maximum allowed depth is ${MAX_PROJECT_DEPTH} levels. Target parent is already at depth ${parentDepth + 1}.`
                     );
                   }
                 }
@@ -320,7 +304,7 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
               }
 
               if (Object.keys(updateData).length === 0) {
-                throw new MCPError(ErrorCode.VALIDATION_ERROR, 'No fields to update provided');
+                throw createValidationError('No fields to update provided');
               }
 
               const project = await client.projects.updateProject(args.id, updateData as Project);
@@ -341,24 +325,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 404
-              ) {
-                throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${args.id} not found`);
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to update project: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw handleStatusCodeError(error, 'update project', args.id);
             }
           }
 
           case 'delete': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -381,24 +354,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 404
-              ) {
-                throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${args.id} not found`);
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to delete project: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw handleStatusCodeError(error, 'delete project', args.id);
             }
           }
 
           case 'archive': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -445,24 +407,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 404
-              ) {
-                throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${args.id} not found`);
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to archive project: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw handleStatusCodeError(error, 'archive project', args.id);
             }
           }
 
           case 'unarchive': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -509,24 +460,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 404
-              ) {
-                throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${args.id} not found`);
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to unarchive project: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw handleStatusCodeError(error, 'unarchive project', args.id);
             }
           }
 
           case 'create-share': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -540,10 +480,7 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
               // Set permission level (default to read-only)
               if (args.right !== undefined) {
                 if (args.right < 0 || args.right > 2) {
-                  throw new MCPError(
-                    ErrorCode.VALIDATION_ERROR,
-                    'Invalid permission level. Use: 0=Read, 1=Write, 2=Admin',
-                  );
+                  throw createValidationError('Invalid permission level. Use: 0=Read, 1=Write, 2=Admin');
                 }
                 shareData.right = args.right;
               } else {
@@ -577,24 +514,16 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 404
-              ) {
+              if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 404) {
                 throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${args.id} not found`);
               }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to create share: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw transformApiError(error, 'Failed to create share');
             }
           }
 
           case 'list-shares': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -622,28 +551,20 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 404
-              ) {
+              if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 404) {
                 throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${args.id} not found`);
               }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to list shares: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw transformApiError(error, 'Failed to list shares');
             }
           }
 
           case 'get-share': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             if (args.shareId === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Share ID is required');
+              throw createValidationError('Share ID is required');
             }
 
             validateId(args.id, 'id');
@@ -668,31 +589,22 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 404
-              ) {
-                throw new MCPError(
-                  ErrorCode.NOT_FOUND,
-                  `Share with ID ${args.shareId} not found for project ${args.id}`,
-                );
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to get share: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              throw handleStatusCodeError(
+                error, 
+                'get share', 
+                args.shareId, 
+                `Share with ID ${args.shareId} not found for project ${args.id}`
               );
             }
           }
 
           case 'delete-share': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             if (args.shareId === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Share ID is required');
+              throw createValidationError('Share ID is required');
             }
 
             validateId(args.id, 'id');
@@ -717,27 +629,18 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 404
-              ) {
-                throw new MCPError(
-                  ErrorCode.NOT_FOUND,
-                  `Share with ID ${args.shareId} not found for project ${args.id}`,
-                );
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to delete share: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              throw handleStatusCodeError(
+                error, 
+                'delete share', 
+                args.shareId, 
+                `Share with ID ${args.shareId} not found for project ${args.id}`
               );
             }
           }
 
           case 'auth-share': {
             if (!args.shareHash) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Share hash is required');
+              throw createValidationError('Share hash is required');
             }
 
             try {
@@ -767,35 +670,25 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 401
-              ) {
-                throw new MCPError(ErrorCode.AUTH_REQUIRED, 'Invalid password for share');
+              // Handle specific auth-share error cases
+              if (error && typeof error === 'object' && 'statusCode' in error) {
+                if (error.statusCode === 401) {
+                  throw new MCPError(ErrorCode.AUTH_REQUIRED, 'Invalid password for share');
+                }
+                if (error.statusCode === 404) {
+                  throw new MCPError(
+                    ErrorCode.NOT_FOUND,
+                    `Share with hash ${args.shareHash} not found`
+                  );
+                }
               }
-              if (
-                error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                error.statusCode === 404
-              ) {
-                throw new MCPError(
-                  ErrorCode.NOT_FOUND,
-                  `Share with hash ${args.shareHash} not found`,
-                );
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to authenticate to share: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw transformApiError(error, 'Failed to authenticate to share');
             }
           }
 
           case 'get-children': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -823,16 +716,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to get project children: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw transformApiError(error, 'Failed to get project children');
             }
           }
 
           case 'get-tree': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -909,19 +799,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (error instanceof MCPError) {
-                throw error;
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to get project tree: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw transformApiError(error, 'Failed to get project tree');
             }
           }
 
           case 'get-breadcrumb': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -977,19 +861,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (error instanceof MCPError) {
-                throw error;
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to get project breadcrumb: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw transformApiError(error, 'Failed to get project breadcrumb');
             }
           }
 
           case 'move': {
             if (args.id === undefined) {
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+              throw createValidationError('Project ID is required');
             }
 
             validateId(args.id, 'id');
@@ -1044,23 +922,19 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 if (!newParent) {
                   throw new MCPError(
                     ErrorCode.NOT_FOUND,
-                    `Parent project with ID ${args.parentProjectId} not found`,
+                    `Parent project with ID ${args.parentProjectId} not found`
                   );
                 }
 
                 // Check for circular reference
                 // A project cannot be its own parent
                 if (args.id === args.parentProjectId) {
-                  throw new MCPError(
-                    ErrorCode.VALIDATION_ERROR,
-                    'A project cannot be its own parent',
-                  );
+                  throw createValidationError('A project cannot be its own parent');
                 }
 
                 if (isDescendant(args.id, args.parentProjectId)) {
-                  throw new MCPError(
-                    ErrorCode.VALIDATION_ERROR,
-                    'Cannot move a project to one of its descendants (would create a circular reference)',
+                  throw createValidationError(
+                    'Cannot move a project to one of its descendants (would create a circular reference)'
                   );
                 }
 
@@ -1069,10 +943,9 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 const projectSubtreeDepth = getMaxSubtreeDepth(args.id, allProjects);
 
                 if (parentDepth + projectSubtreeDepth + 1 > MAX_PROJECT_DEPTH) {
-                  throw new MCPError(
-                    ErrorCode.VALIDATION_ERROR,
+                  throw createValidationError(
                     `Cannot move project to this location. The resulting hierarchy would exceed the maximum depth of ${MAX_PROJECT_DEPTH} levels. ` +
-                      `Parent is at depth ${parentDepth + 1}, and the project's subtree has depth ${projectSubtreeDepth + 1}.`,
+                      `Parent is at depth ${parentDepth + 1}, and the project's subtree has depth ${projectSubtreeDepth + 1}.`
                   );
                 }
               }
@@ -1104,21 +977,12 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
                 ],
               };
             } catch (error) {
-              if (error instanceof MCPError) {
-                throw error;
-              }
-              throw new MCPError(
-                ErrorCode.API_ERROR,
-                `Failed to move project: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              );
+              throw transformApiError(error, 'Failed to move project');
             }
           }
 
           default:
-            throw new MCPError(
-              ErrorCode.VALIDATION_ERROR,
-              `Invalid subcommand: ${args.subcommand as string}`,
-            );
+            throw createValidationError(`Invalid subcommand: ${args.subcommand as string}`);
         }
       } catch (error) {
         if (error instanceof MCPError) {
@@ -1126,7 +990,7 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
         }
         throw new MCPError(
           ErrorCode.INTERNAL_ERROR,
-          `Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
     },
