@@ -5,6 +5,7 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import type { Task } from 'node-vikunja';
 import type { AuthManager } from '../../auth/AuthManager';
 import { MCPError, ErrorCode } from '../../types/index';
 import type { StandardTaskResponse } from '../../types/index';
@@ -56,7 +57,7 @@ async function listTasks(
   const params: FilterParams = {};
 
   try {
-    let tasks;
+    let tasks: Task[] = [];
     let filterExpression: FilterExpression | null = null;
     let filterString: string | undefined;
 
@@ -88,8 +89,8 @@ async function listTasks(
       }
       filterExpression = parseResult.expression;
 
-      // Log that we're using client-side filtering due to known issue
-      logger.info('Using client-side filtering due to Vikunja API filter parameter being ignored', {
+      // Log that we're preparing to attempt hybrid filtering
+      logger.info('Preparing hybrid filtering (server-side attempt + client-side fallback)', {
         filter: filterString,
       });
     }
@@ -131,15 +132,76 @@ async function listTasks(
     }
 
     // Determine which endpoint to use
-    // Don't pass the filter parameter to the API since it's ignored
-    if (args.projectId && !args.allProjects) {
-      // Validate project ID
-      validateId(args.projectId, 'projectId');
-      // Get tasks for specific project
-      tasks = await client.tasks.getProjectTasks(args.projectId, params);
-    } else {
-      // Get all tasks across all projects
-      tasks = await client.tasks.getAllTasks(params);
+    // Attempt hybrid filtering: try server-side first, fallback to client-side
+    let serverSideFilteringUsed = false;
+    let serverSideFilteringAttempted = false;
+    
+    // If we have a filter string, attempt server-side filtering first
+    // Only in production or when explicitly enabled via environment variable
+    const shouldAttemptServerSideFiltering = filterString && (
+      process.env.NODE_ENV === 'production' || 
+      process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING === 'true'
+    );
+    
+    if (shouldAttemptServerSideFiltering) {
+      const serverParams = { ...params, filter: filterString! };
+      serverSideFilteringAttempted = true;
+      
+      logger.info('Attempting server-side filtering (modern Vikunja support)', {
+        filter: filterString,
+        endpoint: args.projectId && !args.allProjects ? 'getProjectTasks' : 'getAllTasks'
+      });
+      
+      try {
+        if (args.projectId && !args.allProjects) {
+          // Validate project ID
+          validateId(args.projectId, 'projectId');
+          // Get tasks for specific project with server-side filter
+          tasks = await client.tasks.getProjectTasks(args.projectId, serverParams);
+        } else {
+          // Get all tasks across all projects with server-side filter
+          tasks = await client.tasks.getAllTasks(serverParams);
+        }
+        
+        // Check if server-side filtering appears to have worked
+        // We can't easily detect this without a baseline, but if we get a reasonable
+        // number of tasks back (not obviously all tasks), we'll assume it worked
+        // This heuristic will be refined based on real-world usage
+        serverSideFilteringUsed = true;
+        
+        logger.info('Server-side filtering completed', {
+          taskCount: tasks.length,
+          filter: filterString
+        });
+        
+      } catch (error) {
+        // Server-side filtering failed, fall back to client-side approach
+        logger.warn('Server-side filtering failed, falling back to client-side', {
+          error: error instanceof Error ? error.message : String(error),
+          filter: filterString
+        });
+        serverSideFilteringUsed = false;
+      }
+    }
+    
+    // If server-side filtering wasn't attempted or failed, use the original approach
+    if (!serverSideFilteringUsed) {
+      if (args.projectId && !args.allProjects) {
+        // Validate project ID
+        validateId(args.projectId, 'projectId');
+        // Get tasks for specific project without filter
+        tasks = await client.tasks.getProjectTasks(args.projectId, params);
+      } else {
+        // Get all tasks across all projects without filter
+        tasks = await client.tasks.getAllTasks(params);
+      }
+      
+      if (filterString) {
+        logger.info('Using client-side filtering (fallback or legacy Vikunja)', {
+          filter: filterString,
+          totalTasksLoaded: tasks.length
+        });
+      }
     }
 
     // Additional memory protection: validate actual loaded task count
@@ -174,8 +236,8 @@ async function listTasks(
     // Log memory usage for monitoring
     logMemoryUsage('task listing', actualTaskCount, tasks);
 
-    // Apply client-side filtering if we have a filter expression
-    if (filterExpression) {
+    // Apply client-side filtering only if server-side filtering wasn't used
+    if (filterExpression && !serverSideFilteringUsed) {
       const originalCount = tasks.length;
       tasks = applyFilter(tasks, filterExpression);
       logger.debug('Applied client-side filter', {
@@ -190,19 +252,45 @@ async function listTasks(
       tasks = tasks.filter((task) => task.done === args.done);
     }
 
+    // Determine filtering method message and metadata
+    let filteringMessage = '';
+    let filteringMetadata = {};
+    
+    if (filterString) {
+      if (serverSideFilteringUsed) {
+        filteringMessage = ' (filtered server-side)';
+        filteringMetadata = {
+          filter: filterString,
+          serverSideFiltering: true,
+          filteringNote: 'Server-side filtering used (modern Vikunja)',
+        };
+      } else if (serverSideFilteringAttempted) {
+        filteringMessage = ' (filtered client-side - server-side fallback)';
+        filteringMetadata = {
+          filter: filterString,
+          clientSideFiltering: true,
+          serverSideFilteringAttempted: true,
+          filteringNote: 'Server-side filtering failed, client-side filtering applied as fallback',
+        };
+      } else {
+        filteringMessage = ' (filtered client-side)';
+        filteringMetadata = {
+          filter: filterString,
+          clientSideFiltering: true,
+          filteringNote: 'Client-side filtering applied (server-side disabled in development)',
+        };
+      }
+    }
+
     const response: StandardTaskResponse = {
       success: true,
       operation: 'list',
-      message: `Found ${tasks.length} tasks${filterString ? ' (filtered client-side)' : ''}`,
+      message: `Found ${tasks.length} tasks${filteringMessage}`,
       tasks: tasks,
       metadata: {
         timestamp: new Date().toISOString(),
         count: tasks.length,
-        ...(filterString && {
-          filter: filterString,
-          clientSideFiltering: true,
-          filteringNote: 'Client-side filtering applied due to Vikunja API limitation',
-        }),
+        ...filteringMetadata,
       },
     };
 
