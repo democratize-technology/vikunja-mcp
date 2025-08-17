@@ -14,8 +14,15 @@ jest.mock('../../src/client', () => ({
   cleanupVikunjaClient: jest.fn(),
 }));
 
-// Import mocked function
+jest.mock('../../src/storage/FilterStorage', () => ({
+  storageManager: {
+    getStorage: jest.fn(),
+  },
+}));
+
+// Import mocked functions
 import { getVikunjaClient } from '../../src/client';
+import { storageManager } from '../../src/storage/FilterStorage';
 
 // Mock data
 const mockUser: User = {
@@ -58,9 +65,27 @@ describe('Templates Tool', () => {
   let mockAuthManager: AuthManager;
   let mockServer: MockServer;
   let toolHandler: (args: any) => Promise<any>;
+  let mockFilterStorage: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Setup mock storage instance
+    mockFilterStorage = {
+      create: jest.fn(),
+      list: jest.fn(),
+      get: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      findByName: jest.fn(),
+      clear: jest.fn(),
+      getByProject: jest.fn(),
+      getStats: jest.fn(),
+      getSession: jest.fn(),
+    };
+
+    // Mock storageManager.getStorage to return our mock storage
+    (storageManager.getStorage as jest.Mock).mockResolvedValue(mockFilterStorage);
 
     // Setup mock client
     mockClient = {

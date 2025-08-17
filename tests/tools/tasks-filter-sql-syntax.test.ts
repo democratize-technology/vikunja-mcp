@@ -133,8 +133,11 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
       const result = await callTool('list', { filter });
 
-      // Verify that no filter is passed to the API (client-side filtering)
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      // Verify that only pagination parameters are passed to the API (client-side filtering)
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
+      });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -169,7 +172,10 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
       const result = await callTool('list', { filter });
 
       // Should not pass filter to API (client-side filtering)
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
+      });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -192,7 +198,10 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
       const result = await callTool('list', { projectId, filter });
 
-      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(projectId, {});
+      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(projectId, {
+        page: 1,
+        per_page: 1000,
+      });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -241,37 +250,37 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
       {
         filter: 'priority = 5',
         description: 'equals operator',
-        expected: {},
+        expected: { page: 1, per_page: 1000 },
       },
       {
         filter: 'priority > 3',
         description: 'greater than operator',
-        expected: {},
+        expected: { page: 1, per_page: 1000 },
       },
       {
         filter: 'priority >= 4',
         description: 'greater than or equal operator',
-        expected: {},
+        expected: { page: 1, per_page: 1000 },
       },
       {
         filter: 'priority < 3',
         description: 'less than operator',
-        expected: {},
+        expected: { page: 1, per_page: 1000 },
       },
       {
         filter: 'priority <= 2',
         description: 'less than or equal operator',
-        expected: {},
+        expected: { page: 1, per_page: 1000 },
       },
       {
         filter: "title like 'urgent'",
         description: 'like operator',
-        expected: {},
+        expected: { page: 1, per_page: 1000 },
       },
       {
         filter: 'priority in 3,4,5',
         description: 'in operator',
-        expected: {},
+        expected: { page: 1, per_page: 1000 },
       },
     ];
 
@@ -305,7 +314,10 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
         const result = await callTool('list', { filter });
 
-        expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+        expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+          page: 1,
+          per_page: 1000,
+        });
 
         const response = JSON.parse(result.content[0].text);
         expect(response.success).toBe(true);

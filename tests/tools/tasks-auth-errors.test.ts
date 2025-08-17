@@ -283,8 +283,8 @@ describe('Tasks Tool - Authentication Errors', () => {
           assignees: [1, 2],
         }),
       ).rejects.toThrow(
-        'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-          'This is a known limitation. Other task fields were updated but assignees could not be changed.',
+        'Assignee removal operations may have authentication issues with certain Vikunja API versions. ' +
+          'This is a known limitation. New assignees were added but old assignees could not be removed.',
       );
     });
   });

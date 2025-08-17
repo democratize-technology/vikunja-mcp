@@ -108,9 +108,20 @@ describe('Tasks Tool - Edge Cases', () => {
     // Setup mock auth manager
     mockAuthManager = {
       isAuthenticated: jest.fn().mockReturnValue(true),
-      getSession: jest.fn(),
+      getSession: jest.fn().mockReturnValue({
+        apiUrl: 'https://vikunja.example.com',
+        apiToken: 'tk_test-token-123',
+        authType: 'api-token',
+      }),
       setSession: jest.fn(),
       clearSession: jest.fn(),
+      getStatus: jest.fn().mockReturnValue({
+        authenticated: true,
+        apiUrl: 'https://vikunja.example.com',
+      }),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      getAuthType: jest.fn().mockReturnValue('api-token'),
     } as MockAuthManager;
 
     mockServer = {
@@ -595,6 +606,8 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(1, {
+        page: 1,
+        per_page: 1000,
         sort_by: 'priority desc, title asc',
       });
       const response = JSON.parse(result.content[0].text);
@@ -639,7 +652,10 @@ describe('Tasks Tool - Edge Cases', () => {
         filter: complexFilter,
       });
 
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
+      });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);

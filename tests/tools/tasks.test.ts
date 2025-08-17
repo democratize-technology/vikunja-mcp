@@ -227,7 +227,10 @@ describe('Tasks Tool', () => {
 
       const result = await callTool('list');
 
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
+      });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -271,6 +274,8 @@ describe('Tasks Tool', () => {
       });
 
       expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
         sort_by: 'priority,dueDate',
       });
 
@@ -1461,6 +1466,32 @@ describe('Tasks Tool', () => {
       expect(response.tasks).toHaveLength(3);
       expect(response.metadata.affectedFields).toEqual(['done']);
       expect(response.metadata.count).toBe(3);
+    });
+
+    it('should handle string "false" value for done field in bulk update', async () => {
+      const taskIds = [1, 2];
+      mockClient.tasks.getTask.mockImplementation((id: number) =>
+        Promise.resolve({ ...mockTask, id, done: false }),
+      );
+      mockClient.tasks.bulkUpdateTasks.mockResolvedValue({ message: 'Tasks updated successfully' });
+      
+      const result = await callTool('bulk-update', {
+        taskIds,
+        field: 'done',
+        value: 'false' as any, // String "false" should be converted to boolean false
+      });
+      
+      // Should call bulk update API with boolean false (not string "false")
+      expect(mockClient.tasks.bulkUpdateTasks).toHaveBeenCalledWith({
+        task_ids: [1, 2],
+        field: 'done',
+        value: false, // Converted from string "false" to boolean false
+      });
+      
+      const response = JSON.parse(result.content[0].text);
+      expect(response.success).toBe(true);
+      expect(response.operation).toBe('update');
+      expect(response.message).toBe('Successfully updated 2 tasks');
     });
 
     it('should validate required fields for bulk update', async () => {

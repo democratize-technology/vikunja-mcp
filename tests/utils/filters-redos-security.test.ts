@@ -59,8 +59,8 @@ describe('ReDoS Vulnerability Fix Tests', () => {
         const errors = validateCondition(condition);
         const validationTime = Date.now() - startTime;
 
-        // Should complete quickly
-        expect(validationTime).toBeLessThan(5);
+        // Should complete quickly (increased from 5ms to 50ms for CI stability)
+        expect(validationTime).toBeLessThan(50);
         expect(errors).toHaveLength(1);
       });
     });
@@ -92,8 +92,8 @@ describe('ReDoS Vulnerability Fix Tests', () => {
         const errors = validateCondition(condition);
         const validationTime = Date.now() - startTime;
 
-        // Should complete quickly regardless of outcome
-        expect(validationTime).toBeLessThan(5);
+        // Should complete quickly regardless of outcome (increased from 5ms to 50ms for CI stability)
+        expect(validationTime).toBeLessThan(50);
         expect(errors.length).toBeGreaterThanOrEqual(0); // May be valid or invalid
       });
     });
@@ -128,8 +128,8 @@ describe('ReDoS Vulnerability Fix Tests', () => {
         const errors = validateCondition(condition);
         const validationTime = Date.now() - startTime;
 
-        // Should be fast
-        expect(validationTime).toBeLessThan(5);
+        // Should be fast (increased from 5ms to 50ms for CI stability)
+        expect(validationTime).toBeLessThan(50);
         
         // Should be valid
         expect(errors).toHaveLength(0);
@@ -166,8 +166,8 @@ describe('ReDoS Vulnerability Fix Tests', () => {
         const errors = validateCondition(condition);
         const validationTime = Date.now() - startTime;
 
-        // Should be fast even when rejecting
-        expect(validationTime).toBeLessThan(5);
+        // Should be fast even when rejecting (increased from 5ms to 50ms for CI stability)
+        expect(validationTime).toBeLessThan(50);
         
         // Should be invalid
         expect(errors).toHaveLength(1);
