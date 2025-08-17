@@ -2,12 +2,13 @@
  * Tests for filters tool
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerFiltersTool } from '../../src/tools/filters';
-import { filterStorage } from '../../src/storage/FilterStorage';
+import { filterStorage, storageManager } from '../../src/storage/FilterStorage';
 import type { SavedFilter } from '../../src/types/filters';
 import type { MockServer } from '../types/mocks';
+import { AuthManager } from '../../src/auth/AuthManager';
 
 // Mock the logger
 jest.mock('../../src/utils/logger');
@@ -15,9 +16,22 @@ jest.mock('../../src/utils/logger');
 describe('vikunja_filters tool', () => {
   let toolHandler: (args: any) => Promise<any>;
   let mockServer: MockServer;
+  let mockAuthManager: AuthManager;
+
+  // Utility to get the session storage used by the tool
+  async function getTestStorage() {
+    const session = mockAuthManager.getSession();
+    const sessionId = `${session.apiUrl}:${session.apiToken?.substring(0, 8)}`;
+    return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
+  }
 
   beforeEach(async () => {
     await filterStorage.clear();
+    await storageManager.clearAll();
+
+    // Create mock auth manager
+    mockAuthManager = new AuthManager();
+    mockAuthManager.connect('http://test-api.com', 'test-token-12345678');
 
     // Create mock server
     mockServer = {
@@ -27,19 +41,26 @@ describe('vikunja_filters tool', () => {
     } as MockServer;
 
     // Register the tool
-    registerFiltersTool(mockServer);
+    registerFiltersTool(mockServer, mockAuthManager);
+  });
+
+  afterEach(async () => {
+    // Clean up storage after each test
+    await storageManager.clearAll();
+    storageManager.stopCleanupTimer();
   });
 
   describe('list action', () => {
     it('should list all filters', async () => {
-      // Create test filters
-      await filterStorage.create({
+      // Create test filters using session storage
+      const storage = await getTestStorage();
+      await storage.create({
         name: 'Filter 1',
         filter: 'done = false',
         isGlobal: true,
       });
 
-      await filterStorage.create({
+      await storage.create({
         name: 'Filter 2',
         filter: 'priority >= 3',
         projectId: 1,
@@ -61,20 +82,20 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should filter by projectId', async () => {
-      await filterStorage.create({
+      await (await getTestStorage()).create({
         name: 'Global',
         filter: 'done = false',
         isGlobal: true,
       });
 
-      await filterStorage.create({
+      await (await getTestStorage()).create({
         name: 'Project 1',
         filter: 'priority = 1',
         projectId: 1,
         isGlobal: false,
       });
 
-      await filterStorage.create({
+      await (await getTestStorage()).create({
         name: 'Project 2',
         filter: 'priority = 2',
         projectId: 2,
@@ -97,13 +118,13 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should filter by global flag', async () => {
-      await filterStorage.create({
+      await (await getTestStorage()).create({
         name: 'Global',
         filter: 'done = false',
         isGlobal: true,
       });
 
-      await filterStorage.create({
+      await (await getTestStorage()).create({
         name: 'Not Global',
         filter: 'priority = 1',
         isGlobal: false,
@@ -126,7 +147,7 @@ describe('vikunja_filters tool', () => {
 
   describe('get action', () => {
     it('should get a specific filter', async () => {
-      const created = await filterStorage.create({
+      const created = await (await getTestStorage()).create({
         name: 'Test Filter',
         description: 'Test description',
         filter: 'done = false',
@@ -182,7 +203,7 @@ describe('vikunja_filters tool', () => {
       expect(response.metadata.timestamp).toBeDefined();
 
       // Verify it was actually created
-      const stored = await filterStorage.get(response.data.filter.id);
+      const stored = await (await getTestStorage()).get(response.data.filter.id);
       expect(stored).not.toBeNull();
     });
 
@@ -207,7 +228,7 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should prevent duplicate names', async () => {
-      await filterStorage.create({
+      await (await getTestStorage()).create({
         name: 'Existing',
         filter: 'done = true',
         isGlobal: false,
@@ -448,7 +469,7 @@ describe('vikunja_filters tool', () => {
 
   describe('update action', () => {
     it('should update an existing filter', async () => {
-      const created = await filterStorage.create({
+      const created = await (await getTestStorage()).create({
         name: 'Original',
         filter: 'done = false',
         isGlobal: false,
@@ -482,7 +503,7 @@ describe('vikunja_filters tool', () => {
         isGlobal: false,
       });
 
-      await filterStorage.create({
+      await (await getTestStorage()).create({
         name: 'Filter 2',
         filter: 'priority = 2',
         isGlobal: false,
@@ -503,7 +524,7 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should allow keeping same name when updating', async () => {
-      const created = await filterStorage.create({
+      const created = await (await getTestStorage()).create({
         name: 'Same Name',
         filter: 'done = false',
         isGlobal: false,
@@ -527,7 +548,7 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should update filter when only filter property is changed', async () => {
-      const created = await filterStorage.create({
+      const created = await (await getTestStorage()).create({
         name: 'Filter',
         filter: 'done = false',
         isGlobal: false,
@@ -548,7 +569,7 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should update projectId when changed', async () => {
-      const created = await filterStorage.create({
+      const created = await (await getTestStorage()).create({
         name: 'Project Filter',
         filter: 'done = false',
         projectId: 1,
@@ -570,7 +591,7 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should update isGlobal when changed', async () => {
-      const created = await filterStorage.create({
+      const created = await (await getTestStorage()).create({
         name: 'Local Filter',
         filter: 'done = false',
         isGlobal: false,
@@ -591,7 +612,7 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should handle update with undefined values correctly', async () => {
-      const created = await filterStorage.create({
+      const created = await (await getTestStorage()).create({
         name: 'Filter',
         description: 'Original description',
         filter: 'done = false',
@@ -624,7 +645,7 @@ describe('vikunja_filters tool', () => {
 
   describe('delete action', () => {
     it('should delete an existing filter', async () => {
-      const created = await filterStorage.create({
+      const created = await (await getTestStorage()).create({
         name: 'To Delete',
         filter: 'done = true',
         isGlobal: false,
@@ -643,7 +664,7 @@ describe('vikunja_filters tool', () => {
       expect(response.metadata.timestamp).toBeDefined();
 
       // Verify it was deleted
-      const stored = await filterStorage.get(created.id);
+      const stored = await (await getTestStorage()).get(created.id);
       expect(stored).toBeNull();
     });
 
@@ -802,9 +823,9 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should handle non-Error exceptions', async () => {
-      // Mock filterStorage to throw a non-Error object
-      const originalList = filterStorage.list;
-      filterStorage.list = jest.fn().mockRejectedValue('string error');
+      // Mock storageManager to throw a non-Error object
+      const originalGetStorage = storageManager.getStorage;
+      storageManager.getStorage = jest.fn().mockRejectedValue('string error');
 
       const result = await toolHandler({
         action: 'list',
@@ -816,7 +837,7 @@ describe('vikunja_filters tool', () => {
       expect(response.message).toBe('An unknown error occurred');
 
       // Restore original function
-      filterStorage.list = originalList;
+      storageManager.getStorage = originalGetStorage;
     });
   });
 });

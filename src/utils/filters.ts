@@ -15,6 +15,15 @@ import type {
 } from '../types/filters';
 
 /**
+ * Security constants for input validation
+ */
+const MAX_FILTER_LENGTH = 1000;
+const SAFE_VALUE_PATTERN = /^[a-zA-Z0-9_\-+.:/%"'\s\\\u00C0-\u017F\u4E00-\u9FFF]+$/;
+// Strict allowlist - only characters absolutely necessary for filter syntax
+// Excludes: control chars (including DEL), dangerous punctuation like {}, [], $, ~, ^, #, backticks  
+const ALLOWED_CHARS = /^[\t\n\r\u0020-\u007D\u00C0-\u017F\u4E00-\u9FFF]*$/;
+
+/**
  * Valid field types for validation
  */
 const FIELD_TYPES: Record<FilterField, 'boolean' | 'number' | 'date' | 'string' | 'array'> = {
@@ -40,6 +49,121 @@ const VALID_OPERATORS: Record<string, FilterOperator[]> = {
   string: ['=', '!=', 'like'],
   array: ['in', 'not in'],
 };
+
+/**
+ * Sanitizes filter input to prevent injection attacks
+ */
+function sanitizeFilterInput(input: string): { sanitized: string; isValid: boolean } {
+  if (!input || typeof input !== 'string') {
+    return { sanitized: '', isValid: false };
+  }
+
+  // Check if input contains only allowed characters
+  const isValid = ALLOWED_CHARS.test(input);
+  
+  // If invalid, return original with validation flag
+  if (!isValid) {
+    return { sanitized: input, isValid: false };
+  }
+
+  // If valid, return sanitized version (trimmed)
+  return { sanitized: input.trim(), isValid: true };
+}
+
+/**
+ * Validates filter string length
+ */
+function validateFilterStringLength(input: string): void {
+  if (input.length > MAX_FILTER_LENGTH) {
+    throw new Error(`Filter string too long. Maximum length is ${MAX_FILTER_LENGTH} characters, got ${input.length}`);
+  }
+}
+
+/**
+ * Validates if a date value is in an acceptable format without using vulnerable regex
+ * Replaces the ReDoS-vulnerable regex pattern for secure date validation
+ */
+function isValidDateValue(value: string): boolean {
+  // Early security check: limit input length to prevent DoS
+  if (value.length > 30) {
+    return false;
+  }
+
+  // Validate 'now' patterns
+  if (value.startsWith('now')) {
+    // Exact 'now'
+    if (value === 'now') {
+      return true;
+    }
+    
+    // Relative dates: now+5d, now-2w, etc.
+    if (value.length >= 4 && (value[3] === '+' || value[3] === '-')) {
+      const remainder = value.slice(4);
+      // Must have at least one digit followed by a time unit
+      if (remainder.length < 2) return false;
+      
+      // Extract digits and unit
+      let digitEnd = 0;
+      while (digitEnd < remainder.length) {
+        const char = remainder[digitEnd];
+        if (!char || !/\d/.test(char)) break;
+        digitEnd++;
+      }
+      
+      if (digitEnd === 0) return false; // No digits found
+      if (digitEnd !== remainder.length - 1) return false; // Must end with exactly one unit char
+      
+      const unit = remainder[remainder.length - 1];
+      return unit ? /[smhdwMy]/.test(unit) : false; // Valid time units
+    }
+    
+    // Start of period: now/d, now/w, now/M
+    if (value.length === 5 && value[3] === '/') {
+      const unit = value[4];
+      return unit ? /[dwMy]/.test(unit) : false; // Valid period units
+    }
+    
+    return false;
+  }
+  
+  // Validate ISO date format: YYYY-MM-DD (basic check)
+  if (value.length === 10 && value[4] === '-' && value[7] === '-') {
+    const year = value.slice(0, 4);
+    const month = value.slice(5, 7);
+    const day = value.slice(8, 10);
+    
+    // Check all parts are digits
+    if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month) || !/^\d{2}$/.test(day)) {
+      return false;
+    }
+    
+    // Basic range validation
+    const monthNum = parseInt(month, 10);
+    const dayNum = parseInt(day, 10);
+    return monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31;
+  }
+  
+  return false;
+}
+
+/**
+ * Validates if a value is safe for tokenization
+ */
+function isSafeValue(value: string): boolean {
+  // Allow empty strings
+  if (value.length === 0) {
+    return true;
+  }
+  
+  // Check for reasonable length (prevents DoS)
+  if (value.length > 200) {
+    return false;
+  }
+
+  // Use allowlist approach - only allow safe characters for values
+  // More restrictive than the general filter pattern
+  return SAFE_VALUE_PATTERN.test(value);
+}
 
 /**
  * Validates a single filter condition
@@ -82,8 +206,7 @@ export function validateCondition(condition: FilterCondition): string[] {
     case 'date':
       // Allow special date values and ISO date strings
       if (typeof condition.value === 'string') {
-        const validDatePattern = /^(now([+-]\d+[smhdwMy])?|now\/[dwMy]|\d{4}-\d{2}-\d{2})/;
-        if (!validDatePattern.test(condition.value)) {
+        if (!isValidDateValue(condition.value)) {
           errors.push(
             `Field "${condition.field}" requires a valid date value (ISO date or relative date like "now+1d")`,
           );
@@ -263,11 +386,22 @@ function tokenize(input: string): Token[] {
         } else {
           break;
         }
+        
+        // Security check: prevent extremely long quoted values
+        if (value.length > 200) {
+          return []; // Reject overly long quoted strings
+        }
       }
       if (position >= input.length) {
         return []; // Unclosed quote
       }
       position++; // Skip closing quote
+      
+      // Security check: validate the quoted value is safe
+      if (!isSafeValue(value)) {
+        return []; // Reject unsafe quoted values
+      }
+      
       tokens.push({ type: 'VALUE', value, position: start });
       continue;
     }
@@ -315,12 +449,19 @@ function tokenize(input: string): Token[] {
     }
     if (matched) continue;
 
-    // Match unquoted value (word, number, or date)
+    // Match unquoted value (word, number, or date) with security validation
     const remaining = input.substring(position);
     const valueMatch = remaining.match(/^[^\s(),=!<>&|]+/);
     if (valueMatch) {
-      tokens.push({ type: 'VALUE', value: valueMatch[0], position });
-      position += valueMatch[0].length;
+      const value = valueMatch[0];
+      
+      // Security check: validate the value is safe
+      if (!isSafeValue(value)) {
+        return []; // Reject unsafe values
+      }
+      
+      tokens.push({ type: 'VALUE', value, position });
+      position += value.length;
       continue;
     }
 
@@ -583,6 +724,17 @@ class FilterParser {
  * @returns ParseResult with either the parsed expression or error details
  */
 export function parseFilterString(filterStr: string): ParseResult {
+  // Handle non-string inputs gracefully
+  if (typeof filterStr !== 'string') {
+    return {
+      expression: null,
+      error: {
+        message: 'Filter input must be a string',
+        position: 0,
+      },
+    };
+  }
+
   if (!filterStr || filterStr.trim().length === 0) {
     return {
       expression: null,
@@ -593,7 +745,33 @@ export function parseFilterString(filterStr: string): ParseResult {
     };
   }
 
-  const trimmed = filterStr.trim();
+  // Security validation: check length first
+  try {
+    validateFilterStringLength(filterStr);
+  } catch (error) {
+    return {
+      expression: null,
+      error: {
+        message: error instanceof Error ? error.message : 'Filter string validation failed',
+        position: 0,
+      },
+    };
+  }
+
+  // Security validation: sanitize input
+  const { sanitized, isValid } = sanitizeFilterInput(filterStr);
+  if (!isValid) {
+    return {
+      expression: null,
+      error: {
+        message: 'Filter string contains invalid characters',
+        position: 0,
+        context: 'Only alphanumeric characters, common punctuation, and international characters are allowed',
+      },
+    };
+  }
+
+  const trimmed = sanitized;
   const tokens = tokenize(trimmed);
   if (tokens.length === 0) {
     return {

@@ -26,8 +26,8 @@ export function registerTools(server: McpServer, authManager: AuthManager): void
   registerLabelsTool(server, authManager);
   registerTeamsTool(server, authManager);
 
-  // Register filters tool (doesn't need auth manager)
-  registerFiltersTool(server);
+  // Register filters tool (needs auth manager for session-scoped storage)
+  registerFiltersTool(server, authManager);
 
   // Register templates tool
   registerTemplatesTool(server, authManager);

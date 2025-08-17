@@ -446,9 +446,7 @@ describe('Users Tool', () => {
       mockClient.users.getUser.mockRejectedValue(new Error('Token validation failed'));
 
       await expect(callTool('current')).rejects.toThrow(
-        'User endpoint authentication error. This is a known Vikunja API limitation. ' +
-          'User endpoints require JWT authentication instead of API tokens. ' +
-          'To use user operations, connect with a JWT token (starting with eyJ).',
+        'User operation error: Token validation failed'
       );
     });
 

@@ -90,15 +90,22 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
     mockAuthManager = {
       isAuthenticated: jest.fn().mockReturnValue(true),
-      getAuthenticatedClient: jest.fn(),
-      updateCredentials: jest.fn(),
-      clearCredentials: jest.fn(),
-      verifyCredentials: jest.fn(),
-      getCredentials: jest.fn(),
-      authenticate: jest.fn(),
-      getSession: jest.fn(),
-      setSession: jest.fn(),
-      clearSession: jest.fn(),
+      getSession: jest.fn().mockReturnValue({
+        apiUrl: 'https://api.vikunja.test',
+        apiToken: 'test-token',
+        authType: 'api-token' as const,
+        userId: 'test-user-123'
+      }),
+      getAuthType: jest.fn().mockReturnValue('api-token'),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      getStatus: jest.fn(),
+      saveSession: jest.fn(),
+      setTestUserId: jest.fn(),
+      setTestTokenExpiry: jest.fn(),
+      getTestUserId: jest.fn(),
+      getTestTokenExpiry: jest.fn(),
+      updateSessionProperty: jest.fn(),
     } as MockAuthManager;
 
     mockServer = {

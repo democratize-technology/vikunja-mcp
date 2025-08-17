@@ -109,7 +109,7 @@ describe('Tool Registration', () => {
       expect(registerTeamsTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
 
       expect(registerFiltersTool).toHaveBeenCalledTimes(1);
-      expect(registerFiltersTool).toHaveBeenCalledWith(mockServer);
+      expect(registerFiltersTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
 
       expect(registerTemplatesTool).toHaveBeenCalledTimes(1);
       expect(registerTemplatesTool).toHaveBeenCalledWith(mockServer, mockAuthManager);

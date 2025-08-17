@@ -2,22 +2,10 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { registerTemplatesTool } from '../../src/tools/templates';
-import { FilterStorage } from '../../src/storage/FilterStorage';
-import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import type { MockVikunjaClient, MockServer } from '../types/mocks';
 import type { Project, Task, User } from 'node-vikunja';
 import { MCPError, ErrorCode } from '../../src/types';
-
-// Mock FilterStorage before importing
-jest.mock('../../src/storage/FilterStorage', () => ({
-  filterStorage: {
-    create: jest.fn(),
-    list: jest.fn(),
-    get: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    findByName: jest.fn(),
-  },
-}));
+import { AuthManager } from '../../src/auth/AuthManager';
 
 // Mock modules
 jest.mock('../../src/client', () => ({
@@ -26,9 +14,8 @@ jest.mock('../../src/client', () => ({
   cleanupVikunjaClient: jest.fn(),
 }));
 
-// Import mocked function and storage
+// Import mocked function
 import { getVikunjaClient } from '../../src/client';
-import { filterStorage as mockFilterStorage } from '../../src/storage/FilterStorage';
 
 // Mock data
 const mockUser: User = {
@@ -68,7 +55,7 @@ const mockTask: Task = {
 
 describe('Templates Tool', () => {
   let mockClient: MockVikunjaClient;
-  let mockAuthManager: MockAuthManager;
+  let mockAuthManager: AuthManager;
   let mockServer: MockServer;
   let toolHandler: (args: any) => Promise<any>;
 
@@ -94,13 +81,8 @@ describe('Templates Tool', () => {
     );
 
     // Setup mock auth manager
-    mockAuthManager = {
-      isAuthenticated: jest.fn().mockReturnValue(true),
-      getSession: jest.fn().mockReturnValue({
-        apiUrl: 'https://test.vikunja.io',
-        apiToken: 'test-token',
-      }),
-    } as any;
+    mockAuthManager = new AuthManager();
+    mockAuthManager.connect('https://test.vikunja.io', 'test-token-12345678');
 
     // Setup mock server
     mockServer = {
@@ -1526,7 +1508,7 @@ describe('Templates Tool', () => {
 
   describe('authentication', () => {
     it('should require authentication', async () => {
-      mockAuthManager.isAuthenticated.mockReturnValue(false);
+      mockAuthManager.disconnect(); // Simulate not being authenticated
 
       await expect(
         toolHandler({
@@ -1547,11 +1529,18 @@ describe('Templates Tool', () => {
   });
 
   describe('unexpected errors', () => {
+    afterEach(() => {
+      // Reset getVikunjaClient mock after error tests
+      (getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>).mockResolvedValue(
+        mockClient,
+      );
+    });
+
     it('should handle non-MCPError errors', async () => {
-      // Mock isAuthenticated to throw an unexpected error
-      mockAuthManager.isAuthenticated.mockImplementation(() => {
-        throw new TypeError('Unexpected type error');
-      });
+      // Mock getVikunjaClient to throw an unexpected error
+      (getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>).mockRejectedValue(
+        new TypeError('Unexpected type error')
+      );
 
       await expect(
         toolHandler({
@@ -1561,10 +1550,10 @@ describe('Templates Tool', () => {
     });
 
     it('should handle non-Error objects thrown at top level', async () => {
-      // Mock isAuthenticated to throw a non-Error object
-      mockAuthManager.isAuthenticated.mockImplementation(() => {
-        throw 'String thrown'; // eslint-disable-line no-throw-literal
-      });
+      // Mock getVikunjaClient to throw a non-Error object
+      (getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>).mockRejectedValue(
+        'String thrown' // eslint-disable-line no-throw-literal
+      );
 
       await expect(
         toolHandler({

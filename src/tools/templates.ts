@@ -9,8 +9,17 @@ import type { AuthManager } from '../auth/AuthManager';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getVikunjaClient } from '../client';
 import type { Project, Task } from 'node-vikunja';
-import { filterStorage as storage } from '../storage/FilterStorage';
+import { storageManager } from '../storage/FilterStorage';
 import { logger } from '../utils/logger';
+
+/**
+ * Get session-scoped storage instance
+ */
+async function getSessionStorage(authManager: AuthManager): ReturnType<typeof storageManager.getStorage> {
+  const session = authManager.getSession();
+  const sessionId = `${session.apiUrl}:${session.apiToken?.substring(0, 8)}` || 'anonymous';
+  return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
+}
 
 interface TemplateData {
   id: string;
@@ -62,6 +71,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
         }
 
         const client = await getVikunjaClient();
+        const storage = await getSessionStorage(authManager);
 
         switch (args.subcommand) {
           case 'create': {

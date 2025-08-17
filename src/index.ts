@@ -12,6 +12,7 @@ import dotenv from 'dotenv';
 import { AuthManager } from './auth/AuthManager';
 import { registerTools } from './tools';
 import { logger } from './utils/logger';
+import { createSecureConnectionMessage, createSecureLogConfig } from './utils/security';
 
 // Load environment variables
 dotenv.config();
@@ -34,7 +35,11 @@ setAuthManager(authManager);
 
 // Auto-authenticate using environment variables if available
 if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
-  logger.info(`Auto-authenticating with Vikunja at ${process.env.VIKUNJA_URL}`);
+  const connectionMessage = createSecureConnectionMessage(
+    process.env.VIKUNJA_URL, 
+    process.env.VIKUNJA_API_TOKEN
+  );
+  logger.info(`Auto-authenticating: ${connectionMessage}`);
   authManager.connect(process.env.VIKUNJA_URL, process.env.VIKUNJA_API_TOKEN);
   const detectedAuthType = authManager.getAuthType();
   logger.info(`Using detected auth type: ${detectedAuthType}`);
@@ -49,11 +54,17 @@ async function main(): Promise<void> {
   await server.connect(transport);
 
   logger.info('Vikunja MCP server started');
-  logger.debug('Configuration loaded', {
+  
+  // Create secure configuration for logging
+  const config = createSecureLogConfig({
     mode: process.env.MCP_MODE,
     debug: process.env.DEBUG,
     hasAuth: !!process.env.VIKUNJA_URL && !!process.env.VIKUNJA_API_TOKEN,
+    url: process.env.VIKUNJA_URL,
+    token: process.env.VIKUNJA_API_TOKEN,
   });
+  
+  logger.debug('Configuration loaded', config);
 }
 
 // Only start the server if not in test environment

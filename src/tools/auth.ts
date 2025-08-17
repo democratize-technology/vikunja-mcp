@@ -9,16 +9,24 @@ import type { AuthManager } from '../auth/AuthManager';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { cleanupVikunjaClient } from '../client';
 import { logger } from '../utils/logger';
+import { registerToolWithRateLimit } from '../middleware/tool-wrapper';
+
+interface AuthArgs {
+  subcommand: 'connect' | 'status' | 'refresh' | 'disconnect';
+  apiUrl?: string;
+  apiToken?: string;
+}
 
 export function registerAuthTool(server: McpServer, authManager: AuthManager): void {
-  server.tool(
+  registerToolWithRateLimit(
+    server,
     'vikunja_auth',
     {
       subcommand: z.enum(['connect', 'status', 'refresh', 'disconnect']),
       apiUrl: z.string().url().optional(),
       apiToken: z.string().optional(),
     },
-    (args) => {
+    async (args: AuthArgs) => {
       try {
         switch (args.subcommand) {
           case 'connect': {
@@ -57,12 +65,12 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager): v
             const detectedAuthType = authManager.getAuthType();
             logger.info('Successfully connected to Vikunja - authType: %s', detectedAuthType);
 
-            const response = createStandardResponse(
+            const response = await Promise.resolve(createStandardResponse(
               'auth-connect',
               'Successfully connected to Vikunja',
               { authenticated: true },
               { apiUrl: args.apiUrl, authType: authManager.getAuthType() },
-            );
+            ));
             return {
               content: [
                 {
@@ -143,6 +151,6 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager): v
           `Authentication error: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
-    },
+    }
   );
 }

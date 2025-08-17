@@ -10,13 +10,14 @@ import { MCPError, ErrorCode } from '../../types/index';
 import type { StandardTaskResponse } from '../../types/index';
 import { getVikunjaClient } from '../../client';
 import { logger } from '../../utils/logger';
-import { filterStorage } from '../../storage/FilterStorage';
+import { storageManager } from '../../storage/FilterStorage';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
 import { parseFilterString } from '../../utils/filters';
-import type { FilterExpression } from '../../types/filters';
+import type { FilterExpression, SavedFilter } from '../../types/filters';
 import type { FilterParams } from './types';
 import { applyFilter } from './filters';
 import { validateId } from './validation';
+import { validateTaskCountLimit, logMemoryUsage, createTaskLimitExceededMessage } from '../../utils/memory';
 
 // Import all operation handlers
 import { createTask, getTask, updateTask, deleteTask } from './crud';
@@ -27,19 +28,31 @@ import { addReminder, removeReminder, listReminders } from './reminders';
 import { applyLabels, removeLabels, listTaskLabels } from './labels';
 
 /**
+ * Get session-scoped storage instance
+ */
+async function getSessionStorage(authManager: AuthManager): ReturnType<typeof storageManager.getStorage> {
+  const session = authManager.getSession();
+  const sessionId = `${session.apiUrl}:${session.apiToken?.substring(0, 8)}` || 'anonymous';
+  return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
+}
+
+/**
  * List tasks with optional filtering
  */
-async function listTasks(args: {
-  projectId?: number;
-  page?: number;
-  perPage?: number;
-  search?: string;
-  sort?: string;
-  filter?: string;
-  filterId?: string;
-  allProjects?: boolean;
-  done?: boolean;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+async function listTasks(
+  args: {
+    projectId?: number;
+    page?: number;
+    perPage?: number;
+    search?: string;
+    sort?: string;
+    filter?: string;
+    filterId?: string;
+    allProjects?: boolean;
+    done?: boolean;
+  },
+  storage: Awaited<ReturnType<typeof storageManager.getStorage>>,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   const params: FilterParams = {};
 
   try {
@@ -55,7 +68,7 @@ async function listTasks(args: {
 
     // Handle filter - either direct filter string or saved filter ID
     if (args.filterId) {
-      const savedFilter = await filterStorage.get(args.filterId);
+      const savedFilter: SavedFilter | null = await storage.get(args.filterId);
       if (!savedFilter) {
         throw new MCPError(ErrorCode.VALIDATION_ERROR, `Filter with id ${args.filterId} not found`);
       }
@@ -83,6 +96,40 @@ async function listTasks(args: {
 
     const client = await getVikunjaClient();
 
+    // Memory protection: Check if we should implement pagination limits
+    // Note: Vikunja API doesn't provide task count endpoints, so we use conservative defaults
+    // and rely on user-provided pagination parameters
+    if (!params.per_page) {
+      // Set default pagination to prevent unbounded loading
+      params.per_page = 1000; // Conservative default
+      if (!params.page) {
+        params.page = 1;
+      }
+      logger.info('Applied default pagination for memory protection', {
+        per_page: params.per_page,
+        page: params.page
+      });
+    }
+
+    // Validate pagination limits for memory protection
+    const requestedPageSize = params.per_page || 1000;
+    const taskCountValidation = validateTaskCountLimit(requestedPageSize);
+    
+    if (!taskCountValidation.allowed) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        createTaskLimitExceededMessage(
+          'list tasks',
+          requestedPageSize,
+          [
+            `Reduce the perPage parameter (current: ${requestedPageSize}, max allowed: ${taskCountValidation.maxAllowed})`,
+            'Use pagination with smaller page sizes',
+            'Apply more specific filters before listing'
+          ]
+        )
+      );
+    }
+
     // Determine which endpoint to use
     // Don't pass the filter parameter to the API since it's ignored
     if (args.projectId && !args.allProjects) {
@@ -94,6 +141,38 @@ async function listTasks(args: {
       // Get all tasks across all projects
       tasks = await client.tasks.getAllTasks(params);
     }
+
+    // Additional memory protection: validate actual loaded task count
+    const actualTaskCount = tasks.length;
+    const finalTaskCountValidation = validateTaskCountLimit(actualTaskCount);
+    
+    if (!finalTaskCountValidation.allowed) {
+      // Log warning but don't fail since tasks are already loaded
+      logger.warn('Loaded task count exceeds recommended limits', {
+        actualCount: actualTaskCount,
+        maxRecommended: finalTaskCountValidation.maxAllowed,
+        estimatedMemoryMB: finalTaskCountValidation.estimatedMemoryMB
+      });
+      
+      // For extremely large datasets, still enforce hard limits
+      if (actualTaskCount > finalTaskCountValidation.maxAllowed * 1.5) {
+        throw new MCPError(
+          ErrorCode.INTERNAL_ERROR,
+          createTaskLimitExceededMessage(
+            'process loaded tasks',
+            actualTaskCount,
+            [
+              'The API returned more tasks than expected',
+              'Use stricter pagination or filtering',
+              'Contact administrator about data size'
+            ]
+          )
+        );
+      }
+    }
+
+    // Log memory usage for monitoring
+    logMemoryUsage('task listing', actualTaskCount, tasks);
 
     // Apply client-side filtering if we have a filter expression
     if (filterExpression) {
@@ -262,8 +341,11 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
         await getVikunjaClient();
 
         switch (args.subcommand) {
-          case 'list':
-            return listTasks(args as Parameters<typeof listTasks>[0]);
+          case 'list': {
+            // Get session-scoped storage for filter operations (only when needed)
+            const storage = await getSessionStorage(authManager);
+            return listTasks(args as Parameters<typeof listTasks>[0], storage);
+          }
 
           case 'create':
             return createTask(args as Parameters<typeof createTask>[0]);

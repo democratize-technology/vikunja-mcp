@@ -813,10 +813,9 @@ describe('Filter Utilities', () => {
       // Create a test case that might trigger the undefined currentChar branch
       // by using a string with special unicode that could be mishandled
       const result = parseFilterString('title = "\u0000\uFFFF"');
-      expect(result.error).toBeUndefined();
-      if (result.expression) {
-        expect(result.expression.groups[0].conditions[0].value).toBe('\u0000\uFFFF');
-      }
+      // Security enhancement: these control characters should now be rejected
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('invalid characters');
     });
 
     it('should handle unclosed quote that runs to end of input', () => {
@@ -868,11 +867,15 @@ describe('Filter Utilities', () => {
 
     // Stress test for very long filter strings
     it('should handle extremely long filter strings efficiently', () => {
+      // Create a filter string that's under the length limit
       const conditions = [];
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 50; i++) {
         conditions.push(`priority = ${i}`);
       }
       const filterStr = conditions.join(' || ');
+      
+      // Ensure it's under the limit
+      expect(filterStr.length).toBeLessThan(1000);
 
       const startTime = Date.now();
       const result = parseFilterString(filterStr);
@@ -880,7 +883,7 @@ describe('Filter Utilities', () => {
 
       expect(result.error).toBeUndefined();
       expect(result.expression).not.toBeNull();
-      expect(result.expression!.groups[0].conditions).toHaveLength(100);
+      expect(result.expression!.groups[0].conditions).toHaveLength(50);
 
       // Should parse in reasonable time (less than 100ms)
       expect(parseTime).toBeLessThan(100);
