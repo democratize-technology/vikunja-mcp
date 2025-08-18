@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../../src/auth/AuthManager';
+import { createMockTestableAuthManager } from '../../src/auth/AuthManagerTestUtils';
 import { registerTasksTool } from '../../src/tools/tasks';
 import { MCPError } from '../../src/types';
 import type { Task } from 'node-vikunja';
@@ -88,25 +89,15 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
       },
     } as MockVikunjaClient;
 
-    mockAuthManager = {
-      isAuthenticated: jest.fn().mockReturnValue(true),
-      getSession: jest.fn().mockReturnValue({
-        apiUrl: 'https://api.vikunja.test',
-        apiToken: 'test-token',
-        authType: 'api-token' as const,
-        userId: 'test-user-123'
-      }),
-      getAuthType: jest.fn().mockReturnValue('api-token'),
-      connect: jest.fn(),
-      disconnect: jest.fn(),
-      getStatus: jest.fn(),
-      saveSession: jest.fn(),
-      setTestUserId: jest.fn(),
-      setTestTokenExpiry: jest.fn(),
-      getTestUserId: jest.fn(),
-      getTestTokenExpiry: jest.fn(),
-      updateSessionProperty: jest.fn(),
-    } as MockAuthManager;
+    mockAuthManager = createMockTestableAuthManager();
+    mockAuthManager.isAuthenticated.mockReturnValue(true);
+    mockAuthManager.getSession.mockReturnValue({
+      apiUrl: 'https://api.vikunja.test',
+      apiToken: 'test-token',
+      authType: 'api-token' as const,
+      userId: 'test-user-123'
+    });
+    mockAuthManager.getAuthType.mockReturnValue('api-token');
 
     mockServer = {
       tool: jest.fn((name: string, schema: any, handler: any) => {
