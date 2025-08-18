@@ -13,6 +13,7 @@ import { AuthManager } from './auth/AuthManager';
 import { registerTools } from './tools';
 import { logger } from './utils/logger';
 import { createSecureConnectionMessage, createSecureLogConfig } from './utils/security';
+import { createVikunjaClientFactory, setGlobalFactory, setGlobalClientFactory, type VikunjaClientFactory } from './client';
 
 // Load environment variables
 dotenv.config();
@@ -26,12 +27,24 @@ const server = new McpServer({
 // Initialize auth manager
 const authManager = new AuthManager();
 
-// Export client functions from client module
+// Export client functions from client module for backwards compatibility
 export { getVikunjaClient, cleanupVikunjaClient } from './client';
-import { setAuthManager } from './client';
 
-// Set the auth manager in the client module
-setAuthManager(authManager);
+// Initialize client factory and register tools
+let clientFactory: VikunjaClientFactory | null = null;
+
+async function initializeFactory(): Promise<void> {
+  try {
+    clientFactory = await createVikunjaClientFactory(authManager);
+    setGlobalFactory(clientFactory);
+    if (clientFactory) {
+      setGlobalClientFactory(clientFactory);
+    }
+  } catch (error) {
+    logger.warn('Failed to initialize client factory during startup:', error);
+    // Factory will be initialized on first authentication
+  }
+}
 
 // Auto-authenticate using environment variables if available
 if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
@@ -45,8 +58,18 @@ if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
   logger.info(`Using detected auth type: ${detectedAuthType}`);
 }
 
-// Register all tools
-registerTools(server, authManager);
+// Initialize factory and register tools
+initializeFactory().then(() => {
+  if (clientFactory) {
+    registerTools(server, authManager, clientFactory);
+  } else {
+    registerTools(server, authManager, undefined);
+  }
+}).catch((error) => {
+  logger.error('Failed to initialize:', error);
+  // Fall back to legacy registration for backwards compatibility
+  registerTools(server, authManager, undefined);
+});
 
 // Start the server
 async function main(): Promise<void> {
