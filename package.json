@@ -55,12 +55,14 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "better-sqlite3": "^12.2.0",
     "dotenv": "^16.0.0",
     "node-vikunja": "^0.4.0",
     "uuid": "^11.1.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.3.0",
     "@types/uuid": "^10.0.0",
@@ -88,9 +90,7 @@
     "collectCoverageFrom": [
       "src/**/*.ts",
       "!src/**/*.d.ts",
-      "!src/**/__tests__/**",
-      "!src/client.ts",
-      "!src/index.ts"
+      "!src/**/__tests__/**"
     ],
     "coverageThreshold": {
       "global": {
