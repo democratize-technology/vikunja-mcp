@@ -42,6 +42,7 @@ interface CacheEntry<T> {
   timestamp: number;
   expiresAt: number;
   accessCount: number;
+  lastAccessTime: number;
 }
 
 const DEFAULT_OPTIONS: CacheOptions = {
@@ -56,6 +57,7 @@ export class ResponseCache<T = unknown> {
   private readonly options: CacheOptions;
   private readonly metrics: CacheMetrics;
   private cleanupTimer?: NodeJS.Timeout;
+  private readonly pendingOperations = new Map<string, Promise<T>>();
 
   constructor(options: Partial<CacheOptions> = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
@@ -94,13 +96,32 @@ export class ResponseCache<T = unknown> {
       return cached as TResult;
     }
 
+    // Check if operation is already pending to prevent duplicate work
+    const pendingOperation = this.pendingOperations.get(key);
+    if (pendingOperation) {
+      this.metrics.hits++; // Treat as hit since we're avoiding duplicate work
+      this.updateMetrics(startTime);
+      logger.debug('Operation already pending, awaiting result', { key });
+      return pendingOperation as Promise<TResult>;
+    }
+
     // Cache miss - execute factory function
     this.metrics.misses++;
     logger.debug('Cache miss, executing factory', { key });
 
-    try {
-      const result = await factory();
+    const operationPromise = factory().then(result => {
       this.set(key, result, ttl);
+      this.pendingOperations.delete(key);
+      return result;
+    }).catch(error => {
+      this.pendingOperations.delete(key);
+      throw error;
+    });
+
+    this.pendingOperations.set(key, operationPromise as Promise<T>);
+
+    try {
+      const result = await operationPromise;
       this.updateMetrics(startTime);
       return result;
     } catch (error) {
@@ -126,6 +147,7 @@ export class ResponseCache<T = unknown> {
     }
 
     entry.accessCount++;
+    entry.lastAccessTime = now;
     return entry.data;
   }
 
@@ -146,6 +168,7 @@ export class ResponseCache<T = unknown> {
       timestamp: now,
       expiresAt: now + effectiveTtl,
       accessCount: 1,
+      lastAccessTime: now,
     };
 
     this.cache.set(key, entry);
@@ -281,6 +304,7 @@ export class ResponseCache<T = unknown> {
       clearInterval(this.cleanupTimer);
     }
     this.clear();
+    this.pendingOperations.clear();
   }
 
   /**
@@ -297,11 +321,11 @@ export class ResponseCache<T = unknown> {
    */
   private evictLeastRecentlyUsed(): void {
     let oldestKey = '';
-    let oldestTimestamp = Infinity;
+    let oldestAccessTime = Infinity;
 
     for (const [key, entry] of this.cache.entries()) {
-      if (entry.timestamp < oldestTimestamp) {
-        oldestTimestamp = entry.timestamp;
+      if (entry.lastAccessTime < oldestAccessTime) {
+        oldestAccessTime = entry.lastAccessTime;
         oldestKey = key;
       }
     }
