@@ -4,7 +4,7 @@
 
 import type { StandardTaskResponse, MinimalTask } from '../../types/index';
 import { MCPError, ErrorCode } from '../../types/index';
-import { getVikunjaClient } from '../../client';
+import { getClientFromContext } from '../../client';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { validateId } from './validation';
@@ -32,7 +32,7 @@ export async function applyLabels(args: {
     // Validate label IDs
     args.labels.forEach((id) => validateId(id, 'label ID'));
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
     const taskId = args.id;
     const labelIds = args.labels;
 
@@ -115,7 +115,7 @@ export async function removeLabels(args: {
     // Validate label IDs
     args.labels.forEach((id) => validateId(id, 'label ID'));
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
     const taskId = args.id;
     const labelIds = args.labels;
 
@@ -183,7 +183,7 @@ export async function listTaskLabels(args: {
     }
     validateId(args.id, 'id');
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Fetch the task to get current labels
     const task = await client.tasks.getTask(args.id);

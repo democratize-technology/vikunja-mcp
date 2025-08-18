@@ -1,10 +1,10 @@
 import { applyLabels, removeLabels, listTaskLabels } from '../../../src/tools/tasks/labels';
-import { getVikunjaClient } from '../../../src/client';
+import { getClientFromContext } from '../../../src/client';
 import { MCPError, ErrorCode } from '../../../src/types/index';
 
 // Mock the client
 jest.mock('../../../src/client');
-const mockGetVikunjaClient = jest.mocked(getVikunjaClient);
+const mockGetClientFromContext = jest.mocked(getClientFromContext);
 
 describe('Label operations', () => {
   const mockClient = {
@@ -17,7 +17,7 @@ describe('Label operations', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetVikunjaClient.mockResolvedValue(mockClient as any);
+    mockGetClientFromContext.mockResolvedValue(mockClient as any);
   });
 
   describe('applyLabels', () => {
