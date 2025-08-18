@@ -6,7 +6,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
-import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getVikunjaClient } from '../client';
 import type { Project, Task } from 'node-vikunja';
@@ -45,7 +44,7 @@ interface TemplateData {
   variables?: Record<string, string>;
 }
 
-export function registerTemplatesTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerTemplatesTool(server: McpServer, authManager: AuthManager): void {
   server.tool(
     'vikunja_templates',
     {
@@ -71,7 +70,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
           );
         }
 
-        const client = getVikunjaClient();
+        const client = await getVikunjaClient();
         const storage = await getSessionStorage(authManager);
 
         switch (args.subcommand) {

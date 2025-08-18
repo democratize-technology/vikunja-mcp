@@ -4,7 +4,7 @@
 
 import type { StandardTaskResponse, MinimalTask } from '../../types/index';
 import { MCPError, ErrorCode } from '../../types/index';
-import { getVikunjaClient } from '../../client';
+import { getClientFromContext } from '../../client';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { AUTH_ERROR_MESSAGES } from './constants';
@@ -33,7 +33,7 @@ export async function assignUsers(args: {
     // Validate assignee IDs
     args.assignees.forEach((id) => validateId(id, 'assignee ID'));
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
     const taskId = args.id;
     const assigneeIds = args.assignees;
 
@@ -112,7 +112,7 @@ export async function unassignUsers(args: {
     // Validate assignee IDs
     args.assignees.forEach((id) => validateId(id, 'assignee ID'));
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
     const taskId = args.id;
     const assigneeIds = args.assignees;
 
@@ -183,7 +183,7 @@ export async function listAssignees(args: {
     }
     validateId(args.id, 'id');
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Fetch the task to get current assignees
     const task = await client.tasks.getTask(args.id);

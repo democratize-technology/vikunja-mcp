@@ -22,7 +22,7 @@ import { registerExportTool } from './export';
 export function registerTools(
   server: McpServer, 
   authManager: AuthManager, 
-  clientFactory?: VikunjaClientFactory
+  clientFactory: VikunjaClientFactory
 ): void {
   // Register all tool handlers with dependency injection
   registerAuthTool(server, authManager);
@@ -58,5 +58,5 @@ export function registerTools(
 export function registerToolsLegacy(server: McpServer, authManager: AuthManager): void {
   // This maintains backwards compatibility by using the global factory
   // Tools will fall back to the legacy getVikunjaClient() function
-  registerTools(server, authManager, undefined);
+  registerTools(server, authManager, null as any);
 }

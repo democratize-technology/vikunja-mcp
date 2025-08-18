@@ -1,14 +1,18 @@
 /**
- * Bulk operations for tasks
+ * Bulk operations for tasks with performance optimizations
+ * Enhanced with intelligent batching, caching, and monitoring
  */
 
 import type { StandardTaskResponse } from '../../types/index';
 import { MCPError, ErrorCode } from '../../types/index';
-import { getVikunjaClient } from '../../client';
+import { getClientFromContext } from '../../client';
 import type { Task } from 'node-vikunja';
 import { logger } from '../../utils/logger';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../utils/retry';
+import { BatchProcessor, type BatchResult } from '../../utils/performance/batch-processor';
+import { ResponseCache } from '../../utils/performance/response-cache';
+import { performanceMonitor } from '../../utils/performance/performance-monitor';
 import {
   AUTH_ERROR_MESSAGES,
   BULK_OPERATION_BATCH_SIZE,
@@ -16,8 +20,36 @@ import {
 } from './constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from './validation';
 
+// Performance-optimized batch processors for different operation types
+const updateBatchProcessor = new BatchProcessor({
+  maxConcurrency: 5,
+  batchSize: 10,
+  enableMetrics: true,
+  batchDelay: 0,
+});
+const deleteBatchProcessor = new BatchProcessor({
+  maxConcurrency: 3,
+  batchSize: 5,
+  enableMetrics: true,
+  batchDelay: 100,
+});
+const createBatchProcessor = new BatchProcessor({
+  maxConcurrency: 8,
+  batchSize: 15,
+  enableMetrics: true,
+  batchDelay: 0,
+});
+
+// Response cache for task operations
+const taskOperationCache = new ResponseCache<Task>({
+  ttl: 30000, // 30 seconds for task data
+  maxSize: 500,
+  enableMetrics: true,
+});
+
 /**
- * Process an array in batches
+ * Legacy batch processor for backward compatibility
+ * @deprecated Use performance-optimized batch processors instead
  */
 async function processBatches<T, R>(
   items: T[],
@@ -31,6 +63,75 @@ async function processBatches<T, R>(
     results.push(...batchResults);
   }
   return results;
+}
+
+/**
+ * Enhanced batch processor with performance optimizations
+ */
+async function processTasksOptimized<T>(
+  taskIds: number[],
+  processor: (taskId: number, index: number) => Promise<T>,
+  operationType: string,
+  useCache: boolean = true
+): Promise<BatchResult<T>> {
+  const operationId = `${operationType}-${Date.now()}`;
+  
+  performanceMonitor.startOperation(
+    operationId,
+    operationType,
+    taskIds.length,
+    5 // Default concurrency level
+  );
+
+  try {
+    const batchProcessor = operationType.includes('delete') 
+      ? deleteBatchProcessor 
+      : operationType.includes('create')
+      ? createBatchProcessor
+      : updateBatchProcessor;
+
+    // Enhanced processor with caching and monitoring
+    const enhancedProcessor = async (taskId: number, index: number): Promise<T> => {
+      const cacheKey = useCache ? `${operationType}:${taskId}` : null;
+      
+      if (useCache && cacheKey && taskOperationCache.has(cacheKey)) {
+        performanceMonitor.recordCacheHit(operationId);
+        const cachedResult = taskOperationCache.get(cacheKey);
+        if (cachedResult) {
+          return cachedResult as T;
+        }
+      }
+      
+      if (useCache && cacheKey) {
+        performanceMonitor.recordCacheMiss(operationId);
+      }
+      
+      performanceMonitor.recordApiCall(operationId);
+      
+      try {
+        const result = await processor(taskId, index);
+        
+        if (useCache && cacheKey) {
+          taskOperationCache.set(cacheKey, result as unknown as Task);
+        }
+        
+        performanceMonitor.updateOperation(operationId, { successCount: 1 });
+        return result;
+      } catch (error) {
+        performanceMonitor.updateOperation(operationId, { failureCount: 1 });
+        throw error;
+      }
+    };
+
+    const result = await batchProcessor.processBatches(taskIds, enhancedProcessor);
+    
+    performanceMonitor.completeOperation(operationId);
+    return result;
+  } catch (error) {
+    performanceMonitor.updateOperation(operationId, { failureCount: taskIds.length });
+    performanceMonitor.completeOperation(operationId);
+    throw error;
+  }
 }
 
 /**
@@ -181,7 +282,7 @@ export async function bulkUpdateTasks(args: {
       }
     }
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Use the proper bulk update API endpoint
     try {
@@ -282,16 +383,25 @@ export async function bulkUpdateTasks(args: {
         throw new Error('Bulk update API reported success but did not update task values');
       }
 
-      // If we don't have the updated tasks yet (Message response), fetch them
+      // If we don't have the updated tasks yet (Message response), fetch them using optimized processing
       if (updatedTasks.length === 0) {
-        const fetchResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
-          const results = await Promise.allSettled(batch.map((id) => client.tasks.getTask(id)));
-          return results;
-        });
+        const fetchResult = await processTasksOptimized(
+          taskIds,
+          async (taskId: number) => {
+            return await client.tasks.getTask(taskId);
+          },
+          'bulk_update_fetch',
+          true // Enable caching for task fetches
+        );
 
-        updatedTasks = fetchResults
-          .filter((result): result is PromiseFulfilledResult<Task> => result.status === 'fulfilled')
-          .map((result) => result.value);
+        updatedTasks = fetchResult.successful;
+        
+        if (fetchResult.failed.length > 0) {
+          logger.warn('Some tasks could not be fetched after bulk update', {
+            failedCount: fetchResult.failed.length,
+            failedTaskIds: fetchResult.failed.map(f => f.originalItem),
+          });
+        }
       }
 
       const response: StandardTaskResponse = {
@@ -324,137 +434,135 @@ export async function bulkUpdateTasks(args: {
         taskIds: taskIds,
       });
 
-      // Perform bulk update using individual task updates as fallback
-      const updateResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
-        const results = await Promise.allSettled(
-          batch.map(async (taskId) => {
-            // Fetch current task to preserve required fields
-            const currentTask = await client.tasks.getTask(taskId);
+      // Perform bulk update using individual task updates as fallback with optimization
+      const updateResult = await processTasksOptimized(
+        taskIds,
+        async (taskId: number) => {
+          // Fetch current task to preserve required fields
+          const currentTask = await client.tasks.getTask(taskId);
 
-            // Build update object based on field, preserving existing data
-            const updateData: Task = { ...currentTask };
+          // Build update object based on field, preserving existing data
+          const updateData: Task = { ...currentTask };
 
-            switch (args.field) {
-              case 'done':
-                updateData.done = args.value as boolean;
-                break;
-              case 'priority':
-                updateData.priority = args.value as number;
-                break;
-              case 'due_date':
-                updateData.due_date = args.value as string;
-                break;
-              case 'project_id':
-                updateData.project_id = args.value as number;
-                break;
-              case 'assignees':
-                // For assignees, we need to handle the user assignment separately
-                // This is a limitation of the current API
-                break;
-              case 'labels':
-                // For labels, we need to handle the label assignment separately
-                // This is a limitation of the current API
-                break;
-              case 'repeat_after':
-                updateData.repeat_after = args.value as number;
-                break;
-              case 'repeat_mode':
-                // The repeat_mode field in the API expects a number
-                // But TypeScript types might be out of sync
-                Object.assign(updateData, { repeat_mode: args.value });
-                break;
-            }
+          switch (args.field) {
+            case 'done':
+              updateData.done = args.value as boolean;
+              break;
+            case 'priority':
+              updateData.priority = args.value as number;
+              break;
+            case 'due_date':
+              updateData.due_date = args.value as string;
+              break;
+            case 'project_id':
+              updateData.project_id = args.value as number;
+              break;
+            case 'assignees':
+              // For assignees, we need to handle the user assignment separately
+              // This is a limitation of the current API
+              break;
+            case 'labels':
+              // For labels, we need to handle the label assignment separately
+              // This is a limitation of the current API
+              break;
+            case 'repeat_after':
+              updateData.repeat_after = args.value as number;
+              break;
+            case 'repeat_mode':
+              // The repeat_mode field in the API expects a number
+              // But TypeScript types might be out of sync
+              Object.assign(updateData, { repeat_mode: args.value });
+              break;
+          }
 
-            // Update the task
-            const updatedTask = await client.tasks.updateTask(taskId, updateData);
+          // Update the task
+          const updatedTask = await client.tasks.updateTask(taskId, updateData);
 
-            // Handle assignees and labels separately if needed
-            if (args.field === 'assignees' && Array.isArray(args.value)) {
-              try {
-                // Replace all assignees with the new list
-                const currentTaskWithAssignees = await client.tasks.getTask(taskId);
-                const currentAssigneeIds = currentTaskWithAssignees.assignees?.map((a) => a.id) || [];
-                const newAssigneeIds = args.value as number[];
+          // Handle assignees and labels separately if needed
+          if (args.field === 'assignees' && Array.isArray(args.value)) {
+            try {
+              // Replace all assignees with the new list
+              const currentTaskWithAssignees = await client.tasks.getTask(taskId);
+              const currentAssigneeIds = currentTaskWithAssignees.assignees?.map((a) => a.id) || [];
+              const newAssigneeIds = args.value as number[];
 
-                // Add new assignees first to avoid leaving task unassigned
-                if (newAssigneeIds.length > 0) {
+              // Add new assignees first to avoid leaving task unassigned
+              if (newAssigneeIds.length > 0) {
+                await withRetry(
+                  () => client.tasks.bulkAssignUsersToTask(taskId, {
+                    user_ids: newAssigneeIds,
+                  }),
+                  {
+                    ...RETRY_CONFIG.AUTH_ERRORS,
+                    shouldRetry: (error) => isAuthenticationError(error)
+                  }
+                );
+              }
+
+              // Remove old assignees only after new ones are successfully added
+              for (const userId of currentAssigneeIds) {
+                try {
                   await withRetry(
-                    () => client.tasks.bulkAssignUsersToTask(taskId, {
-                      user_ids: newAssigneeIds,
-                    }),
+                    () => client.tasks.removeUserFromTask(taskId, userId),
                     {
                       ...RETRY_CONFIG.AUTH_ERRORS,
                       shouldRetry: (error) => isAuthenticationError(error)
                     }
                   );
-                }
-
-                // Remove old assignees only after new ones are successfully added
-                for (const userId of currentAssigneeIds) {
-                  try {
-                    await withRetry(
-                      () => client.tasks.removeUserFromTask(taskId, userId),
-                      {
-                        ...RETRY_CONFIG.AUTH_ERRORS,
-                        shouldRetry: (error) => isAuthenticationError(error)
-                      }
+                } catch (removeError) {
+                  // Check if it's an auth error on remove after retries
+                  if (isAuthenticationError(removeError)) {
+                    throw new MCPError(
+                      ErrorCode.API_ERROR,
+                      `${AUTH_ERROR_MESSAGES.ASSIGNEE_REMOVE_PARTIAL} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`,
                     );
-                  } catch (removeError) {
-                    // Check if it's an auth error on remove after retries
-                    if (isAuthenticationError(removeError)) {
-                      throw new MCPError(
-                        ErrorCode.API_ERROR,
-                        `${AUTH_ERROR_MESSAGES.ASSIGNEE_REMOVE_PARTIAL} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`,
-                      );
-                    }
-                    throw removeError;
                   }
+                  throw removeError;
                 }
-              } catch (assigneeError) {
-                // Check if it's an auth error after retries
-                if (isAuthenticationError(assigneeError)) {
-                  throw new MCPError(
-                    ErrorCode.API_ERROR, 
-                    `${AUTH_ERROR_MESSAGES.ASSIGNEE_BULK_UPDATE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`
-                  );
-                }
-                throw assigneeError;
               }
+            } catch (assigneeError) {
+              // Check if it's an auth error after retries
+              if (isAuthenticationError(assigneeError)) {
+                throw new MCPError(
+                  ErrorCode.API_ERROR, 
+                  `${AUTH_ERROR_MESSAGES.ASSIGNEE_BULK_UPDATE} (Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times)`
+                );
+              }
+              throw assigneeError;
             }
-            if (args.field === 'labels' && Array.isArray(args.value)) {
-              await withRetry(
-                () => client.tasks.updateTaskLabels(taskId, {
-                  label_ids: args.value as number[],
-                }),
-                {
-                  ...RETRY_CONFIG.AUTH_ERRORS,
-                  shouldRetry: (error) => isAuthenticationError(error)
-                }
-              );
-            }
+          }
+          if (args.field === 'labels' && Array.isArray(args.value)) {
+            await withRetry(
+              () => client.tasks.updateTaskLabels(taskId, {
+                label_ids: args.value as number[],
+              }),
+              {
+                ...RETRY_CONFIG.AUTH_ERRORS,
+                shouldRetry: (error) => isAuthenticationError(error)
+              }
+            );
+          }
 
-            return updatedTask;
-          }),
-        );
-        return results;
-      });
+          return updatedTask;
+        },
+        'bulk_update_individual_fallback',
+        false // Disable caching for individual updates to avoid stale data
+      );
 
-      // Check for any failures
-      const failures = updateResults
-        .map((result, index) => ({ result, id: taskIds[index] }))
-        .filter(({ result }) => result.status === 'rejected');
+      // Check for any failures with optimized result format
+      const failures = updateResult.failed;
+      const successCount = updateResult.successful.length;
 
       if (failures.length > 0) {
-        const failedIds = failures.map((f) => f.id);
-        const successCount = taskIds.length - failures.length;
+        const failedIds = failures.map((f) => f.originalItem);
 
         // Check if all failures are due to assignee auth errors
         if (args.field === 'assignees') {
-          const authFailures = failures.filter(({ result }) => {
-            const reason = (result as PromiseRejectedResult).reason as unknown;
+          const authFailures = failures.filter((f) => {
+            const error = f.error;
             return (
-              reason instanceof MCPError &&
-              reason.message.includes('Assignee operations may have authentication issues')
+              error instanceof MCPError &&
+              error.message.includes('Assignee operations may have authentication issues')
             );
           });
 
@@ -474,6 +582,7 @@ export async function bulkUpdateTasks(args: {
             successCount,
             failedCount: failures.length,
             failedIds,
+            performanceMetrics: updateResult.metrics,
           });
         } else {
           // All failed
@@ -484,19 +593,24 @@ export async function bulkUpdateTasks(args: {
         }
       }
 
-      // Fetch updated tasks to show results using batching and allSettled
-      const fetchResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
-        const results = await Promise.allSettled(batch.map((id) => client.tasks.getTask(id)));
-        return results;
-      });
+      // Use successful tasks from the update operation, or fetch fresh if needed
+      let updatedTasks = updateResult.successful;
+      let failedFetches = 0;
 
-      const updatedTasks = fetchResults
-        .filter((result): result is PromiseFulfilledResult<Task> => result.status === 'fulfilled')
-        .map((result) => result.value);
+      // If we need fresh task data for display, fetch with optimization
+      if (updatedTasks.length < successCount) {
+        const fetchResult = await processTasksOptimized(
+          taskIds,
+          async (taskId: number) => {
+            return await client.tasks.getTask(taskId);
+          },
+          'bulk_update_final_fetch',
+          true // Enable caching for final fetch
+        );
 
-      const failedFetches = fetchResults.filter(
-        (result): result is PromiseRejectedResult => result.status === 'rejected',
-      ).length;
+        updatedTasks = fetchResult.successful;
+        failedFetches = fetchResult.failed.length;
+      }
 
       const response: StandardTaskResponse = {
         success: true,
@@ -508,13 +622,21 @@ export async function bulkUpdateTasks(args: {
           affectedFields: [args.field],
           count: taskIds.length,
           ...(failedFetches > 0 && { fetchErrors: failedFetches }),
+          performanceMetrics: {
+            totalDuration: updateResult.metrics.totalDuration,
+            operationsPerSecond: updateResult.metrics.operationsPerSecond,
+            apiCallsUsed: updateResult.metrics.successfulOperations + updateResult.metrics.failedOperations,
+            concurrencyLevel: updateResult.metrics.totalBatches > 0 ? 'optimized' : 'standard',
+            cacheEfficiency: taskOperationCache.getMetrics().hitRatio,
+          },
         },
       };
 
-      logger.debug('Bulk update completed', {
+      logger.info('Bulk update completed with performance optimization', {
         taskCount: taskIds.length,
         field: args.field,
         fetchErrors: failedFetches,
+        performance: response.metadata?.performanceMetrics,
       });
 
       return {
@@ -565,7 +687,7 @@ export async function bulkDeleteTasks(args: {
     // Validate all task IDs
     taskIds.forEach((id) => validateId(id, 'task ID'));
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Fetch tasks before deletion for response metadata using batching
     const fetchResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
@@ -721,7 +843,7 @@ export async function bulkCreateTasks(args: {
       }
     });
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Create tasks in batches
     const projectId = args.projectId; // TypeScript knows this is defined due to earlier check

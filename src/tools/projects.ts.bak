@@ -6,7 +6,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
-import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getVikunjaClient } from '../client';
 import type { Project, ProjectListParams, LinkSharing, LinkShareAuth } from 'node-vikunja';
@@ -103,7 +102,7 @@ function getMaxSubtreeDepth(projectId: number, allProjects: Project[]): number {
   return getDepth(projectId);
 }
 
-export function registerProjectsTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerProjectsTool(server: McpServer, authManager: AuthManager): void {
   server.tool(
     'vikunja_projects',
     {
@@ -152,7 +151,7 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
           throw createAuthRequiredError();
         }
 
-        const client = getVikunjaClient();
+        const client = await getVikunjaClient();
 
         switch (args.subcommand) {
           case 'list': {

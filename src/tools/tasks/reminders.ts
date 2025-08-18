@@ -4,7 +4,7 @@
 
 import type { StandardTaskResponse, MinimalTask } from '../../types/index';
 import { MCPError, ErrorCode } from '../../types/index';
-import { getVikunjaClient } from '../../client';
+import { getClientFromContext } from '../../client';
 import { validateId, validateDateString } from './validation';
 
 /**
@@ -31,7 +31,7 @@ export async function addReminder(args: {
     }
     validateDateString(args.reminderDate, 'reminderDate');
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Get current task to preserve existing reminders
     const currentTask = await client.tasks.getTask(args.id);
@@ -112,7 +112,7 @@ export async function removeReminder(args: {
     }
     validateId(args.reminderId, 'reminderId');
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Get current task
     const currentTask = await client.tasks.getTask(args.id);
@@ -187,7 +187,7 @@ export async function listReminders(args: {
     }
     validateId(args.id, 'id');
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Get task with reminders
     const task = await client.tasks.getTask(args.id);

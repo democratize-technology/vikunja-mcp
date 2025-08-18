@@ -4,7 +4,7 @@
 
 import type { StandardTaskResponse } from '../../types/index';
 import { MCPError, ErrorCode } from '../../types/index';
-import { getVikunjaClient } from '../../client';
+import { getClientFromContext } from '../../client';
 import { validateId } from './validation';
 
 /**
@@ -20,7 +20,7 @@ export async function handleComment(args: {
     }
     validateId(args.id, 'id');
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // If no comment text provided, list comments
     if (!args.comment) {
@@ -105,7 +105,7 @@ export async function listComments(args: {
     }
     validateId(args.id, 'id');
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
     const comments = await client.tasks.getTaskComments(args.id);
 
     const response: StandardTaskResponse = {

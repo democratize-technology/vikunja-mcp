@@ -1,7 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
-import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { storageManager } from '../storage/FilterStorage';
 import { FilterBuilder } from '../utils/filters';
 import type { FilterField, FilterOperator, SavedFilter } from '../types/filters';
@@ -114,7 +113,7 @@ async function getSessionStorage(authManager: AuthManager): ReturnType<typeof st
 /**
  * Register filters tool
  */
-export function registerFiltersTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerFiltersTool(server: McpServer, authManager: AuthManager): void {
   server.tool(
     'vikunja_filters',
     {

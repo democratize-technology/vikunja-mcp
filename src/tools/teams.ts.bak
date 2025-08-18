@@ -6,7 +6,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
-import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getVikunjaClient } from '../client';
 import type { Team } from 'node-vikunja';
@@ -27,7 +26,7 @@ function validateId(id: unknown, fieldName: string): number {
   return num;
 }
 
-export function registerTeamsTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerTeamsTool(server: McpServer, authManager: AuthManager): void {
   server.tool(
     'vikunja_teams',
     {
@@ -56,7 +55,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
         );
       }
 
-      const client = getVikunjaClient() as TypedVikunjaClient;
+      const client = await getVikunjaClient() as TypedVikunjaClient;
 
       try {
         const subcommand = args.subcommand || 'list';

@@ -7,9 +7,10 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Task } from 'node-vikunja';
 import type { AuthManager } from '../../auth/AuthManager';
+import type { VikunjaClientFactory } from '../../client/VikunjaClientFactory';
 import { MCPError, ErrorCode } from '../../types/index';
 import type { StandardTaskResponse } from '../../types/index';
-import { getVikunjaClient } from '../../client';
+import { getClientFromContext, setGlobalClientFactory } from '../../client';
 import { logger } from '../../utils/logger';
 import { storageManager } from '../../storage/FilterStorage';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
@@ -33,7 +34,7 @@ import { applyLabels, removeLabels, listTaskLabels } from './labels';
  */
 async function getSessionStorage(authManager: AuthManager): ReturnType<typeof storageManager.getStorage> {
   const session = authManager.getSession();
-  const sessionId = `${session.apiUrl}:${session.apiToken?.substring(0, 8)}` || 'anonymous';
+  const sessionId = session.apiToken ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}` : 'anonymous';
   return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
 }
 
@@ -95,7 +96,7 @@ async function listTasks(
       });
     }
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Memory protection: Check if we should implement pagination limits
     // Note: Vikunja API doesn't provide task count endpoints, so we use conservative defaults
@@ -143,8 +144,8 @@ async function listTasks(
       process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING === 'true'
     );
     
-    if (shouldAttemptServerSideFiltering) {
-      const serverParams = { ...params, filter: filterString! };
+    if (shouldAttemptServerSideFiltering && filterString) {
+      const serverParams = { ...params, filter: filterString };
       serverSideFilteringAttempted = true;
       
       logger.info('Attempting server-side filtering (modern Vikunja support)', {
@@ -336,7 +337,11 @@ function handleAttach(): Promise<{ content: Array<{ type: 'text'; text: string }
   );
 }
 
-export function registerTasksTool(server: McpServer, authManager: AuthManager): void {
+export function registerTasksTool(
+  server: McpServer, 
+  authManager: AuthManager, 
+  clientFactory?: VikunjaClientFactory
+): void {
   server.tool(
     'vikunja_tasks',
     {
@@ -425,8 +430,13 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
           );
         }
 
-        // Get client once for operations that need it (kept for backward compatibility)
-        await getVikunjaClient();
+        // Set the client factory for this request if provided
+        if (clientFactory) {
+          setGlobalClientFactory(clientFactory);
+        }
+
+        // Test client connection
+        await getClientFromContext();
 
         switch (args.subcommand) {
           case 'list': {

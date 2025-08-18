@@ -333,6 +333,13 @@ export interface StandardTaskResponse {
     fetchErrors?: number; // For bulk operations with fetch failures
     failedCount?: number; // For partial failures
     failedIds?: number[]; // IDs that failed in bulk operations
+    performanceMetrics?: {
+      totalDuration: number;
+      operationsPerSecond: number;
+      apiCallsUsed: number;
+      concurrencyLevel: string;
+      cacheEfficiency: number;
+    };
   };
 }
 

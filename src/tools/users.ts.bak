@@ -6,7 +6,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
-import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getVikunjaClient } from '../client';
 import type { ExtendedUserSettings } from '../types/vikunja';
@@ -18,7 +17,7 @@ interface SearchParams {
   s?: string;
 }
 
-export function registerUsersTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
+export function registerUsersTool(server: McpServer, authManager: AuthManager): void {
   server.tool(
     'vikunja_users',
     {
@@ -58,7 +57,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
         );
       }
 
-      const client = getVikunjaClient();
+      const client = await getVikunjaClient();
 
       try {
         const subcommand = args.subcommand || 'current';

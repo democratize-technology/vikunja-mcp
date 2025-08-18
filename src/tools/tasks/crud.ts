@@ -4,7 +4,7 @@
 
 import type { StandardTaskResponse } from '../../types/index';
 import { MCPError, ErrorCode } from '../../types/index';
-import { getVikunjaClient } from '../../client';
+import { getClientFromContext } from '../../client';
 import type { Task } from 'node-vikunja';
 import { logger } from '../../utils/logger';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
@@ -46,7 +46,7 @@ export async function createTask(args: {
       args.assignees.forEach((id) => validateId(id, 'assignee ID'));
     }
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     const newTask: Task = {
       title: args.title,
@@ -203,7 +203,7 @@ export async function getTask(args: {
     }
     validateId(args.id, 'id');
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
     const task = await client.tasks.getTask(args.id);
 
     const response: StandardTaskResponse = {
@@ -258,7 +258,7 @@ export async function updateTask(args: {
       validateDateString(args.dueDate, 'dueDate');
     }
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Fetch the current task to preserve all fields and track changes
     const currentTask = await client.tasks.getTask(args.id);
@@ -421,7 +421,7 @@ export async function deleteTask(args: {
     }
     validateId(args.id, 'id');
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
     // Try to get task before deletion for response, but handle failure gracefully
     let taskToDelete: Task | undefined;
