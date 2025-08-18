@@ -276,5 +276,28 @@ describe('Error Handler Utilities', () => {
       const deleteShareResult = handleStatusCodeError(error, 'delete share', 456);
       expect(deleteShareResult.message).toBe('Share with ID 456 not found');
     });
+
+    it('should handle operations with resource type detection fallbacks', () => {
+      const error = { statusCode: 404 };
+      
+      // Test fallback logic for operations that don't have space-separated resource types
+      // These should trigger the includes() logic since they don't match the regex
+      const projectResult = handleStatusCodeError(error, 'someprojectoperation', 123);
+      expect(projectResult.message).toBe('Project with ID 123 not found');
+      
+      const taskResult = handleStatusCodeError(error, 'dotaskstuff', 456);
+      expect(taskResult.message).toBe('Task with ID 456 not found');
+      
+      const shareResult = handleStatusCodeError(error, 'handlesharething', 789);
+      expect(shareResult.message).toBe('Share with ID 789 not found');
+      
+      const labelResult = handleStatusCodeError(error, 'processlabeldata', 101);
+      expect(labelResult.message).toBe('Label with ID 101 not found');
+      
+      // Test completely unknown operation that falls through to generic resource
+      const unknownResult = handleStatusCodeError(error, 'unknown', 999);
+      expect(unknownResult.message).toBe('Resource with ID 999 not found');
+    });
+
   });
 });

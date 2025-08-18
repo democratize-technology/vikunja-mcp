@@ -90,35 +90,35 @@ describe('Tool Registration', () => {
       mockAuthManager.getAuthType.mockReturnValue('api-token');
 
       // Act
-      registerTools(mockServer, mockAuthManager);
+      registerTools(mockServer, mockAuthManager, undefined);
 
       // Assert - verify each tool registration function was called
       expect(registerAuthTool).toHaveBeenCalledTimes(1);
       expect(registerAuthTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
 
       expect(registerTasksTool).toHaveBeenCalledTimes(1);
-      expect(registerTasksTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
+      expect(registerTasksTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
 
       expect(registerProjectsTool).toHaveBeenCalledTimes(1);
-      expect(registerProjectsTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
+      expect(registerProjectsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
 
       expect(registerLabelsTool).toHaveBeenCalledTimes(1);
-      expect(registerLabelsTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
+      expect(registerLabelsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
 
       expect(registerTeamsTool).toHaveBeenCalledTimes(1);
-      expect(registerTeamsTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
+      expect(registerTeamsTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
 
       expect(registerFiltersTool).toHaveBeenCalledTimes(1);
-      expect(registerFiltersTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
+      expect(registerFiltersTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
 
       expect(registerTemplatesTool).toHaveBeenCalledTimes(1);
-      expect(registerTemplatesTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
+      expect(registerTemplatesTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
 
       expect(registerWebhooksTool).toHaveBeenCalledTimes(1);
-      expect(registerWebhooksTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
+      expect(registerWebhooksTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
 
       expect(registerBatchImportTool).toHaveBeenCalledTimes(1);
-      expect(registerBatchImportTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
+      expect(registerBatchImportTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
 
       // These should NOT be called with API token auth
       expect(registerUsersTool).not.toHaveBeenCalled();
@@ -131,7 +131,7 @@ describe('Tool Registration', () => {
       mockAuthManager.getAuthType.mockReturnValue('jwt');
 
       // Act
-      registerTools(mockServer, mockAuthManager);
+      registerTools(mockServer, mockAuthManager, undefined);
 
       // Assert - verify all tools are registered
       expect(registerAuthTool).toHaveBeenCalledTimes(1);
@@ -146,9 +146,9 @@ describe('Tool Registration', () => {
 
       // These SHOULD be called with JWT auth
       expect(registerUsersTool).toHaveBeenCalledTimes(1);
-      expect(registerUsersTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
+      expect(registerUsersTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
       expect(registerExportTool).toHaveBeenCalledTimes(1);
-      expect(registerExportTool).toHaveBeenCalledWith(mockServer, mockAuthManager);
+      expect(registerExportTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
     });
 
     it('should not register users and export tools when not authenticated', () => {
@@ -156,7 +156,7 @@ describe('Tool Registration', () => {
       mockAuthManager.isAuthenticated.mockReturnValue(false);
 
       // Act
-      registerTools(mockServer, mockAuthManager);
+      registerTools(mockServer, mockAuthManager, undefined);
 
       // Assert - other tools are registered but not users/export
       expect(registerAuthTool).toHaveBeenCalledTimes(1);
@@ -180,7 +180,7 @@ describe('Tool Registration', () => {
       mockAuthManager.getAuthType.mockReturnValue('jwt');
 
       // Act
-      registerTools(mockServer, mockAuthManager);
+      registerTools(mockServer, mockAuthManager, undefined);
 
       // Assert - verify order by checking mock invocation order
       const callOrder = [

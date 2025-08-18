@@ -184,6 +184,7 @@ describe('Batch Import Tool', () => {
         done: false,
         priority: 3,
         percent_done: 0,
+        project_id: 1,
       });
 
       expect(result.content[0].text).toContain('Successfully imported: 1 tasks');
@@ -250,7 +251,8 @@ describe('Batch Import Tool', () => {
         hex_color: '#FF0000',
         percent_done: 50,
         repeat_after: 86400,
-        repeat_mode: 1,
+        repeat_mode: 'week',
+        project_id: 1,
       });
 
       expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(103, {
@@ -319,6 +321,7 @@ Task 2,Description 2,2,true`;
         priority: 1,
         done: false,
         percent_done: 0,
+        project_id: 1,
       });
 
       expect(result.content[0].text).toContain('Successfully imported: 2 tasks');
@@ -345,6 +348,7 @@ Task 2,Description 2,2,true`;
         done: false,
         priority: 0,
         percent_done: 0,
+        project_id: 1,
       });
 
       expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(203, {
@@ -377,6 +381,7 @@ Task 2,Description 2,2,true`;
         end_date: '2025-01-31T00:00:00Z',
         hex_color: '#FF0000',
         percent_done: 50,
+        project_id: 1,
       });
     });
 
@@ -722,6 +727,7 @@ Description,1`;
         done: false,
         priority: 5,
         percent_done: 0,
+        project_id: 35,
       });
 
       // Verify updateTaskLabels was called with correct label IDs
@@ -1002,6 +1008,7 @@ Description,1`;
         done: false,
         priority: 0,
         percent_done: 0,
+        project_id: 1,
       });
       
       // Should not try to update labels or assignees when they are empty

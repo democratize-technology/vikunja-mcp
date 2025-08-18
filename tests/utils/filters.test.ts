@@ -904,6 +904,58 @@ describe('Filter Utilities', () => {
       expect(result).not.toBeNull();
       expect(result!.groups[0].conditions[0].operator).toBe('not in');
     });
+
+    // Additional edge case tests for uncovered lines
+    it('should handle non-string input in sanitizeFilterInput', () => {
+      // This will trigger line 58: return { sanitized: '', isValid: false };
+      const result = parseFilterString(null as any);
+      expect(result.expression).toBeNull();
+      expect(result.error).toBeDefined();
+    });
+
+    it('should handle invalid date format validation', () => {
+      // This will trigger line 137: return false; in isValidDateValue 
+      const condition: FilterCondition = {
+        field: 'dueDate',
+        operator: '<',
+        value: '2024-13-32', // Invalid month/day
+      };
+      const errors = validateCondition(condition);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('valid date value');
+    });
+
+    it('should handle quoted strings that exceed length limit', () => {
+      // This will trigger line 387: break; in tokenizer for extremely long quoted values
+      const longString = '"' + 'a'.repeat(250) + '"';
+      const result = parseFilterString(`title = ${longString}`);
+      expect(result.expression).toBeNull();
+      expect(result.error).toBeDefined();
+    });
+
+    it('should handle unknown parsing errors gracefully', () => {
+      // This tests the fallback error handling in line 523-529
+      // We'll create a scenario that could trigger non-standard errors
+      const result = parseFilterString('title = "\uFFFF\u0000"'); // Control characters
+      expect(result.expression).toBeNull();
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('invalid characters');
+    });
+
+    it('should handle missing group after logical operator', () => {
+      // This will trigger line 564: throw new Error('Expected group after logical operator');
+      const result = parseFilterString('done = true ||');
+      expect(result.expression).toBeNull();
+      expect(result.error).toBeDefined();
+    });
+
+    it('should handle EOF token in consume method', () => {
+      // This will trigger line 687: throw new Error for EOF tokens
+      const result = parseFilterString('done = true)'); // Extra closing parenthesis
+      expect(result.expression).toBeNull();
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Unexpected token');
+    });
   });
 
   describe('FilterBuilder', () => {
