@@ -16,7 +16,7 @@ import { storageManager } from '../../storage/FilterStorage';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
 import { parseFilterString } from '../../utils/filters';
 import type { FilterExpression, SavedFilter } from '../../types/filters';
-import type { FilterParams } from './types';
+import type { GetTasksParams } from 'node-vikunja';
 import { applyFilter } from './filters';
 import { validateId } from './validation';
 import { validateTaskCountLimit, logMemoryUsage, createTaskLimitExceededMessage } from '../../utils/memory';
@@ -55,7 +55,7 @@ async function listTasks(
   },
   storage: Awaited<ReturnType<typeof storageManager.getStorage>>,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const params: FilterParams = {};
+  const params: GetTasksParams = {};
 
   try {
     let tasks: Task[] = [];
