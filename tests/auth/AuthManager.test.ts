@@ -4,12 +4,15 @@
 
 import { AuthManager } from '../../src/auth/AuthManager';
 import { MCPError, ErrorCode } from '../../src/types';
+import { createTestableAuthManager, type TestableAuthManager } from '../../src/auth/AuthManagerTestUtils';
 
 describe('AuthManager', () => {
   let authManager: AuthManager;
+  let testableAuthManager: TestableAuthManager;
 
   beforeEach(() => {
     authManager = new AuthManager();
+    testableAuthManager = createTestableAuthManager();
   });
 
   describe('detectAuthType', () => {
@@ -173,12 +176,12 @@ describe('AuthManager', () => {
 
     it('should return authenticated status with userId when available', () => {
       const apiUrl = 'https://vikunja.example.com/api/v1';
-      authManager.connect(apiUrl, 'test-token');
+      testableAuthManager.connect(apiUrl, 'test-token');
 
       // Use proper testing API to set userId
-      authManager.setTestUserId('user-123');
+      testableAuthManager.setTestUserId('user-123');
 
-      const status = authManager.getStatus();
+      const status = testableAuthManager.getStatus();
       expect(status.authenticated).toBe(true);
       expect(status.apiUrl).toBe(apiUrl);
       expect(status.userId).toBe('user-123');
@@ -251,20 +254,20 @@ describe('AuthManager', () => {
 
   describe('Testing API Methods', () => {
     beforeEach(() => {
-      authManager.connect('https://vikunja.example.com/api/v1', 'test-token');
+      testableAuthManager.connect('https://vikunja.example.com/api/v1', 'test-token');
     });
 
     describe('setTestUserId', () => {
       it('should set userId in authenticated session', () => {
-        authManager.setTestUserId('user-123');
-        expect(authManager.getTestUserId()).toBe('user-123');
+        testableAuthManager.setTestUserId('user-123');
+        expect(testableAuthManager.getTestUserId()).toBe('user-123');
         
-        const status = authManager.getStatus();
+        const status = testableAuthManager.getStatus();
         expect(status.userId).toBe('user-123');
       });
 
       it('should throw AUTH_REQUIRED error when not authenticated', () => {
-        const unauthenticatedManager = new AuthManager();
+        const unauthenticatedManager = createTestableAuthManager();
         
         expect(() => unauthenticatedManager.setTestUserId('user-123')).toThrow(MCPError);
         expect(() => unauthenticatedManager.setTestUserId('user-123')).toThrow(
@@ -280,23 +283,23 @@ describe('AuthManager', () => {
       });
 
       it('should update existing userId', () => {
-        authManager.setTestUserId('user-123');
-        expect(authManager.getTestUserId()).toBe('user-123');
+        testableAuthManager.setTestUserId('user-123');
+        expect(testableAuthManager.getTestUserId()).toBe('user-123');
         
-        authManager.setTestUserId('user-456');
-        expect(authManager.getTestUserId()).toBe('user-456');
+        testableAuthManager.setTestUserId('user-456');
+        expect(testableAuthManager.getTestUserId()).toBe('user-456');
       });
     });
 
     describe('setTestTokenExpiry', () => {
       it('should set token expiry in authenticated session', () => {
         const expiry = new Date('2024-12-31T23:59:59Z');
-        authManager.setTestTokenExpiry(expiry);
-        expect(authManager.getTestTokenExpiry()).toEqual(expiry);
+        testableAuthManager.setTestTokenExpiry(expiry);
+        expect(testableAuthManager.getTestTokenExpiry()).toEqual(expiry);
       });
 
       it('should throw AUTH_REQUIRED error when not authenticated', () => {
-        const unauthenticatedManager = new AuthManager();
+        const unauthenticatedManager = createTestableAuthManager();
         const expiry = new Date('2024-12-31T23:59:59Z');
         
         expect(() => unauthenticatedManager.setTestTokenExpiry(expiry)).toThrow(MCPError);
@@ -316,26 +319,26 @@ describe('AuthManager', () => {
         const expiry1 = new Date('2024-12-31T23:59:59Z');
         const expiry2 = new Date('2025-06-30T12:00:00Z');
         
-        authManager.setTestTokenExpiry(expiry1);
-        expect(authManager.getTestTokenExpiry()).toEqual(expiry1);
+        testableAuthManager.setTestTokenExpiry(expiry1);
+        expect(testableAuthManager.getTestTokenExpiry()).toEqual(expiry1);
         
-        authManager.setTestTokenExpiry(expiry2);
-        expect(authManager.getTestTokenExpiry()).toEqual(expiry2);
+        testableAuthManager.setTestTokenExpiry(expiry2);
+        expect(testableAuthManager.getTestTokenExpiry()).toEqual(expiry2);
       });
     });
 
     describe('getTestUserId', () => {
       it('should return undefined when userId is not set', () => {
-        expect(authManager.getTestUserId()).toBeUndefined();
+        expect(testableAuthManager.getTestUserId()).toBeUndefined();
       });
 
       it('should return userId when set', () => {
-        authManager.setTestUserId('user-123');
-        expect(authManager.getTestUserId()).toBe('user-123');
+        testableAuthManager.setTestUserId('user-123');
+        expect(testableAuthManager.getTestUserId()).toBe('user-123');
       });
 
       it('should throw AUTH_REQUIRED error when not authenticated', () => {
-        const unauthenticatedManager = new AuthManager();
+        const unauthenticatedManager = createTestableAuthManager();
         
         expect(() => unauthenticatedManager.getTestUserId()).toThrow(MCPError);
         expect(() => unauthenticatedManager.getTestUserId()).toThrow(
@@ -353,17 +356,17 @@ describe('AuthManager', () => {
 
     describe('getTestTokenExpiry', () => {
       it('should return undefined when token expiry is not set', () => {
-        expect(authManager.getTestTokenExpiry()).toBeUndefined();
+        expect(testableAuthManager.getTestTokenExpiry()).toBeUndefined();
       });
 
       it('should return token expiry when set', () => {
         const expiry = new Date('2024-12-31T23:59:59Z');
-        authManager.setTestTokenExpiry(expiry);
-        expect(authManager.getTestTokenExpiry()).toEqual(expiry);
+        testableAuthManager.setTestTokenExpiry(expiry);
+        expect(testableAuthManager.getTestTokenExpiry()).toEqual(expiry);
       });
 
       it('should throw AUTH_REQUIRED error when not authenticated', () => {
-        const unauthenticatedManager = new AuthManager();
+        const unauthenticatedManager = createTestableAuthManager();
         
         expect(() => unauthenticatedManager.getTestTokenExpiry()).toThrow(MCPError);
         expect(() => unauthenticatedManager.getTestTokenExpiry()).toThrow(
@@ -381,39 +384,39 @@ describe('AuthManager', () => {
 
     describe('updateSessionProperty', () => {
       it('should update userId only', () => {
-        authManager.updateSessionProperty({ userId: 'user-123' });
-        expect(authManager.getTestUserId()).toBe('user-123');
-        expect(authManager.getTestTokenExpiry()).toBeUndefined();
+        testableAuthManager.updateSessionProperty({ userId: 'user-123' });
+        expect(testableAuthManager.getTestUserId()).toBe('user-123');
+        expect(testableAuthManager.getTestTokenExpiry()).toBeUndefined();
       });
 
       it('should update tokenExpiry only', () => {
         const expiry = new Date('2024-12-31T23:59:59Z');
-        authManager.updateSessionProperty({ tokenExpiry: expiry });
-        expect(authManager.getTestTokenExpiry()).toEqual(expiry);
-        expect(authManager.getTestUserId()).toBeUndefined();
+        testableAuthManager.updateSessionProperty({ tokenExpiry: expiry });
+        expect(testableAuthManager.getTestTokenExpiry()).toEqual(expiry);
+        expect(testableAuthManager.getTestUserId()).toBeUndefined();
       });
 
       it('should update both userId and tokenExpiry', () => {
         const expiry = new Date('2024-12-31T23:59:59Z');
-        authManager.updateSessionProperty({ userId: 'user-123', tokenExpiry: expiry });
-        expect(authManager.getTestUserId()).toBe('user-123');
-        expect(authManager.getTestTokenExpiry()).toEqual(expiry);
+        testableAuthManager.updateSessionProperty({ userId: 'user-123', tokenExpiry: expiry });
+        expect(testableAuthManager.getTestUserId()).toBe('user-123');
+        expect(testableAuthManager.getTestTokenExpiry()).toEqual(expiry);
       });
 
       it('should handle undefined values correctly', () => {
         // First set some values
-        authManager.setTestUserId('user-123');
+        testableAuthManager.setTestUserId('user-123');
         const expiry = new Date('2024-12-31T23:59:59Z');
-        authManager.setTestTokenExpiry(expiry);
+        testableAuthManager.setTestTokenExpiry(expiry);
         
         // Update with undefined values (should not change existing values)
-        authManager.updateSessionProperty({});
-        expect(authManager.getTestUserId()).toBe('user-123');
-        expect(authManager.getTestTokenExpiry()).toEqual(expiry);
+        testableAuthManager.updateSessionProperty({});
+        expect(testableAuthManager.getTestUserId()).toBe('user-123');
+        expect(testableAuthManager.getTestTokenExpiry()).toEqual(expiry);
       });
 
       it('should throw AUTH_REQUIRED error when not authenticated', () => {
-        const unauthenticatedManager = new AuthManager();
+        const unauthenticatedManager = createTestableAuthManager();
         
         expect(() => unauthenticatedManager.updateSessionProperty({ userId: 'user-123' })).toThrow(MCPError);
         expect(() => unauthenticatedManager.updateSessionProperty({ userId: 'user-123' })).toThrow(
@@ -433,13 +436,13 @@ describe('AuthManager', () => {
         // But for testing security, we can try to bypass TypeScript with an invalid object
         const invalidUpdates = { apiUrl: 'new-url', apiToken: 'new-token' } as any;
         
-        expect(() => authManager.updateSessionProperty(invalidUpdates)).toThrow(MCPError);
-        expect(() => authManager.updateSessionProperty(invalidUpdates)).toThrow(
+        expect(() => testableAuthManager.updateSessionProperty(invalidUpdates)).toThrow(MCPError);
+        expect(() => testableAuthManager.updateSessionProperty(invalidUpdates)).toThrow(
           'Invalid session properties: apiUrl, apiToken. Only userId and tokenExpiry are allowed.',
         );
 
         try {
-          authManager.updateSessionProperty(invalidUpdates);
+          testableAuthManager.updateSessionProperty(invalidUpdates);
         } catch (error) {
           expect(error).toBeInstanceOf(MCPError);
           expect((error as MCPError).code).toBe(ErrorCode.VALIDATION_ERROR);

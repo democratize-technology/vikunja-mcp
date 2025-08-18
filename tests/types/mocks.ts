@@ -1,4 +1,5 @@
 import { AuthManager } from '../../src/auth/AuthManager';
+import type { TestableAuthManager } from '../../src/auth/AuthManagerTestUtils';
 import { Server } from '@modelcontextprotocol/sdk/server';
 import {
   Task,
@@ -117,7 +118,7 @@ export interface MockVikunjaClient {
   shares: MockShareService;
 }
 
-export type MockAuthManager = jest.Mocked<AuthManager>;
+export type MockAuthManager = jest.Mocked<TestableAuthManager>;
 
 export interface MockServer {
   tool: MockedFunction<(name: string, schema: ZodSchema, handler: ToolHandler) => void>;
