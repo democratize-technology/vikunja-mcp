@@ -28,6 +28,22 @@ export type FilterField =
   | 'description';
 
 /**
+ * Valid field types for validation
+ */
+export const FIELD_TYPES: Record<FilterField, 'boolean' | 'number' | 'date' | 'string' | 'array'> = {
+  done: 'boolean',
+  priority: 'number',
+  percentDone: 'number',
+  dueDate: 'date',
+  assignees: 'array',
+  labels: 'array',
+  created: 'date',
+  updated: 'date',
+  title: 'string',
+  description: 'string',
+};
+
+/**
  * Represents a single filter condition
  */
 export interface FilterCondition {
