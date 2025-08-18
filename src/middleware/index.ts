@@ -16,3 +16,9 @@ export {
   registerToolWithRateLimit,
   createRateLimitedTool,
 } from './tool-wrapper';
+
+export {
+  withPermissions,
+  createPermissionTool,
+  PermissionStatus,
+} from './permission-wrapper';

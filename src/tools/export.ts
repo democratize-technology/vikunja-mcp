@@ -17,6 +17,7 @@ import { getClientFromContext } from '../client';
 import type { Project, Task, Label, User, VikunjaClient } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 import { logger } from '../utils/logger';
+import { withPermissions } from '../middleware/permission-wrapper';
 
 /**
  * Validates that an ID is a positive integer

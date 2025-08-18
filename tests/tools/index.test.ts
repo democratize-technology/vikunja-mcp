@@ -85,7 +85,7 @@ describe('Tool Registration', () => {
 
   describe('registerTools', () => {
     it('should register all tools except users and export when using API token auth', () => {
-      // Arrange
+      // Arrange - test with API token auth (excludes some tools for backward compatibility)
       mockAuthManager.isAuthenticated.mockReturnValue(true);
       mockAuthManager.getAuthType.mockReturnValue('api-token');
 
@@ -120,7 +120,7 @@ describe('Tool Registration', () => {
       expect(registerBatchImportTool).toHaveBeenCalledTimes(1);
       expect(registerBatchImportTool).toHaveBeenCalledWith(mockServer, mockAuthManager, undefined);
 
-      // These should NOT be called with API token auth
+      // These should NOT be called with API token auth (backward compatibility)
       expect(registerUsersTool).not.toHaveBeenCalled();
       expect(registerExportTool).not.toHaveBeenCalled();
     });
@@ -158,7 +158,7 @@ describe('Tool Registration', () => {
       // Act
       registerTools(mockServer, mockAuthManager, undefined);
 
-      // Assert - other tools are registered but not users/export
+      // Assert - other tools are registered but not users/export (backward compatibility)
       expect(registerAuthTool).toHaveBeenCalledTimes(1);
       expect(registerTasksTool).toHaveBeenCalledTimes(1);
       expect(registerProjectsTool).toHaveBeenCalledTimes(1);
