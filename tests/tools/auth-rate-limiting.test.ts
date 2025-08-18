@@ -21,9 +21,9 @@ jest.mock('../../src/utils/logger', () => ({
 
 // Mock the client
 jest.mock('../../src/client', () => ({
-  cleanupVikunjaClient: jest.fn(),
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
 }));
 
 describe('Auth Tool Rate Limiting Integration', () => {

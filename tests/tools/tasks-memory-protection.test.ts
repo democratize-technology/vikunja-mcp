@@ -6,7 +6,7 @@
 import type { Task } from 'node-vikunja';
 import { MCPError, ErrorCode } from '../../src/types';
 import { registerTasksTool } from '../../src/tools/tasks';
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Mock dependencies
@@ -20,7 +20,7 @@ jest.mock('../../src/utils/logger', () => ({
   }
 }));
 
-const mockGetVikunjaClient = getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>;
+const mockGetClientFromContext = getClientFromContext as jest.MockedFunction<typeof getClientFromContext>;
 
 describe('Tasks Memory Protection', () => {
   let mockServer: MockServer;
@@ -107,7 +107,7 @@ describe('Tasks Memory Protection', () => {
       tool: jest.fn() as jest.MockedFunction<(name: string, schema: any, handler: any) => void>,
     } as MockServer;
 
-    mockGetVikunjaClient.mockResolvedValue(mockClient);
+    mockGetClientFromContext.mockResolvedValue(mockClient);
 
     // Register the tool
     registerTasksTool(mockServer as any, mockAuthManager as any);

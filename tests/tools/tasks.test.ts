@@ -7,13 +7,13 @@ import type { Task, User } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Import the function we're mocking
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 
@@ -165,8 +165,9 @@ describe('Tasks Tool', () => {
       updateSessionProperty: jest.fn(),
     } as MockAuthManager;
 
-    // Mock getVikunjaClient
-    (getVikunjaClient as jest.Mock).mockReturnValue(mockClient);
+    // Mock getClientFromContext
+    (getClientFromContext as jest.Mock).mockReturnValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
 
     // Setup mock server
     mockServer = {
@@ -1376,9 +1377,10 @@ describe('Tasks Tool', () => {
     });
 
     it('should handle client initialization errors', async () => {
-      (getVikunjaClient as jest.Mock).mockImplementation(() => {
+      (getClientFromContext as jest.Mock).mockImplementation(() => {
         throw new Error('Failed to initialize client');
       });
+      (getClientFromContext as jest.Mock).mockRejectedValue(new Error('Failed to initialize client'));
 
       await expect(callTool('list')).rejects.toThrow('Failed to initialize client');
     });
@@ -2684,10 +2686,11 @@ describe('Tasks Tool', () => {
 
   describe('main handler error handling', () => {
     it('should handle non-Error exceptions in main handler', async () => {
-      // Mock getVikunjaClient to throw a non-Error directly
-      (getVikunjaClient as jest.Mock).mockImplementation(() => {
+      // Mock getClientFromContext to throw a non-Error directly
+      (getClientFromContext as jest.Mock).mockImplementation(() => {
         throw 'String error from client initialization';
       });
+      (getClientFromContext as jest.Mock).mockRejectedValue('String error from client initialization');
 
       await expect(callTool('list')).rejects.toThrow(
         'Task operation error: String error from client initialization',

@@ -9,9 +9,9 @@ import { AuthManager } from '../../src/auth/AuthManager';
 
 // Mock modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 
 jest.mock('../../src/storage/FilterStorage', () => ({
@@ -21,7 +21,7 @@ jest.mock('../../src/storage/FilterStorage', () => ({
 }));
 
 // Import mocked functions
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 import { storageManager } from '../../src/storage/FilterStorage';
 
 // Mock data
@@ -100,8 +100,8 @@ describe('Templates Tool', () => {
       },
     } as any;
 
-    // Mock getVikunjaClient
-    (getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>).mockResolvedValue(
+    // Mock getClientFromContext
+    (getClientFromContext as jest.MockedFunction<typeof getClientFromContext>).mockResolvedValue(
       mockClient,
     );
 
@@ -1555,15 +1555,15 @@ describe('Templates Tool', () => {
 
   describe('unexpected errors', () => {
     afterEach(() => {
-      // Reset getVikunjaClient mock after error tests
-      (getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>).mockResolvedValue(
+      // Reset getClientFromContext mock after error tests
+      (getClientFromContext as jest.MockedFunction<typeof getClientFromContext>).mockResolvedValue(
         mockClient,
       );
     });
 
     it('should handle non-MCPError errors', async () => {
-      // Mock getVikunjaClient to throw an unexpected error
-      (getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>).mockRejectedValue(
+      // Mock getClientFromContext to throw an unexpected error
+      (getClientFromContext as jest.MockedFunction<typeof getClientFromContext>).mockRejectedValue(
         new TypeError('Unexpected type error')
       );
 
@@ -1575,8 +1575,8 @@ describe('Templates Tool', () => {
     });
 
     it('should handle non-Error objects thrown at top level', async () => {
-      // Mock getVikunjaClient to throw a non-Error object
-      (getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>).mockRejectedValue(
+      // Mock getClientFromContext to throw a non-Error object
+      (getClientFromContext as jest.MockedFunction<typeof getClientFromContext>).mockRejectedValue(
         'String thrown' // eslint-disable-line no-throw-literal
       );
 

@@ -8,9 +8,9 @@ import { registerAuthTool } from '../../src/tools/auth';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { MockServer, MockAuthManager } from '../types/mocks';
 
-// Mock the cleanupVikunjaClient function
+// Mock the clearGlobalClientFactory function
 jest.mock('../../src/client', () => ({
-  cleanupVikunjaClient: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 
 // Mock the tool wrapper to bypass middleware
@@ -341,11 +341,11 @@ describe('Auth Tool', () => {
 
   describe('disconnect subcommand', () => {
     it('should disconnect and cleanup client', async () => {
-      const { cleanupVikunjaClient } = require('../../src/client');
+      const { clearGlobalClientFactory } = require('../../src/client');
       const result = await callTool('disconnect');
 
       expect(mockAuthManager.disconnect).toHaveBeenCalled();
-      expect(cleanupVikunjaClient).toHaveBeenCalled();
+      expect(clearGlobalClientFactory).toHaveBeenCalled();
       expect(result.content[0].type).toBe('text');
       const response = JSON.parse(result.content[0].text);
       expect(response).toMatchObject({

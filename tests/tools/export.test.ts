@@ -9,7 +9,7 @@ import { registerExportTool } from '../../src/tools/export';
 import { MCPError, ErrorCode } from '../../src/types/index';
 import type { Project, Task, Label } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 
 // Mock the MCP server
 const mockServer = {
@@ -28,7 +28,7 @@ const mockAuthManager = {
 
 // Mock the client module
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn().mockResolvedValue({
+  getClientFromContext: jest.fn().mockResolvedValue({
     projects: {
       getProject: jest.fn(),
       getProjects: jest.fn(),
@@ -123,7 +123,7 @@ describe('Export Tool', () => {
         mockServer.tool.mockClear();
         registerExportTool(mockServer, mockAuthManagerJWT);
 
-        const mockClient = await getVikunjaClient(mockAuthManagerJWT);
+        const mockClient = await getClientFromContext();
         jest.mocked(mockClient.projects.getProject).mockResolvedValue(mockProject);
         jest.mocked(mockClient.tasks.getProjectTasks).mockResolvedValue([]);
 
@@ -185,7 +185,7 @@ describe('Export Tool', () => {
         { id: 2, title: 'Label 2', hex_color: '#00ff00' },
       ];
 
-      const mockClient = await getVikunjaClient(mockAuthManager);
+      const mockClient = await getClientFromContext();
 
       jest.mocked(mockClient.projects.getProject).mockResolvedValue(mockProject);
       jest.mocked(mockClient.tasks.getProjectTasks).mockResolvedValue(mockTasks);
@@ -257,7 +257,7 @@ describe('Export Tool', () => {
 
       const mockAllProjects: Project[] = [mockParentProject, mockChildProject];
 
-      const mockClient = await getVikunjaClient(mockAuthManager);
+      const mockClient = await getClientFromContext();
 
       jest
         .mocked(mockClient.projects.getProject)
@@ -311,7 +311,7 @@ describe('Export Tool', () => {
         updated: '2024-01-01T00:00:00Z',
       };
 
-      const mockClient = await getVikunjaClient(mockAuthManager);
+      const mockClient = await getClientFromContext();
 
       jest.mocked(mockClient.projects.getProject).mockResolvedValue(mockProject);
       jest.mocked(mockClient.projects.getProjects).mockResolvedValue([mockProject]);
@@ -345,7 +345,7 @@ describe('Export Tool', () => {
     });
 
     it('should handle non-existent project', async () => {
-      const mockClient = await getVikunjaClient(mockAuthManager);
+      const mockClient = await getClientFromContext();
 
       jest.mocked(mockClient.projects.getProject).mockResolvedValue(null);
 
@@ -380,7 +380,7 @@ describe('Export Tool', () => {
         },
       ];
 
-      const mockClient = await getVikunjaClient(mockAuthManager);
+      const mockClient = await getClientFromContext();
 
       jest.mocked(mockClient.projects.getProject).mockResolvedValue(mockProject);
       jest.mocked(mockClient.tasks.getProjectTasks).mockResolvedValue(mockTasks);

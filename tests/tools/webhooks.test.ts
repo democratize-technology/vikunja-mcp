@@ -11,15 +11,15 @@ import {
   expireWebhookEventCache,
 } from '../../src/tools/webhooks';
 import { MCPError, ErrorCode } from '../../src/types';
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 import type { Webhook } from '../../src/types/vikunja';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 
@@ -85,8 +85,8 @@ describe('Webhooks Tool', () => {
       }),
     } as MockServer;
 
-    // Mock the getVikunjaClient function
-    (getVikunjaClient as jest.Mock).mockResolvedValue(mockClient);
+    // Mock the getClientFromContext function
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
 
     // Mock auth manager session
     mockAuthManager.getSession.mockReturnValue({

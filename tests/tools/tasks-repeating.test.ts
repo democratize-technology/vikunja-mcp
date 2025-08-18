@@ -7,13 +7,13 @@ import type { Task, User } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Import the function we're mocking
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 
@@ -97,7 +97,8 @@ describe('Tasks Tool - Repeating Tasks', () => {
     } as MockVikunjaClient;
 
     // Mock the imported function to return our mock client
-    (getVikunjaClient as jest.Mock).mockResolvedValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
 
     // Create mock auth manager that is authenticated
     mockAuthManager = {

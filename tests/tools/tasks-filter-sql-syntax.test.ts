@@ -12,13 +12,13 @@ import type { Task } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Import the function we're mocking
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 jest.mock('../../src/utils/logger');
@@ -115,7 +115,10 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
     } as MockServer;
 
     // Set up the mock client
-    (getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>).mockResolvedValue(
+    (getClientFromContext as jest.MockedFunction<typeof getClientFromContext>).mockResolvedValue(
+      mockClient,
+    );
+    (getClientFromContext as jest.MockedFunction<typeof getClientFromContext>).mockResolvedValue(
       mockClient,
     );
 
