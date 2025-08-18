@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import { logger } from '../utils/logger';
 import { MCPError, ErrorCode } from '../types/index';
 import { isAuthenticationError } from '../utils/auth-error-handler';
@@ -78,7 +78,7 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
           );
         }
 
-        const client = getVikunjaClient() as TypedVikunjaClient;
+        const client = await getClientFromContext() as TypedVikunjaClient;
         const tasks: ImportedTask[] = [];
 
         // Parse the input data based on format

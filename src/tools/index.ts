@@ -51,12 +51,3 @@ export function registerTools(
   }
 }
 
-/**
- * Legacy registerTools function for backwards compatibility
- * @deprecated Use the version with clientFactory parameter
- */
-export function registerToolsLegacy(server: McpServer, authManager: AuthManager): void {
-  // This maintains backwards compatibility by using the global factory
-  // Tools will fall back to the legacy getVikunjaClient() function
-  registerTools(server, authManager, undefined);
-}

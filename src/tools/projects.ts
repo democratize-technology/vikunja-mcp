@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import type { Project, ProjectListParams, LinkSharing, LinkShareAuth } from 'node-vikunja';
 import { 
   handleStatusCodeError, 
@@ -152,7 +152,7 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
           throw createAuthRequiredError();
         }
 
-        const client = getVikunjaClient();
+        const client = await getClientFromContext();
 
         switch (args.subcommand) {
           case 'list': {

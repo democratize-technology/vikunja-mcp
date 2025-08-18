@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import type { ExtendedUserSettings } from '../types/vikunja';
 import { handleAuthError } from '../utils/auth-error-handler';
 
@@ -35,7 +35,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
       language: z.string().optional(),
       timezone: z.string().optional(),
       weekStart: z.number().min(0).max(6).optional(),
-      frontendSettings: z.record(z.any()).optional(),
+      frontendSettings: z.record(z.unknown()).optional(),
 
       // Notification preferences
       emailRemindersEnabled: z.boolean().optional(),
@@ -58,7 +58,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
         );
       }
 
-      const client = getVikunjaClient();
+      const client = await getClientFromContext();
 
       try {
         const subcommand = args.subcommand || 'current';

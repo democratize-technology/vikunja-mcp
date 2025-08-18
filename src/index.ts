@@ -13,7 +13,7 @@ import { AuthManager } from './auth/AuthManager';
 import { registerTools } from './tools';
 import { logger } from './utils/logger';
 import { createSecureConnectionMessage, createSecureLogConfig } from './utils/security';
-import { createVikunjaClientFactory, setGlobalFactory, setGlobalClientFactory, type VikunjaClientFactory } from './client';
+import { createVikunjaClientFactory, setGlobalClientFactory, type VikunjaClientFactory } from './client';
 
 // Load environment variables
 dotenv.config();
@@ -27,8 +27,8 @@ const server = new McpServer({
 // Initialize auth manager
 const authManager = new AuthManager();
 
-// Export client functions from client module for backwards compatibility
-export { getVikunjaClient, cleanupVikunjaClient } from './client';
+// Export modern client functions
+export { getClientFromContext, clearGlobalClientFactory } from './client';
 
 // Initialize client factory and register tools
 let clientFactory: VikunjaClientFactory | null = null;
@@ -36,7 +36,6 @@ let clientFactory: VikunjaClientFactory | null = null;
 async function initializeFactory(): Promise<void> {
   try {
     clientFactory = await createVikunjaClientFactory(authManager);
-    setGlobalFactory(clientFactory);
     if (clientFactory) {
       setGlobalClientFactory(clientFactory);
     }

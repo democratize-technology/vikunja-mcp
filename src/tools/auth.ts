@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { cleanupVikunjaClient } from '../client';
+import { clearGlobalClientFactory } from '../client';
 import { logger } from '../utils/logger';
 import { registerToolWithRateLimit } from '../middleware/tool-wrapper';
 import { createSecureConnectionMessage } from '../utils/security';
@@ -121,7 +121,7 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager, _c
 
           case 'disconnect': {
             authManager.disconnect();
-            cleanupVikunjaClient();
+            clearGlobalClientFactory();
             const response = createStandardResponse(
               'auth-disconnect',
               'Successfully disconnected from Vikunja',

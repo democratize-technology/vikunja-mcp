@@ -13,7 +13,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import type { Project, Task, Label, User, VikunjaClient } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 import { logger } from '../utils/logger';
@@ -158,7 +158,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
 
         validateId(projectId, 'projectId');
 
-        const client = getVikunjaClient();
+        const client = await getClientFromContext();
 
         // Export the project data
         const exportData = await exportProjectRecursive(client, projectId, includeChildren);
@@ -210,7 +210,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
       try {
         const { password } = args;
 
-        getVikunjaClient();
+        await getClientFromContext();
 
         // The node-vikunja client might not have this endpoint, so we'll make a direct API call
         const session = authManager.getSession();
@@ -281,7 +281,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
       try {
         const { password } = args;
 
-        getVikunjaClient();
+        await getClientFromContext();
 
         // The node-vikunja client might not have this endpoint, so we'll make a direct API call
         const session = authManager.getSession();

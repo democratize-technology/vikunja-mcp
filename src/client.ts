@@ -13,11 +13,9 @@ import { VikunjaClientFactory } from './client/VikunjaClientFactory';
 
 export { VikunjaClientFactory } from './client/VikunjaClientFactory';
 
-// Global factory instance for backwards compatibility
-let globalFactory: VikunjaClientFactory | null = null;
 
 /**
- * Client context that can switch between factory and legacy modes
+ * Client context for dependency injection
  */
 class ClientContext {
   private static instance: ClientContext | null = null;
@@ -47,15 +45,11 @@ class ClientContext {
   }
 
   /**
-   * Get a client instance using the factory if available, otherwise fall back to legacy
+   * Get a client instance using the factory
    */
   async getClient(): Promise<VikunjaClient> {
     if (this.clientFactory) {
       return Promise.resolve(this.clientFactory.getClient());
-    }
-    // Fall back to legacy global factory
-    if (globalFactory) {
-      return Promise.resolve(globalFactory.getClient());
     }
     throw new Error('No client factory available. Please authenticate first.');
   }
@@ -104,41 +98,3 @@ export async function createVikunjaClientFactory(authManager: AuthManager): Prom
   return new VikunjaClientFactory(authManager, module.VikunjaClient);
 }
 
-/**
- * Sets the global factory instance for backwards compatibility
- * @deprecated Use dependency injection instead
- */
-export function setGlobalFactory(factory: VikunjaClientFactory): void {
-  globalFactory = factory;
-}
-
-/**
- * Get an authenticated Vikunja client instance
- * @deprecated Use VikunjaClientFactory.getClient() directly
- */
-export function getVikunjaClient(): VikunjaClient {
-  if (!globalFactory) {
-    throw new Error('Global factory not initialized. Use createVikunjaClientFactory or inject VikunjaClientFactory directly.');
-  }
-  
-  return globalFactory.getClient();
-}
-
-/**
- * Cleanup function to reset client instance
- * @deprecated Use VikunjaClientFactory.cleanup() directly
- */
-export function cleanupVikunjaClient(): void {
-  if (globalFactory) {
-    globalFactory.cleanup();
-  }
-}
-
-/**
- * Legacy setAuthManager function for backwards compatibility
- * @deprecated Use dependency injection instead
- */
-export async function setAuthManager(manager: AuthManager): Promise<void> {
-  const factory = await createVikunjaClientFactory(manager);
-  setGlobalFactory(factory);
-}

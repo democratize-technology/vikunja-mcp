@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import type { Project, Task } from 'node-vikunja';
 import { storageManager } from '../storage/FilterStorage';
 import { logger } from '../utils/logger';
@@ -71,7 +71,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
           );
         }
 
-        const client = getVikunjaClient();
+        const client = await getClientFromContext();
         const storage = await getSessionStorage(authManager);
 
         switch (args.subcommand) {

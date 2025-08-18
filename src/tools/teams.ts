@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import type { Team } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 
@@ -56,7 +56,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
         );
       }
 
-      const client = getVikunjaClient() as TypedVikunjaClient;
+      const client = await getClientFromContext() as TypedVikunjaClient;
 
       try {
         const subcommand = args.subcommand || 'list';
