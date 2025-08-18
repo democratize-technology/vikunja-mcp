@@ -394,3 +394,6 @@ class FilterStorageManager {
 // Global storage manager instance
 export const storageManager = new FilterStorageManager();
 
+// Export new persistent storage manager for migration
+export { persistentStorageManager } from './PersistentFilterStorage';
+
