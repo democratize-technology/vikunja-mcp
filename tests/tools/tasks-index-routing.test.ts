@@ -644,7 +644,7 @@ describe('Tasks Tool - Index Routing Coverage', () => {
       const result = await callTool('list', { filter: 'priority > 5' });
       const response = JSON.parse(result.content[0].text);
       
-      expect(response.metadata).toHaveProperty('serverSideFiltering');
+      expect(response.metadata).toHaveProperty('serverSideFilteringUsed');
       
       // Reset environment
       process.env.NODE_ENV = originalEnv;

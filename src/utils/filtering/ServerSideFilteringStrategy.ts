@@ -34,7 +34,7 @@ export class ServerSideFilteringStrategy implements TaskFilteringStrategy {
     
     let tasks;
     try {
-      if (args.projectId && !args.allProjects) {
+      if (args.projectId !== undefined && !args.allProjects) {
         // Validate project ID
         validateId(args.projectId, 'projectId');
         // Get tasks for specific project with server-side filter
@@ -45,12 +45,12 @@ export class ServerSideFilteringStrategy implements TaskFilteringStrategy {
       }
       
       logger.info('Server-side filtering completed successfully', {
-        taskCount: tasks.length,
+        taskCount: tasks?.length || 0,
         filter: filterString
       });
       
       return {
-        tasks,
+        tasks: tasks || [],
         metadata: {
           serverSideFilteringUsed: true,
           serverSideFilteringAttempted: true,

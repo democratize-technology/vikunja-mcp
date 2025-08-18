@@ -26,7 +26,7 @@ export class ClientSideFilteringStrategy implements TaskFilteringStrategy {
     
     // Load tasks without server-side filtering
     let tasks;
-    if (args.projectId && !args.allProjects) {
+    if (args.projectId !== undefined && !args.allProjects) {
       // Validate project ID
       validateId(args.projectId, 'projectId');
       // Get tasks for specific project without filter
@@ -37,23 +37,26 @@ export class ClientSideFilteringStrategy implements TaskFilteringStrategy {
     }
     
     logger.info('Tasks loaded for client-side filtering', {
-      totalTasksLoaded: tasks.length,
+      totalTasksLoaded: tasks?.length || 0,
       filter: filterString
     });
     
     // Apply client-side filtering if we have a filter expression
+    const safeTasks = tasks || [];
+    let filteredTasks = safeTasks;
+    
     if (filterExpression) {
-      const originalCount = tasks.length;
-      tasks = applyFilter(tasks, filterExpression);
+      const originalCount = safeTasks.length;
+      filteredTasks = applyFilter(safeTasks, filterExpression);
       logger.debug('Applied client-side filter', {
         originalCount,
-        filteredCount: tasks.length,
+        filteredCount: filteredTasks?.length || 0,
         filter: filterString,
       });
     }
     
     return {
-      tasks,
+      tasks: filteredTasks || [],
       metadata: {
         serverSideFilteringUsed: false,
         serverSideFilteringAttempted: false,

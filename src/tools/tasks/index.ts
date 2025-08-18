@@ -148,7 +148,6 @@ async function listTasks(
     const {
       serverSideFilteringUsed,
       serverSideFilteringAttempted,
-      clientSideFiltering
     } = filteringResult.metadata;
 
     // Additional memory protection: validate actual loaded task count
@@ -199,22 +198,27 @@ async function listTasks(
         filteringMessage = ' (filtered server-side)';
         filteringMetadata = {
           filter: filterString,
-          serverSideFiltering: true,
+          serverSideFilteringUsed: true,
+          serverSideFilteringAttempted: true,
+          clientSideFiltering: false,
           filteringNote: filteringResult.metadata.filteringNote,
         };
       } else if (serverSideFilteringAttempted) {
         filteringMessage = ' (filtered client-side - server-side fallback)';
         filteringMetadata = {
           filter: filterString,
-          clientSideFiltering,
+          serverSideFilteringUsed: false,
           serverSideFilteringAttempted: true,
+          clientSideFiltering: true,
           filteringNote: filteringResult.metadata.filteringNote,
         };
       } else {
         filteringMessage = ' (filtered client-side)';
         filteringMetadata = {
           filter: filterString,
-          clientSideFiltering,
+          serverSideFilteringUsed: false,
+          serverSideFilteringAttempted: false,
+          clientSideFiltering: true,
           filteringNote: filteringResult.metadata.filteringNote,
         };
       }

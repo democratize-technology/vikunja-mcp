@@ -159,108 +159,74 @@ describe('Tasks Tool - Filter Integration', () => {
   });
 
   describe('list with direct filter strings', () => {
-    it('should attempt server-side filtering first, fallback to client-side', async () => {
-      // Enable server-side filtering for this test
-      const originalEnv = process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING;
-      process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING = 'true';
+    it('should apply client-side filtering in test environment', async () => {
+      // Return tasks with different priorities
+      const highPriorityTask = { ...mockTask, id: 1, priority: 5 };
+      const mediumPriorityTask = { ...mockTask, id: 2, priority: 3 };
+      const lowPriorityTask = { ...mockTask, id: 3, priority: 1 };
+      
+      // Mock client-side filtering approach (default in test environment)
+      mockClient.tasks.getAllTasks.mockResolvedValueOnce([
+        highPriorityTask,
+        mediumPriorityTask,
+        lowPriorityTask,
+      ]);
 
-      try {
-        // Return tasks with different priorities
-        const highPriorityTask = { ...mockTask, id: 1, priority: 5 };
-        const mediumPriorityTask = { ...mockTask, id: 2, priority: 3 };
-        const lowPriorityTask = { ...mockTask, id: 3, priority: 1 };
-        
-        // Mock server-side filtering to fail (simulating legacy Vikunja)
-        mockClient.tasks.getAllTasks
-          .mockRejectedValueOnce(new Error('Server-side filtering not supported'))
-          .mockResolvedValueOnce([
-            highPriorityTask,
-            mediumPriorityTask,
-            lowPriorityTask,
-          ]);
+      const result = await callTool('list', { filter: 'priority >= 3' });
 
-        const result = await callTool('list', { filter: 'priority >= 3' });
+      // Verify client-side approach was used (no filter parameter in API call)
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
+      });
 
-        // Verify server-side filtering was attempted first with filter parameter
-        expect(mockClient.tasks.getAllTasks).toHaveBeenNthCalledWith(1, {
-          page: 1,
-          per_page: 1000,
-          filter: 'priority >= 3',
-        });
-
-        // Verify fallback to client-side approach
-        expect(mockClient.tasks.getAllTasks).toHaveBeenNthCalledWith(2, {
-          page: 1,
-          per_page: 1000,
-        });
-
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
-        expect(response.operation).toBe('list');
-        // Verify client-side filtering worked as fallback
-        expect(response.tasks).toHaveLength(2);
-        expect(response.tasks[0].priority).toBe(5);
-        expect(response.tasks[1].priority).toBe(3);
-        expect(response.metadata.clientSideFiltering).toBe(true);
-        expect(response.metadata.serverSideFilteringAttempted).toBe(true);
-        expect(response.metadata.filter).toBe('priority >= 3');
-        expect(response.message).toContain('(filtered client-side - server-side fallback)');
-      } finally {
-        // Restore original environment
-        if (originalEnv === undefined) {
-          delete process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING;
-        } else {
-          process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING = originalEnv;
-        }
-      }
+      const response = JSON.parse(result.content[0].text);
+      expect(response.success).toBe(true);
+      expect(response.operation).toBe('list');
+      // Verify client-side filtering worked
+      expect(response.tasks).toHaveLength(2);
+      expect(response.tasks[0].priority).toBe(5);
+      expect(response.tasks[1].priority).toBe(3);
+      expect(response.metadata.clientSideFiltering).toBe(true);
+      expect(response.metadata.serverSideFilteringAttempted).toBe(false);
+      expect(response.metadata.serverSideFilteringUsed).toBe(false);
+      expect(response.metadata.filter).toBe('priority >= 3');
+      expect(response.message).toContain('(filtered client-side');
     });
 
-    it('should use server-side filtering when it succeeds', async () => {
-      // Enable server-side filtering for this test
-      const originalEnv = process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING;
-      process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING = 'true';
+    it('should handle filtering with client-side strategy by default', async () => {
+      // Return pre-filtered tasks (simulating what would happen with filtering)
+      const highPriorityTask = { ...mockTask, id: 1, priority: 5 };
+      const mediumPriorityTask = { ...mockTask, id: 2, priority: 3 };
+      
+      mockClient.tasks.getAllTasks.mockResolvedValue([
+        highPriorityTask,
+        mediumPriorityTask,
+      ]);
 
-      try {
-        // Return pre-filtered tasks (simulating modern Vikunja server-side filtering)
-        const highPriorityTask = { ...mockTask, id: 1, priority: 5 };
-        const mediumPriorityTask = { ...mockTask, id: 2, priority: 3 };
-        
-        mockClient.tasks.getAllTasks.mockResolvedValue([
-          highPriorityTask,
-          mediumPriorityTask,
-        ]);
+      const result = await callTool('list', { filter: 'priority >= 3' });
 
-        const result = await callTool('list', { filter: 'priority >= 3' });
+      // Verify client-side approach (no filter parameter sent to API)
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
+      });
 
-        // Verify server-side filtering was attempted with filter parameter
-        expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
-          page: 1,
-          per_page: 1000,
-          filter: 'priority >= 3',
-        });
+      // Should only be called once
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledTimes(1);
 
-        // Should only be called once (no fallback needed)
-        expect(mockClient.tasks.getAllTasks).toHaveBeenCalledTimes(1);
-
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
-        expect(response.operation).toBe('list');
-        // Verify server-side filtering was used
-        expect(response.tasks).toHaveLength(2);
-        expect(response.tasks[0].priority).toBe(5);
-        expect(response.tasks[1].priority).toBe(3);
-        expect(response.metadata.serverSideFiltering).toBe(true);
-        expect(response.metadata.filter).toBe('priority >= 3');
-        expect(response.message).toContain('(filtered server-side)');
-        expect(response.metadata.clientSideFiltering).toBeUndefined();
-      } finally {
-        // Restore original environment
-        if (originalEnv === undefined) {
-          delete process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING;
-        } else {
-          process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING = originalEnv;
-        }
-      }
+      const response = JSON.parse(result.content[0].text);
+      expect(response.success).toBe(true);
+      expect(response.operation).toBe('list');
+      // Verify client-side filtering was used
+      expect(response.tasks).toHaveLength(2);
+      expect(response.tasks[0].priority).toBe(5);
+      expect(response.tasks[1].priority).toBe(3);
+      expect(response.metadata.clientSideFiltering).toBe(true);
+      expect(response.metadata.serverSideFilteringUsed).toBe(false);
+      expect(response.metadata.serverSideFilteringAttempted).toBe(false);
+      expect(response.metadata.filter).toBe('priority >= 3');
+      expect(response.message).toContain('client-side');
     });
 
     it('should handle complex filter expressions', async () => {
