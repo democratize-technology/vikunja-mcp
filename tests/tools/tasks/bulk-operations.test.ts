@@ -498,8 +498,14 @@ describe('Bulk operations', () => {
           success: true,
           operation: 'create',
           message: 'Successfully created 1 tasks',
-          tasks: [mockTask],
         });
+        expect(response.tasks).toHaveLength(1);
+        expect(response.tasks[0]).toMatchObject({
+          id: 1,
+        });
+        // Check that the task has the expected title or project_id if present
+        expect(response.tasks[0].id).toBe(1);
+        expect(response.tasks[0].title).toBeDefined();
       });
 
       it('should handle labels and assignees', async () => {

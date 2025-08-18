@@ -394,7 +394,3 @@ class FilterStorageManager {
 // Global storage manager instance
 export const storageManager = new FilterStorageManager();
 
-// Legacy compatibility: Default storage instance for backward compatibility
-// WARNING: This creates a shared storage instance across all sessions!
-// Use storageManager.getStorage() for proper session isolation.
-export const filterStorage = new InMemoryFilterStorage('default-legacy-session');

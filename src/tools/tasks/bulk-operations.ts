@@ -15,7 +15,6 @@ import { ResponseCache } from '../../utils/performance/response-cache';
 import { performanceMonitor } from '../../utils/performance/performance-monitor';
 import {
   AUTH_ERROR_MESSAGES,
-  BULK_OPERATION_BATCH_SIZE,
   MAX_BULK_OPERATION_TASKS,
 } from './constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from './validation';
@@ -47,23 +46,6 @@ const taskOperationCache = new ResponseCache<Task>({
   enableMetrics: true,
 });
 
-/**
- * Legacy batch processor for backward compatibility
- * @deprecated Use performance-optimized batch processors instead
- */
-async function processBatches<T, R>(
-  items: T[],
-  batchSize: number,
-  processor: (batch: T[]) => Promise<R[]>,
-): Promise<R[]> {
-  const results: R[] = [];
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
-    const batchResults = await processor(batch);
-    results.push(...batchResults);
-  }
-  return results;
-}
 
 /**
  * Enhanced batch processor with performance optimizations
@@ -689,30 +671,35 @@ export async function bulkDeleteTasks(args: {
 
     const client = await getClientFromContext();
 
-    // Fetch tasks before deletion for response metadata using batching
-    const fetchResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
-      const results = await Promise.allSettled(batch.map((id) => client.tasks.getTask(id)));
-      return results;
-    });
+    // Fetch tasks before deletion for response metadata using optimized processing
+    const fetchResult = await processTasksOptimized(
+      taskIds,
+      async (taskId: number) => {
+        return await client.tasks.getTask(taskId);
+      },
+      'bulk_delete_fetch',
+      true // Enable caching for task fetches
+    );
 
-    const tasksToDelete = fetchResults
-      .filter((result): result is PromiseFulfilledResult<Task> => result.status === 'fulfilled')
-      .map((result) => result.value);
+    const tasksToDelete = fetchResult.successful;
 
-    // Delete tasks in batches
-    const deletionResults = await processBatches(taskIds, BULK_OPERATION_BATCH_SIZE, async (batch) => {
-      const results = await Promise.allSettled(batch.map((id) => client.tasks.deleteTask(id)));
-      return results;
-    });
+    // Delete tasks using optimized processing
+    const deletionResult = await processTasksOptimized(
+      taskIds,
+      async (taskId: number) => {
+        await client.tasks.deleteTask(taskId);
+        return { taskId, deleted: true }; // Return result for tracking
+      },
+      'bulk_delete_execution',
+      false // Disable caching for delete operations
+    );
 
     // Check for any failures
-    const failures = deletionResults
-      .map((result, index) => ({ result, id: taskIds[index] }))
-      .filter(({ result }) => result.status === 'rejected');
+    const failures = deletionResult.failed;
 
     if (failures.length > 0) {
-      const failedIds = failures.map((f) => f.id);
-      const successCount = taskIds.length - failures.length;
+      const failedIds = failures.map((f) => f.originalItem);
+      const successCount = deletionResult.successful.length;
 
       // If some succeeded, report partial success
       if (successCount > 0) {
@@ -845,120 +832,109 @@ export async function bulkCreateTasks(args: {
 
     const client = await getClientFromContext();
 
-    // Create tasks in batches
+    // Create tasks using optimized batch processor
     const projectId = args.projectId; // TypeScript knows this is defined due to earlier check
-    const creationResults = await processBatches(
-      args.tasks,
-      BULK_OPERATION_BATCH_SIZE,
-      async (batch) => {
-        const results = await Promise.allSettled(
-          batch.map(async (taskData) => {
-            // Create the base task
-            const newTask: Task = {
-              title: taskData.title,
-              project_id: projectId,
-            };
+    const creationResult = await createBatchProcessor.processBatches(
+      args.tasks.map((_, index) => index), // Use indices as items
+      async (index: number) => {
+        const taskData = args.tasks?.[index];
+        if (!taskData) {
+          throw new Error(`Task data not found at index ${index}`);
+        }
+        
+        // Create the base task
+        const newTask: Task = {
+          title: taskData.title,
+          project_id: projectId,
+        };
 
-            if (taskData.description !== undefined) newTask.description = taskData.description;
-            if (taskData.dueDate !== undefined) newTask.due_date = taskData.dueDate;
-            if (taskData.priority !== undefined) newTask.priority = taskData.priority;
-            // Handle repeat configuration for bulk create
-            if (taskData.repeatAfter !== undefined || taskData.repeatMode !== undefined) {
-              const repeatConfig = convertRepeatConfiguration(
-                taskData.repeatAfter,
-                taskData.repeatMode,
+        if (taskData.description !== undefined) newTask.description = taskData.description;
+        if (taskData.dueDate !== undefined) newTask.due_date = taskData.dueDate;
+        if (taskData.priority !== undefined) newTask.priority = taskData.priority;
+        // Handle repeat configuration for bulk create
+        if (taskData.repeatAfter !== undefined || taskData.repeatMode !== undefined) {
+          const repeatConfig = convertRepeatConfiguration(
+            taskData.repeatAfter,
+            taskData.repeatMode,
+          );
+          if (repeatConfig.repeat_after !== undefined)
+            newTask.repeat_after = repeatConfig.repeat_after;
+          if (repeatConfig.repeat_mode !== undefined) {
+            // Use index signature to bypass type mismatch - API expects number but node-vikunja types expect string
+            (newTask as Record<string, unknown>).repeat_mode = repeatConfig.repeat_mode;
+          }
+        }
+
+        // Create the task
+        const createdTask = await client.tasks.createTask(projectId, newTask);
+
+        // Add labels and assignees if provided
+        if (createdTask.id) {
+          try {
+            if (taskData.labels && taskData.labels.length > 0) {
+              const taskId = createdTask.id;
+              const labelIds = taskData.labels;
+              await withRetry(
+                () => client.tasks.updateTaskLabels(taskId, {
+                  label_ids: labelIds,
+                }),
+                {
+                  ...RETRY_CONFIG.AUTH_ERRORS,
+                  shouldRetry: (error) => isAuthenticationError(error)
+                }
               );
-              if (repeatConfig.repeat_after !== undefined)
-                newTask.repeat_after = repeatConfig.repeat_after;
-              if (repeatConfig.repeat_mode !== undefined) {
-                // Use index signature to bypass type mismatch - API expects number but node-vikunja types expect string
-                (newTask as Record<string, unknown>).repeat_mode = repeatConfig.repeat_mode;
-              }
             }
 
-            // Create the task
-            const createdTask = await client.tasks.createTask(projectId, newTask);
-
-            // Add labels and assignees if provided
-            if (createdTask.id) {
+            if (taskData.assignees && taskData.assignees.length > 0) {
+              const taskId = createdTask.id;
+              const assigneeIds = taskData.assignees;
               try {
-                if (taskData.labels && taskData.labels.length > 0) {
-                  const taskId = createdTask.id;
-                  const labelIds = taskData.labels;
-                  await withRetry(
-                    () => client.tasks.updateTaskLabels(taskId, {
-                      label_ids: labelIds,
-                    }),
-                    {
-                      ...RETRY_CONFIG.AUTH_ERRORS,
-                      shouldRetry: (error) => isAuthenticationError(error)
-                    }
+                await withRetry(
+                  () => client.tasks.bulkAssignUsersToTask(taskId, {
+                    user_ids: assigneeIds,
+                  }),
+                  {
+                    ...RETRY_CONFIG.AUTH_ERRORS,
+                    shouldRetry: (error) => isAuthenticationError(error)
+                  }
+                );
+              } catch (assigneeError) {
+                // Check if it's an auth error after retries
+                if (isAuthenticationError(assigneeError)) {
+                  throw new MCPError(
+                    ErrorCode.API_ERROR,
+                    'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
+                      'This is a known limitation. The task was created but assignees could not be added. ' +
+                      `(Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times). Task ID: ${createdTask.id}`,
                   );
                 }
-
-                if (taskData.assignees && taskData.assignees.length > 0) {
-                  const taskId = createdTask.id;
-                  const assigneeIds = taskData.assignees;
-                  try {
-                    await withRetry(
-                      () => client.tasks.bulkAssignUsersToTask(taskId, {
-                        user_ids: assigneeIds,
-                      }),
-                      {
-                        ...RETRY_CONFIG.AUTH_ERRORS,
-                        shouldRetry: (error) => isAuthenticationError(error)
-                      }
-                    );
-                  } catch (assigneeError) {
-                    // Check if it's an auth error after retries
-                    if (isAuthenticationError(assigneeError)) {
-                      throw new MCPError(
-                        ErrorCode.API_ERROR,
-                        'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-                          'This is a known limitation. The task was created but assignees could not be added. ' +
-                          `(Retried ${RETRY_CONFIG.AUTH_ERRORS.maxRetries} times). Task ID: ${createdTask.id}`,
-                      );
-                    }
-                    throw assigneeError;
-                  }
-                }
-
-                // Fetch the complete task with labels and assignees
-                return await client.tasks.getTask(createdTask.id);
-              } catch (updateError) {
-                // If updating labels/assignees fails, try to clean up
-                try {
-                  await client.tasks.deleteTask(createdTask.id);
-                } catch (deleteError) {
-                  logger.error('Failed to clean up partially created task:', deleteError);
-                }
-                throw updateError;
+                throw assigneeError;
               }
             }
 
-            return createdTask;
-          }),
-        );
-        return results;
-      },
+            // Fetch the complete task with labels and assignees
+            return await client.tasks.getTask(createdTask.id);
+          } catch (updateError) {
+            // If updating labels/assignees fails, try to clean up
+            try {
+              await client.tasks.deleteTask(createdTask.id);
+            } catch (deleteError) {
+              logger.error('Failed to clean up partially created task:', deleteError);
+            }
+            throw updateError;
+          }
+        }
+
+        return createdTask;
+      }
     );
 
-    // Process results
-    const successfulTasks = creationResults
-      .filter((result): result is PromiseFulfilledResult<Task> => result.status === 'fulfilled')
-      .map((result) => result.value);
-
-    const failedTasks = creationResults
-      .map((result, index) => ({ result, index }))
-      .filter(({ result }) => result.status === 'rejected')
-      .map(({ result, index }) => {
-        const rejectedResult = result as PromiseRejectedResult;
-        const reason = rejectedResult.reason as unknown;
-        return {
-          index,
-          error: reason instanceof Error ? reason.message : String(reason),
-        };
-      });
+    // Process results with modern batch processor format
+    const successfulTasks = creationResult.successful;
+    const failedTasks = creationResult.failed.map((f) => ({
+      index: f.originalItem,
+      error: f.error instanceof Error ? f.error.message : String(f.error),
+    }));
 
     if (failedTasks.length > 0 && successfulTasks.length === 0) {
       // All failed

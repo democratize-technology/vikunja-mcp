@@ -41,13 +41,16 @@ jest.mock('../../src/utils/logger', () => ({
   },
 }));
 
-// Mock filter storage
+// Mock storage manager
 jest.mock('../../src/storage/FilterStorage', () => ({
-  filterStorage: {
-    get: jest.fn(),
-    save: jest.fn(),
-    list: jest.fn(),
-    delete: jest.fn(),
+  storageManager: {
+    getStorage: jest.fn().mockReturnValue({
+      get: jest.fn(),
+      save: jest.fn(),
+      list: jest.fn(),
+      delete: jest.fn(),
+    }),
+    clearAll: jest.fn(),
   },
 }));
 

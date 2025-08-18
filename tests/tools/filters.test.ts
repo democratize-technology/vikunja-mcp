@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerFiltersTool } from '../../src/tools/filters';
-import { filterStorage, storageManager } from '../../src/storage/FilterStorage';
+import { storageManager } from '../../src/storage/FilterStorage';
 import type { SavedFilter } from '../../src/types/filters';
 import type { MockServer } from '../types/mocks';
 import { AuthManager } from '../../src/auth/AuthManager';
@@ -26,7 +26,6 @@ describe('vikunja_filters tool', () => {
   }
 
   beforeEach(async () => {
-    await filterStorage.clear();
     await storageManager.clearAll();
 
     // Create mock auth manager
@@ -497,7 +496,7 @@ describe('vikunja_filters tool', () => {
     });
 
     it('should prevent duplicate names when updating', async () => {
-      const filter1 = await filterStorage.create({
+      const filter1 = await (await getTestStorage()).create({
         name: 'Filter 1',
         filter: 'priority = 1',
         isGlobal: false,
