@@ -57,7 +57,8 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "dotenv": "^16.0.0",
     "node-vikunja": "^0.4.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
