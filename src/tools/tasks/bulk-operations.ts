@@ -13,13 +13,49 @@ import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { BatchProcessor, type BatchResult } from '../../utils/performance/batch-processor';
 import { ResponseCache } from '../../utils/performance/response-cache';
 import { performanceMonitor } from '../../utils/performance/performance-monitor';
+import { 
+  createBulkOperationEnhancer,
+  type EnhancedBatchResult
+} from '../../utils/performance/bulk-operation-enhancer';
 import {
   AUTH_ERROR_MESSAGES,
   MAX_BULK_OPERATION_TASKS,
 } from './constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from './validation';
 
-// Performance-optimized batch processors for different operation types
+// Enhanced bulk operation processors with adaptive optimization
+const bulkUpdateEnhancer = createBulkOperationEnhancer('bulk-update', {
+  useProgressiveEnhancement: true,
+  useAdaptiveBatching: true,
+  useCircuitBreaker: true,
+  useCache: true,
+  maxBulkSize: MAX_BULK_OPERATION_TASKS,
+  enableStreaming: true,
+  streamingChunkSize: 50,
+});
+
+// Additional enhancers for delete and create operations (currently unused but ready for future use)
+// const bulkDeleteEnhancer = createBulkOperationEnhancer('bulk-delete', {
+//   useProgressiveEnhancement: false, // No bulk delete API in Vikunja
+//   useAdaptiveBatching: true,
+//   useCircuitBreaker: true,
+//   useCache: false, // Don't cache delete operations
+//   maxBulkSize: MAX_BULK_OPERATION_TASKS,
+//   enableStreaming: true,
+//   streamingChunkSize: 20,
+// });
+
+// const bulkCreateEnhancer = createBulkOperationEnhancer('bulk-create', {
+//   useProgressiveEnhancement: false, // No bulk create API in Vikunja
+//   useAdaptiveBatching: true,
+//   useCircuitBreaker: true,
+//   useCache: false, // Don't cache create operations
+//   maxBulkSize: MAX_BULK_OPERATION_TASKS,
+//   enableStreaming: true,
+//   streamingChunkSize: 30,
+// });
+
+// Legacy batch processors for backward compatibility
 const updateBatchProcessor = new BatchProcessor({
   maxConcurrency: 5,
   batchSize: 10,
@@ -117,7 +153,170 @@ async function processTasksOptimized<T>(
 }
 
 /**
- * Bulk update tasks
+ * Enhanced bulk update tasks with next-generation performance optimizations
+ */
+export async function bulkUpdateTasksEnhanced(args: {
+  taskIds?: number[];
+  field?: string;
+  value?: unknown;
+  useEnhancedOptimizations?: boolean;
+}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const useEnhanced = args.useEnhancedOptimizations !== false; // Default to true
+  
+  if (useEnhanced) {
+    return await bulkUpdateTasksWithEnhancer(args);
+  } else {
+    return await bulkUpdateTasks(args);
+  }
+}
+
+/**
+ * Enhanced bulk update implementation using BulkOperationEnhancer
+ */
+async function bulkUpdateTasksWithEnhancer(args: {
+  taskIds?: number[];
+  field?: string;
+  value?: unknown;
+}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  try {
+    // Validation (reusing existing validation logic)
+    if (!args.taskIds || args.taskIds.length === 0) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        'taskIds array is required for bulk update operation',
+      );
+    }
+
+    if (!args.field || args.value === undefined) {
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'field and value are required for bulk update operation');
+    }
+
+    const taskIds = args.taskIds;
+    args.taskIds.forEach((id) => validateId(id, 'task ID'));
+
+    // Preprocess value (reusing existing preprocessing logic)
+    if (args.field === 'done' && typeof args.value === 'string') {
+      args.value = args.value === 'true';
+    }
+
+    const client = await getClientFromContext();
+
+    // Define bulk API operation (tries the official bulk API first)
+    const bulkApiOperation = async (ids: number[]): Promise<Task[]> => {
+      const bulkOperation = {
+        task_ids: ids,
+        field: args.field!,
+        value: args.value,
+      };
+
+      logger.debug('Attempting enhanced bulk API operation', { bulkOperation });
+      const result = await client.tasks.bulkUpdateTasks(bulkOperation);
+      
+      // Handle API response format variations
+      if (Array.isArray(result)) {
+        return result;
+      } else {
+        // If API returns message, fetch updated tasks
+        const fetchedTasks: Task[] = [];
+        for (const taskId of ids) {
+          const task = await client.tasks.getTask(taskId);
+          fetchedTasks.push(task);
+        }
+        return fetchedTasks;
+      }
+    };
+
+    // Define individual operation fallback
+    const individualOperation = async (taskId: number): Promise<Task> => {
+      const currentTask = await client.tasks.getTask(taskId);
+      const updateData: Task = { ...currentTask };
+
+      // Apply field update based on args.field
+      switch (args.field) {
+        case 'done':
+          updateData.done = args.value as boolean;
+          break;
+        case 'priority':
+          updateData.priority = args.value as number;
+          break;
+        case 'due_date':
+          updateData.due_date = args.value as string;
+          break;
+        case 'project_id':
+          updateData.project_id = args.value as number;
+          break;
+        // Add other field cases as needed
+      }
+
+      return await client.tasks.updateTask(taskId, updateData);
+    };
+
+    // Execute enhanced bulk operation
+    const result: EnhancedBatchResult<Task> = await bulkUpdateEnhancer.execute(
+      taskIds,
+      bulkApiOperation,
+      individualOperation
+    );
+
+    // Build enhanced response
+    const response = {
+      success: result.failed.length === 0,
+      operation: 'update',
+      message: result.failed.length === 0
+        ? `Successfully updated ${taskIds.length} tasks using ${result.strategy} strategy`
+        : `Partially updated ${result.successful.length}/${taskIds.length} tasks using ${result.strategy} strategy`,
+      tasks: result.successful,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        count: taskIds.length,
+        affectedFields: [args.field],
+        performance: {
+          strategy: result.strategy,
+          totalDuration: result.metrics.totalDuration,
+          operationsPerSecond: result.metrics.operationsPerSecond,
+          efficiency: result.efficiency,
+          optimizations: result.optimizations,
+        },
+        ...(result.recommendations && { recommendations: result.recommendations }),
+        ...(result.failed.length > 0 && {
+          failures: result.failed.map(f => ({
+            taskId: f.originalItem,
+            error: f.error instanceof Error ? f.error.message : String(f.error),
+          })),
+        }),
+      },
+    };
+
+    logger.info('Enhanced bulk update completed', {
+      strategy: result.strategy,
+      taskCount: taskIds.length,
+      successCount: result.successful.length,
+      failureCount: result.failed.length,
+      performance: response.metadata.performance,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(response, null, 2),
+        },
+      ],
+    };
+
+  } catch (error) {
+    if (error instanceof MCPError) {
+      throw error;
+    }
+    throw new MCPError(
+      ErrorCode.API_ERROR,
+      `Failed to execute enhanced bulk update: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+/**
+ * Legacy bulk update tasks (backward compatibility)
  */
 export async function bulkUpdateTasks(args: {
   taskIds?: number[];

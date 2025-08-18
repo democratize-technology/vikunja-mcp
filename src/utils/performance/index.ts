@@ -1,6 +1,7 @@
 /**
  * Performance optimization utilities for bulk operations
- * Provides intelligent batching, caching, and monitoring
+ * Next-generation performance optimization tools for vikunja-mcp
+ * Includes intelligent batching, caching, monitoring, circuit breakers, and adaptive optimization
  */
 
 export {
@@ -35,6 +36,37 @@ export {
   type PerformanceStats,
   type PerformanceAlert,
 } from './performance-monitor';
+
+export {
+  CircuitBreaker,
+  CircuitBreakerManager,
+  circuitBreakerManager,
+  bulkOperationBreaker,
+  individualOperationBreaker,
+  apiHealthBreaker,
+  CircuitOpenError,
+  CircuitState,
+  type CircuitBreakerOptions,
+  type CircuitMetrics,
+} from './circuit-breaker';
+
+export {
+  AdaptiveBatchOptimizer,
+  AdaptiveBatchOptimizerManager,
+  adaptiveBatchManager,
+  type AdaptiveBatchConfig,
+  type PerformanceWindow,
+  type OperationSample,
+  type OptimizationRecommendation,
+} from './adaptive-batch-optimizer';
+
+export {
+  BulkOperationEnhancer,
+  createBulkOperationEnhancer,
+  executeEnhancedBulkOperation,
+  type BulkOperationOptions,
+  type EnhancedBatchResult,
+} from './bulk-operation-enhancer';
 
 // Convenience function to create optimized bulk operation handler
 import type { BatchOptions } from './batch-processor';
