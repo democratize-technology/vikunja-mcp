@@ -6,8 +6,9 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
+import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import type { ExtendedUserSettings } from '../types/vikunja';
 import { handleAuthError } from '../utils/auth-error-handler';
 
@@ -17,7 +18,7 @@ interface SearchParams {
   s?: string;
 }
 
-export function registerUsersTool(server: McpServer, authManager: AuthManager): void {
+export function registerUsersTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_users',
     {
@@ -34,7 +35,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager): 
       language: z.string().optional(),
       timezone: z.string().optional(),
       weekStart: z.number().min(0).max(6).optional(),
-      frontendSettings: z.record(z.any()).optional(),
+      frontendSettings: z.record(z.unknown()).optional(),
 
       // Notification preferences
       emailRemindersEnabled: z.boolean().optional(),
@@ -57,7 +58,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager): 
         );
       }
 
-      const client = await getVikunjaClient();
+      const client = await getClientFromContext();
 
       try {
         const subcommand = args.subcommand || 'current';

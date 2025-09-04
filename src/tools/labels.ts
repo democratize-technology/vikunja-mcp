@@ -6,9 +6,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
+import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
-import type { Label } from '../types/vikunja';
+import { getClientFromContext } from '../client';
+import type { Label } from 'node-vikunja';
+import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 
 // Validation helpers
 function validateId(id: unknown, fieldName: string): number {
@@ -19,7 +21,7 @@ function validateId(id: unknown, fieldName: string): number {
   return num;
 }
 
-export function registerLabelsTool(server: McpServer, authManager: AuthManager): void {
+export function registerLabelsTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_labels',
     {
@@ -50,13 +52,11 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager):
         );
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-      const client = (await getVikunjaClient()) as any; // VikunjaClient type definitions are incomplete
+      const client = await getClientFromContext() as TypedVikunjaClient;
 
       const subcommand = args.subcommand || 'list';
 
       try {
-        /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment */
 
         switch (subcommand) {
           case 'list': {
@@ -203,7 +203,6 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager):
               `Invalid subcommand: ${String(subcommand)}`,
             );
         }
-        /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment */
       } catch (error) {
         const errorResponse = error as Error & {
           response?: { status: number; data?: { message?: string } };

@@ -1,6 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { filterStorage } from '../storage/FilterStorage';
+import type { AuthManager } from '../auth/AuthManager';
+import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
+import { storageManager } from '../storage/FilterStorage';
 import { FilterBuilder } from '../utils/filters';
 import type { FilterField, FilterOperator, SavedFilter } from '../types/filters';
 import { logger } from '../utils/logger';
@@ -101,9 +103,18 @@ const ValidateFilterSchema = z.object({
 });
 
 /**
+ * Get session-scoped storage instance
+ */
+async function getSessionStorage(authManager: AuthManager): ReturnType<typeof storageManager.getStorage> {
+  const session = authManager.getSession();
+  const sessionId = session.apiToken ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}` : 'anonymous';
+  return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
+}
+
+/**
  * Register filters tool
  */
-export function registerFiltersTool(server: McpServer): void {
+export function registerFiltersTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_filters',
     {
@@ -114,15 +125,16 @@ export function registerFiltersTool(server: McpServer): void {
       logger.info(`Executing vikunja_filters action: ${action}`);
 
       try {
+        const storage = await getSessionStorage(authManager);
         switch (action) {
           case 'list': {
             const params = ListFiltersSchema.parse(parameters);
             logger.debug(`Listing filters with params:`, params);
 
-            let filters = await filterStorage.list();
+            let filters = await storage.list();
 
             if (params.projectId !== undefined) {
-              filters = await filterStorage.getByProject(params.projectId);
+              filters = await storage.getByProject(params.projectId);
             } else if (params.global !== undefined) {
               filters = filters.filter((f) => f.isGlobal === params.global);
             }
@@ -159,7 +171,7 @@ export function registerFiltersTool(server: McpServer): void {
             const params = GetFilterSchema.parse(parameters);
             logger.debug(`Getting filter with id: ${params.id}`);
 
-            const filter = await filterStorage.get(params.id);
+            const filter = await storage.get(params.id);
             if (!filter) {
               throw new Error(`Filter with id ${params.id} not found`);
             }
@@ -234,12 +246,12 @@ export function registerFiltersTool(server: McpServer): void {
               throw new Error('No filter conditions provided');
             }
 
-            const existing = await filterStorage.findByName(name);
+            const existing = await storage.findByName(name);
             if (existing) {
               throw new Error(`Filter with name "${name}" already exists`);
             }
 
-            const filter = await filterStorage.create({
+            const filter = await storage.create({
               name,
               filter: filterString,
               isGlobal: params.isGlobal || params.is_favorite || false,
@@ -282,7 +294,7 @@ export function registerFiltersTool(server: McpServer): void {
 
             // If renaming, check for duplicate names
             if (updates.name) {
-              const existing = await filterStorage.findByName(updates.name);
+              const existing = await storage.findByName(updates.name);
               if (existing && existing.id !== id) {
                 throw new Error(`Filter with name "${updates.name}" already exists`);
               }
@@ -295,7 +307,7 @@ export function registerFiltersTool(server: McpServer): void {
             if (updates.projectId !== undefined) updateData.projectId = updates.projectId;
             if (updates.isGlobal !== undefined) updateData.isGlobal = updates.isGlobal;
 
-            const filter = await filterStorage.update(id, updateData);
+            const filter = await storage.update(id, updateData);
 
             const affectedFields = Object.keys(updateData).filter(
               (key) => updateData[key as keyof typeof updateData] !== undefined,
@@ -333,12 +345,12 @@ export function registerFiltersTool(server: McpServer): void {
             const params = DeleteFilterSchema.parse(parameters);
             logger.debug(`Deleting filter with id: ${params.id}`);
 
-            const filter = await filterStorage.get(params.id);
+            const filter = await storage.get(params.id);
             if (!filter) {
               throw new Error(`Filter with id ${params.id} not found`);
             }
 
-            await filterStorage.delete(params.id);
+            await storage.delete(params.id);
 
             const response = createStandardResponse(
               'delete-saved-filter',

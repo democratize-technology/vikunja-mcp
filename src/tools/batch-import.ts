@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../auth/AuthManager';
-import { getVikunjaClient } from '../client';
+import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
+import { getClientFromContext } from '../client';
 import { logger } from '../utils/logger';
 import { MCPError, ErrorCode } from '../types/index';
 import { isAuthenticationError } from '../utils/auth-error-handler';
 import type { Task, Label, User } from 'node-vikunja';
+import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 
 // Define the structure for imported tasks
 const importedTaskSchema = z.object({
@@ -49,7 +51,7 @@ interface ImportResult {
   }>;
 }
 
-export function registerBatchImportTool(server: McpServer, authManager: AuthManager): void {
+export function registerBatchImportTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_batch_import',
     {
@@ -76,7 +78,7 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
           );
         }
 
-        const client = await getVikunjaClient();
+        const client = await getClientFromContext() as TypedVikunjaClient;
         const tasks: ImportedTask[] = [];
 
         // Parse the input data based on format
@@ -335,12 +337,17 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
           try {
             // Prepare task data for API
             const taskData: Record<string, unknown> = {
+              project_id: args.projectId,
               title: task.title,
-              description: task.description,
               done: task.done || false,
               priority: task.priority || 0,
               percent_done: task.percentDone || 0,
             };
+            
+            // Only add description if it's not undefined
+            if (task.description !== undefined) {
+              taskData.description = task.description;
+            }
 
             // Handle dates
             if (task.dueDate) taskData['due_date'] = task.dueDate;
@@ -352,13 +359,18 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
 
             // Handle repeat settings
             if (task.repeatAfter) taskData['repeat_after'] = task.repeatAfter;
-            if (task.repeatMode !== undefined) taskData['repeat_mode'] = task.repeatMode;
+            if (task.repeatMode !== undefined) {
+              // Convert numeric repeat mode to string
+              const repeatModes = ['day', 'week', 'month', 'year'];
+              if (task.repeatMode >= 0 && task.repeatMode < repeatModes.length) {
+                taskData['repeat_mode'] = repeatModes[task.repeatMode];
+              }
+            }
 
             // Create the task
             let createdTask: Task;
             try {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-              createdTask = await client.tasks.createTask(args.projectId, taskData as any);
+              createdTask = await client.tasks.createTask(args.projectId, taskData as Task);
             } catch (error) {
               // Check if it's an authentication error
               if (isAuthenticationError(error)) {
@@ -389,7 +401,7 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
                   try {
                     const updatedTask = await client.tasks.getTask(createdTask.id);
                     if (updatedTask && updatedTask.labels && Array.isArray(updatedTask.labels)) {
-                      const assignedLabelIds = updatedTask.labels.map((l) => l.id);
+                      const assignedLabelIds = updatedTask.labels.map((l: Label) => l.id);
                       labelsActuallyAssigned = labelIds.every((id) =>
                         assignedLabelIds.includes(id),
                       );

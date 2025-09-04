@@ -6,9 +6,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
+import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import type { Team } from 'node-vikunja';
+import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 
 interface TeamListParams {
   page?: number;
@@ -25,7 +27,7 @@ function validateId(id: unknown, fieldName: string): number {
   return num;
 }
 
-export function registerTeamsTool(server: McpServer, authManager: AuthManager): void {
+export function registerTeamsTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_teams',
     {
@@ -54,7 +56,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager): 
         );
       }
 
-      const client = await getVikunjaClient();
+      const client = await getClientFromContext() as TypedVikunjaClient;
 
       try {
         const subcommand = args.subcommand || 'list';
@@ -158,13 +160,8 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager): 
 
             const teamId = validateId(args.id, 'id');
 
-            // Type assertion needed as deleteTeam might not be in the published node-vikunja types
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-            const teams = client.teams as any;
-
             // Check if deleteTeam method exists and is a function
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            if (!teams.deleteTeam || typeof teams.deleteTeam !== 'function') {
+            if (!client.teams.deleteTeam || typeof client.teams.deleteTeam !== 'function') {
               // Fallback: Make direct API call if method doesn't exist
               const session = authManager.getSession();
               const response = await fetch(`${session.apiUrl}/teams/${teamId}`, {
@@ -200,8 +197,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager): 
             }
 
             // Use the existing method if available
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-            const result = (await teams.deleteTeam(teamId)) as { message: string };
+            const result = await client.teams.deleteTeam(teamId);
 
             const response = createStandardResponse(
               'delete-team',

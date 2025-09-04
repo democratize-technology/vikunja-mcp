@@ -6,13 +6,11 @@ import type { Project, User, LinkSharing } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Import the function we're mocking
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 
@@ -124,8 +122,9 @@ describe('Projects Tool', () => {
       }) as jest.MockedFunction<(name: string, schema: any, handler: any) => void>,
     } as MockServer;
 
-    // Mock getVikunjaClient
-    (getVikunjaClient as jest.Mock).mockReturnValue(mockClient);
+    // Mock getClientFromContext
+    (getClientFromContext as jest.Mock).mockReturnValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
 
     // Register the tool
     registerProjectsTool(mockServer, mockAuthManager);

@@ -6,19 +6,19 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../../src/auth/AuthManager';
 import { registerTasksTool } from '../../src/tools/tasks';
-import { filterStorage } from '../../src/storage/FilterStorage';
+import { storageManager } from '../../src/storage/FilterStorage';
 import { MCPError } from '../../src/types';
 import type { Task } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Import the function we're mocking
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 jest.mock('../../src/utils/logger');
@@ -28,6 +28,13 @@ describe('Tasks Tool - Filter Integration', () => {
   let mockAuthManager: MockAuthManager;
   let mockServer: MockServer;
   let toolHandler: (args: any) => Promise<any>;
+  let testStorage: Awaited<ReturnType<typeof storageManager.getStorage>>;
+
+  // Clean up after all tests to prevent Jest warnings
+  afterAll(async () => {
+    await storageManager.clearAll();
+    storageManager.stopCleanupTimer();
+  });
 
   // Helper function to call a tool
   async function callTool(subcommand: string, args: Record<string, any> = {}) {
@@ -74,11 +81,11 @@ describe('Tasks Tool - Filter Integration', () => {
   } as unknown as Task;
 
   beforeEach(async () => {
-    // Clear filter storage
-    await filterStorage.clear();
-
     // Reset all mocks
     jest.clearAllMocks();
+
+    // Clear all storage sessions
+    await storageManager.clearAll();
 
     // Create fresh mock instances
     mockClient = {
@@ -112,9 +119,20 @@ describe('Tasks Tool - Filter Integration', () => {
       verifyCredentials: jest.fn(),
       getCredentials: jest.fn(),
       authenticate: jest.fn(),
-      getSession: jest.fn(),
+      getSession: jest.fn().mockReturnValue({
+        apiUrl: 'https://vikunja.example.com',
+        apiToken: 'tk_test-token-123',
+        authType: 'api-token',
+      }),
       setSession: jest.fn(),
       clearSession: jest.fn(),
+      getStatus: jest.fn().mockReturnValue({
+        authenticated: true,
+        apiUrl: 'https://vikunja.example.com',
+      }),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      getAuthType: jest.fn().mockReturnValue('api-token'),
     } as MockAuthManager;
 
     mockServer = {
@@ -124,40 +142,125 @@ describe('Tasks Tool - Filter Integration', () => {
     } as MockServer;
 
     // Set up the mock client
-    (getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>).mockResolvedValue(
+    (getClientFromContext as jest.MockedFunction<typeof getClientFromContext>).mockResolvedValue(
       mockClient,
     );
+    (getClientFromContext as jest.MockedFunction<typeof getClientFromContext>).mockResolvedValue(
+      mockClient,
+    );
+
+    // Get test storage instance for the same session that will be used in the tool
+    const session = mockAuthManager.getSession();
+    const sessionId = `${session.apiUrl}:${session.apiToken?.substring(0, 8)}` || 'anonymous';
+    testStorage = await storageManager.getStorage(sessionId, session.userId, session.apiUrl);
 
     // Register the tool
     registerTasksTool(mockServer as any, mockAuthManager);
   });
 
   describe('list with direct filter strings', () => {
-    it('should apply client-side filtering for direct filter string', async () => {
-      // Return tasks with different priorities
-      const highPriorityTask = { ...mockTask, id: 1, priority: 5 };
-      const mediumPriorityTask = { ...mockTask, id: 2, priority: 3 };
-      const lowPriorityTask = { ...mockTask, id: 3, priority: 1 };
-      mockClient.tasks.getAllTasks.mockResolvedValue([
-        highPriorityTask,
-        mediumPriorityTask,
-        lowPriorityTask,
-      ]);
+    it('should attempt server-side filtering first, fallback to client-side', async () => {
+      // Enable server-side filtering for this test
+      const originalEnv = process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING;
+      process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING = 'true';
 
-      const result = await callTool('list', { filter: 'priority >= 3' });
+      try {
+        // Return tasks with different priorities
+        const highPriorityTask = { ...mockTask, id: 1, priority: 5 };
+        const mediumPriorityTask = { ...mockTask, id: 2, priority: 3 };
+        const lowPriorityTask = { ...mockTask, id: 3, priority: 1 };
+        
+        // Mock server-side filtering to fail (simulating legacy Vikunja)
+        mockClient.tasks.getAllTasks
+          .mockRejectedValueOnce(new Error('Server-side filtering not supported'))
+          .mockResolvedValueOnce([
+            highPriorityTask,
+            mediumPriorityTask,
+            lowPriorityTask,
+          ]);
 
-      // Verify no filter was passed to API
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+        const result = await callTool('list', { filter: 'priority >= 3' });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('list');
-      // Verify client-side filtering worked
-      expect(response.tasks).toHaveLength(2);
-      expect(response.tasks[0].priority).toBe(5);
-      expect(response.tasks[1].priority).toBe(3);
-      expect(response.metadata.clientSideFiltering).toBe(true);
-      expect(response.metadata.filter).toBe('priority >= 3');
+        // Verify server-side filtering was attempted first with filter parameter
+        expect(mockClient.tasks.getAllTasks).toHaveBeenNthCalledWith(1, {
+          page: 1,
+          per_page: 1000,
+          filter: 'priority >= 3',
+        });
+
+        // Verify fallback to client-side approach
+        expect(mockClient.tasks.getAllTasks).toHaveBeenNthCalledWith(2, {
+          page: 1,
+          per_page: 1000,
+        });
+
+        const response = JSON.parse(result.content[0].text);
+        expect(response.success).toBe(true);
+        expect(response.operation).toBe('list');
+        // Verify client-side filtering worked as fallback
+        expect(response.tasks).toHaveLength(2);
+        expect(response.tasks[0].priority).toBe(5);
+        expect(response.tasks[1].priority).toBe(3);
+        expect(response.metadata.clientSideFiltering).toBe(true);
+        expect(response.metadata.serverSideFilteringAttempted).toBe(true);
+        expect(response.metadata.filter).toBe('priority >= 3');
+        expect(response.message).toContain('(filtered client-side - server-side fallback)');
+      } finally {
+        // Restore original environment
+        if (originalEnv === undefined) {
+          delete process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING;
+        } else {
+          process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING = originalEnv;
+        }
+      }
+    });
+
+    it('should use server-side filtering when it succeeds', async () => {
+      // Enable server-side filtering for this test
+      const originalEnv = process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING;
+      process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING = 'true';
+
+      try {
+        // Return pre-filtered tasks (simulating modern Vikunja server-side filtering)
+        const highPriorityTask = { ...mockTask, id: 1, priority: 5 };
+        const mediumPriorityTask = { ...mockTask, id: 2, priority: 3 };
+        
+        mockClient.tasks.getAllTasks.mockResolvedValue([
+          highPriorityTask,
+          mediumPriorityTask,
+        ]);
+
+        const result = await callTool('list', { filter: 'priority >= 3' });
+
+        // Verify server-side filtering was attempted with filter parameter
+        expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+          page: 1,
+          per_page: 1000,
+          filter: 'priority >= 3',
+        });
+
+        // Should only be called once (no fallback needed)
+        expect(mockClient.tasks.getAllTasks).toHaveBeenCalledTimes(1);
+
+        const response = JSON.parse(result.content[0].text);
+        expect(response.success).toBe(true);
+        expect(response.operation).toBe('list');
+        // Verify server-side filtering was used
+        expect(response.tasks).toHaveLength(2);
+        expect(response.tasks[0].priority).toBe(5);
+        expect(response.tasks[1].priority).toBe(3);
+        expect(response.metadata.serverSideFiltering).toBe(true);
+        expect(response.metadata.filter).toBe('priority >= 3');
+        expect(response.message).toContain('(filtered server-side)');
+        expect(response.metadata.clientSideFiltering).toBeUndefined();
+      } finally {
+        // Restore original environment
+        if (originalEnv === undefined) {
+          delete process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING;
+        } else {
+          process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING = originalEnv;
+        }
+      }
     });
 
     it('should handle complex filter expressions', async () => {
@@ -263,7 +366,7 @@ describe('Tasks Tool - Filter Integration', () => {
   describe('list with saved filters', () => {
     it('should apply a saved filter by ID', async () => {
       // Create a saved filter
-      const savedFilter = await filterStorage.create({
+      const savedFilter = await testStorage.create({
         name: 'High Priority',
         filter: 'priority >= 4',
         isGlobal: true,
@@ -276,8 +379,11 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const result = await callTool('list', { filterId: savedFilter.id });
 
-      // Verify the filter was NOT passed to API (due to API limitation)
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      // Verify the filter was NOT passed to API, but default pagination was applied
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
+      });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -292,7 +398,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const projectId = 42;
 
       // Create a project-specific filter
-      const savedFilter = await filterStorage.create({
+      const savedFilter = await testStorage.create({
         name: 'Project Tasks',
         filter: 'done = false && priority >= 3',
         projectId,
@@ -314,8 +420,11 @@ describe('Tasks Tool - Filter Integration', () => {
         filterId: savedFilter.id,
       });
 
-      // Verify the filter was NOT passed to API (due to API limitation)
-      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(projectId, {});
+      // Verify the filter was NOT passed to API, but default pagination was applied
+      expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(projectId, {
+        page: 1,
+        per_page: 1000,
+      });
 
       const response = JSON.parse(result.content[0].text);
       // Verify client-side filtering worked (done = false && priority >= 3)
@@ -335,7 +444,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
     it('should prefer filterId over direct filter parameter', async () => {
       // Create a saved filter
-      const savedFilter = await filterStorage.create({
+      const savedFilter = await testStorage.create({
         name: 'Saved Filter',
         filter: 'priority = 5',
         isGlobal: true,
@@ -352,8 +461,11 @@ describe('Tasks Tool - Filter Integration', () => {
         filter: 'priority = 1', // This should be ignored
       });
 
-      // Verify no filter was passed to API
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      // Verify no filter was passed to API, but default pagination was applied
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
+      });
 
       const response = JSON.parse(result.content[0].text);
       // Verify the saved filter was used for client-side filtering
@@ -362,7 +474,7 @@ describe('Tasks Tool - Filter Integration', () => {
     });
 
     it('should work with pagination and saved filters', async () => {
-      const savedFilter = await filterStorage.create({
+      const savedFilter = await testStorage.create({
         name: 'Paginated Filter',
         filter: 'done = false',
         isGlobal: true,
@@ -394,7 +506,7 @@ describe('Tasks Tool - Filter Integration', () => {
     });
 
     it('should work with search and saved filters', async () => {
-      const savedFilter = await filterStorage.create({
+      const savedFilter = await testStorage.create({
         name: 'Search Filter',
         filter: 'priority >= 3',
         isGlobal: true,
@@ -410,8 +522,10 @@ describe('Tasks Tool - Filter Integration', () => {
         search: 'urgent',
       });
 
-      // Verify filter was NOT passed but search was
+      // Verify filter was NOT passed but search was, plus default pagination
       expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
         s: 'urgent',
       });
 
@@ -420,7 +534,7 @@ describe('Tasks Tool - Filter Integration', () => {
     });
 
     it('should apply client-side done filter with saved filter', async () => {
-      const savedFilter = await filterStorage.create({
+      const savedFilter = await testStorage.create({
         name: 'Priority Filter',
         filter: 'priority >= 3',
         isGlobal: true,

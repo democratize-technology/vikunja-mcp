@@ -42,6 +42,12 @@ temp/
 *.tmp
 *.temp
 
+# Backup files (use proper git branches instead)
+*.bak
+*.backup
+*.old
+*~
+
 # Debug
 .pnp.*
 .yarn/*
@@ -49,4 +55,4 @@ temp/
 !.yarn/plugins
 !.yarn/releases
 !.yarn/sdks
-!.yarn/versions
+!.yarn/versionstemp-coverage/

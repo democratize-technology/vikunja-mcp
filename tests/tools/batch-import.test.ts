@@ -6,9 +6,9 @@ import { z } from 'zod';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 
 jest.mock('../../src/utils/logger', () => ({
@@ -21,7 +21,7 @@ jest.mock('../../src/utils/logger', () => ({
 }));
 
 // Import mocked modules
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 import { logger } from '../../src/utils/logger';
 
 // Define the schema matching the one in batch-import.ts
@@ -105,7 +105,7 @@ describe('Batch Import Tool', () => {
       },
     };
 
-    (getVikunjaClient as jest.Mock).mockResolvedValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
   });
 
   describe('Tool Registration', () => {
@@ -184,6 +184,7 @@ describe('Batch Import Tool', () => {
         done: false,
         priority: 3,
         percent_done: 0,
+        project_id: 1,
       });
 
       expect(result.content[0].text).toContain('Successfully imported: 1 tasks');
@@ -250,7 +251,8 @@ describe('Batch Import Tool', () => {
         hex_color: '#FF0000',
         percent_done: 50,
         repeat_after: 86400,
-        repeat_mode: 1,
+        repeat_mode: 'week',
+        project_id: 1,
       });
 
       expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(103, {
@@ -319,6 +321,7 @@ Task 2,Description 2,2,true`;
         priority: 1,
         done: false,
         percent_done: 0,
+        project_id: 1,
       });
 
       expect(result.content[0].text).toContain('Successfully imported: 2 tasks');
@@ -345,6 +348,7 @@ Task 2,Description 2,2,true`;
         done: false,
         priority: 0,
         percent_done: 0,
+        project_id: 1,
       });
 
       expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(203, {
@@ -377,6 +381,7 @@ Task 2,Description 2,2,true`;
         end_date: '2025-01-31T00:00:00Z',
         hex_color: '#FF0000',
         percent_done: 50,
+        project_id: 1,
       });
     });
 
@@ -722,6 +727,7 @@ Description,1`;
         done: false,
         priority: 5,
         percent_done: 0,
+        project_id: 35,
       });
 
       // Verify updateTaskLabels was called with correct label IDs
@@ -947,8 +953,8 @@ Description,1`;
     });
 
     it('should handle general errors with stack trace', async () => {
-      // Mock getVikunjaClient to throw a general error
-      (getVikunjaClient as jest.Mock).mockRejectedValue(new Error('Connection failed'));
+      // Mock getClientFromContext to throw a general error
+      (getClientFromContext as jest.Mock).mockRejectedValue(new Error('Connection failed'));
 
       const result = await toolHandler({
         projectId: 1,
@@ -1002,6 +1008,7 @@ Description,1`;
         done: false,
         priority: 0,
         percent_done: 0,
+        project_id: 1,
       });
       
       // Should not try to update labels or assignees when they are empty
@@ -1292,7 +1299,7 @@ Description,1`;
 
       for (const response of labelsResponses) {
         jest.clearAllMocks();
-        mockClient.labels.getLabels.mockResolvedValue(response as any);
+        mockClient.labels.getLabels.mockResolvedValue(response as Label[]);
         mockClient.tasks.createTask.mockResolvedValue({ id: 1600, title: 'Test' });
 
         const result = await toolHandler({
@@ -1398,7 +1405,7 @@ Description,1`;
 
     it('should handle non-Error in final catch block', async () => {
       // Test lines 596-599
-      (getVikunjaClient as jest.Mock).mockRejectedValue('String rejection');
+      (getClientFromContext as jest.Mock).mockRejectedValue('String rejection');
 
       const result = await toolHandler({
         projectId: 1,
@@ -1976,7 +1983,7 @@ Description,1`;
     it('should handle final error catch with MCPError instance', async () => {
       // Ensure MCPError is handled differently in final catch
       const mcpError = new MCPError(ErrorCode.INTERNAL_ERROR, 'Test MCP error');
-      (getVikunjaClient as jest.Mock).mockRejectedValue(mcpError);
+      (getClientFromContext as jest.Mock).mockRejectedValue(mcpError);
 
       const result = await toolHandler({
         projectId: 1,

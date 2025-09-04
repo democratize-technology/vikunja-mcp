@@ -175,8 +175,8 @@ describe('AuthManager', () => {
       const apiUrl = 'https://vikunja.example.com/api/v1';
       authManager.connect(apiUrl, 'test-token');
 
-      // Access the private session property to set userId
-      (authManager as any).session.userId = 'user-123';
+      // Use proper testing API to set userId
+      authManager.setTestUserId('user-123');
 
       const status = authManager.getStatus();
       expect(status.authenticated).toBe(true);
@@ -246,6 +246,205 @@ describe('AuthManager', () => {
       expect(authManager.isAuthenticated()).toBe(true);
       expect(authManager.getAuthType()).toBe('api-token');
       expect(authManager.getSession()).toEqual(session);
+    });
+  });
+
+  describe('Testing API Methods', () => {
+    beforeEach(() => {
+      authManager.connect('https://vikunja.example.com/api/v1', 'test-token');
+    });
+
+    describe('setTestUserId', () => {
+      it('should set userId in authenticated session', () => {
+        authManager.setTestUserId('user-123');
+        expect(authManager.getTestUserId()).toBe('user-123');
+        
+        const status = authManager.getStatus();
+        expect(status.userId).toBe('user-123');
+      });
+
+      it('should throw AUTH_REQUIRED error when not authenticated', () => {
+        const unauthenticatedManager = new AuthManager();
+        
+        expect(() => unauthenticatedManager.setTestUserId('user-123')).toThrow(MCPError);
+        expect(() => unauthenticatedManager.setTestUserId('user-123')).toThrow(
+          'Authentication required. Please use vikunja_auth.connect first.',
+        );
+
+        try {
+          unauthenticatedManager.setTestUserId('user-123');
+        } catch (error) {
+          expect(error).toBeInstanceOf(MCPError);
+          expect((error as MCPError).code).toBe(ErrorCode.AUTH_REQUIRED);
+        }
+      });
+
+      it('should update existing userId', () => {
+        authManager.setTestUserId('user-123');
+        expect(authManager.getTestUserId()).toBe('user-123');
+        
+        authManager.setTestUserId('user-456');
+        expect(authManager.getTestUserId()).toBe('user-456');
+      });
+    });
+
+    describe('setTestTokenExpiry', () => {
+      it('should set token expiry in authenticated session', () => {
+        const expiry = new Date('2024-12-31T23:59:59Z');
+        authManager.setTestTokenExpiry(expiry);
+        expect(authManager.getTestTokenExpiry()).toEqual(expiry);
+      });
+
+      it('should throw AUTH_REQUIRED error when not authenticated', () => {
+        const unauthenticatedManager = new AuthManager();
+        const expiry = new Date('2024-12-31T23:59:59Z');
+        
+        expect(() => unauthenticatedManager.setTestTokenExpiry(expiry)).toThrow(MCPError);
+        expect(() => unauthenticatedManager.setTestTokenExpiry(expiry)).toThrow(
+          'Authentication required. Please use vikunja_auth.connect first.',
+        );
+
+        try {
+          unauthenticatedManager.setTestTokenExpiry(expiry);
+        } catch (error) {
+          expect(error).toBeInstanceOf(MCPError);
+          expect((error as MCPError).code).toBe(ErrorCode.AUTH_REQUIRED);
+        }
+      });
+
+      it('should update existing token expiry', () => {
+        const expiry1 = new Date('2024-12-31T23:59:59Z');
+        const expiry2 = new Date('2025-06-30T12:00:00Z');
+        
+        authManager.setTestTokenExpiry(expiry1);
+        expect(authManager.getTestTokenExpiry()).toEqual(expiry1);
+        
+        authManager.setTestTokenExpiry(expiry2);
+        expect(authManager.getTestTokenExpiry()).toEqual(expiry2);
+      });
+    });
+
+    describe('getTestUserId', () => {
+      it('should return undefined when userId is not set', () => {
+        expect(authManager.getTestUserId()).toBeUndefined();
+      });
+
+      it('should return userId when set', () => {
+        authManager.setTestUserId('user-123');
+        expect(authManager.getTestUserId()).toBe('user-123');
+      });
+
+      it('should throw AUTH_REQUIRED error when not authenticated', () => {
+        const unauthenticatedManager = new AuthManager();
+        
+        expect(() => unauthenticatedManager.getTestUserId()).toThrow(MCPError);
+        expect(() => unauthenticatedManager.getTestUserId()).toThrow(
+          'Authentication required. Please use vikunja_auth.connect first.',
+        );
+
+        try {
+          unauthenticatedManager.getTestUserId();
+        } catch (error) {
+          expect(error).toBeInstanceOf(MCPError);
+          expect((error as MCPError).code).toBe(ErrorCode.AUTH_REQUIRED);
+        }
+      });
+    });
+
+    describe('getTestTokenExpiry', () => {
+      it('should return undefined when token expiry is not set', () => {
+        expect(authManager.getTestTokenExpiry()).toBeUndefined();
+      });
+
+      it('should return token expiry when set', () => {
+        const expiry = new Date('2024-12-31T23:59:59Z');
+        authManager.setTestTokenExpiry(expiry);
+        expect(authManager.getTestTokenExpiry()).toEqual(expiry);
+      });
+
+      it('should throw AUTH_REQUIRED error when not authenticated', () => {
+        const unauthenticatedManager = new AuthManager();
+        
+        expect(() => unauthenticatedManager.getTestTokenExpiry()).toThrow(MCPError);
+        expect(() => unauthenticatedManager.getTestTokenExpiry()).toThrow(
+          'Authentication required. Please use vikunja_auth.connect first.',
+        );
+
+        try {
+          unauthenticatedManager.getTestTokenExpiry();
+        } catch (error) {
+          expect(error).toBeInstanceOf(MCPError);
+          expect((error as MCPError).code).toBe(ErrorCode.AUTH_REQUIRED);
+        }
+      });
+    });
+
+    describe('updateSessionProperty', () => {
+      it('should update userId only', () => {
+        authManager.updateSessionProperty({ userId: 'user-123' });
+        expect(authManager.getTestUserId()).toBe('user-123');
+        expect(authManager.getTestTokenExpiry()).toBeUndefined();
+      });
+
+      it('should update tokenExpiry only', () => {
+        const expiry = new Date('2024-12-31T23:59:59Z');
+        authManager.updateSessionProperty({ tokenExpiry: expiry });
+        expect(authManager.getTestTokenExpiry()).toEqual(expiry);
+        expect(authManager.getTestUserId()).toBeUndefined();
+      });
+
+      it('should update both userId and tokenExpiry', () => {
+        const expiry = new Date('2024-12-31T23:59:59Z');
+        authManager.updateSessionProperty({ userId: 'user-123', tokenExpiry: expiry });
+        expect(authManager.getTestUserId()).toBe('user-123');
+        expect(authManager.getTestTokenExpiry()).toEqual(expiry);
+      });
+
+      it('should handle undefined values correctly', () => {
+        // First set some values
+        authManager.setTestUserId('user-123');
+        const expiry = new Date('2024-12-31T23:59:59Z');
+        authManager.setTestTokenExpiry(expiry);
+        
+        // Update with undefined values (should not change existing values)
+        authManager.updateSessionProperty({});
+        expect(authManager.getTestUserId()).toBe('user-123');
+        expect(authManager.getTestTokenExpiry()).toEqual(expiry);
+      });
+
+      it('should throw AUTH_REQUIRED error when not authenticated', () => {
+        const unauthenticatedManager = new AuthManager();
+        
+        expect(() => unauthenticatedManager.updateSessionProperty({ userId: 'user-123' })).toThrow(MCPError);
+        expect(() => unauthenticatedManager.updateSessionProperty({ userId: 'user-123' })).toThrow(
+          'Authentication required. Please use vikunja_auth.connect first.',
+        );
+
+        try {
+          unauthenticatedManager.updateSessionProperty({ userId: 'user-123' });
+        } catch (error) {
+          expect(error).toBeInstanceOf(MCPError);
+          expect((error as MCPError).code).toBe(ErrorCode.AUTH_REQUIRED);
+        }
+      });
+
+      it('should throw VALIDATION_ERROR for invalid property keys', () => {
+        // The updateSessionProperty method is typed to only accept userId and tokenExpiry
+        // But for testing security, we can try to bypass TypeScript with an invalid object
+        const invalidUpdates = { apiUrl: 'new-url', apiToken: 'new-token' } as any;
+        
+        expect(() => authManager.updateSessionProperty(invalidUpdates)).toThrow(MCPError);
+        expect(() => authManager.updateSessionProperty(invalidUpdates)).toThrow(
+          'Invalid session properties: apiUrl, apiToken. Only userId and tokenExpiry are allowed.',
+        );
+
+        try {
+          authManager.updateSessionProperty(invalidUpdates);
+        } catch (error) {
+          expect(error).toBeInstanceOf(MCPError);
+          expect((error as MCPError).code).toBe(ErrorCode.VALIDATION_ERROR);
+        }
+      });
     });
   });
 });

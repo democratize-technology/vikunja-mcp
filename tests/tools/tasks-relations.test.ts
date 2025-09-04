@@ -26,9 +26,9 @@ const RelationKind = {
 
 // Mock the entire module
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 
 // Mock logger to reduce test noise
@@ -52,8 +52,8 @@ jest.mock('../../src/storage/FilterStorage', () => ({
 }));
 
 // Import the mocked function
-import { getVikunjaClient } from '../../src/client';
-const mockedGetClient = jest.mocked(getVikunjaClient);
+import { getClientFromContext } from '../../src/client';
+const mockedGetClientFromContext = jest.mocked(getClientFromContext);
 
 // Mock data
 const mockTask = {
@@ -112,7 +112,7 @@ describe('Task Relations Tool', () => {
     authManager.connect('https://vikunja.test', 'test-token');
 
     // Setup default mock implementation
-    mockedGetClient.mockResolvedValue(mockClient as any);
+    mockedGetClientFromContext.mockResolvedValue(mockClient as any);
 
     // Register the tool
     registerTasksTool(server, authManager);

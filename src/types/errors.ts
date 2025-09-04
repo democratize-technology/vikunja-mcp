@@ -12,12 +12,26 @@ export enum ErrorCode {
   NETWORK_ERROR = 'NETWORK_ERROR',
   NOT_IMPLEMENTED = 'NOT_IMPLEMENTED',
   INTERNAL_ERROR = 'INTERNAL_ERROR',
+  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
+  REQUEST_TOO_LARGE = 'REQUEST_TOO_LARGE',
+  TIMEOUT_ERROR = 'TIMEOUT_ERROR',
 }
 
 interface MCPErrorDetails {
   vikunjaError?: unknown;
   statusCode?: number;
   endpoint?: string;
+  // Rate limiting specific properties
+  rateLimitType?: string;
+  requestSize?: number;
+  responseSize?: number;
+  timeout?: number;
+  limit?: number;
+  current?: number;
+  resetTime?: number;
+  maxRequestSize?: number;
+  maxResponseSize?: number;
+  toolName?: string;
 }
 
 export class MCPError extends Error {

@@ -2,15 +2,13 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../../src/auth/AuthManager';
 import { registerTasksTool } from '../../src/tools/tasks';
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 import type { Task } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 jest.mock('../../src/utils/logger');
@@ -103,8 +101,9 @@ describe('Tasks Tool - Authentication Errors', () => {
       clearSession: jest.fn(),
     } as MockAuthManager;
 
-    // Mock getVikunjaClient
-    (getVikunjaClient as jest.Mock).mockReturnValue(mockClient);
+    // Mock getClientFromContext
+    (getClientFromContext as jest.Mock).mockReturnValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
 
     // Setup mock server
     mockServer = {
@@ -283,8 +282,8 @@ describe('Tasks Tool - Authentication Errors', () => {
           assignees: [1, 2],
         }),
       ).rejects.toThrow(
-        'Assignee operations may have authentication issues with certain Vikunja API versions. ' +
-          'This is a known limitation. Other task fields were updated but assignees could not be changed.',
+        'Assignee removal operations may have authentication issues with certain Vikunja API versions. ' +
+          'This is a known limitation. New assignees were added but old assignees could not be removed.',
       );
     });
   });

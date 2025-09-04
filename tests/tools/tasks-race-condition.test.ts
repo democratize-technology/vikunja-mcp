@@ -10,13 +10,13 @@ import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mo
 
 // Mock the main module and its dependencies
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 
-// Import the mocked function
-import { getVikunjaClient } from '../../src/client';
+// Import the mocked functions
+import { getClientFromContext } from '../../src/client';
 
 describe('Tasks Tool - Race Condition Fix', () => {
   let mockServer: MockServer;
@@ -77,7 +77,8 @@ describe('Tasks Tool - Race Condition Fix', () => {
       },
     } as MockVikunjaClient;
 
-    (getVikunjaClient as jest.Mock).mockReturnValue(mockClient);
+    (getClientFromContext as jest.Mock).mockReturnValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
 
     // Register the tool
     registerTasksTool(mockServer as any, mockAuthManager);

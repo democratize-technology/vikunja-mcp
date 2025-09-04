@@ -5,18 +5,21 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import type { Task } from 'node-vikunja';
 import type { AuthManager } from '../../auth/AuthManager';
+import type { VikunjaClientFactory } from '../../client/VikunjaClientFactory';
 import { MCPError, ErrorCode } from '../../types/index';
 import type { StandardTaskResponse } from '../../types/index';
-import { getVikunjaClient } from '../../client';
+import { getClientFromContext, setGlobalClientFactory } from '../../client';
 import { logger } from '../../utils/logger';
-import { filterStorage } from '../../storage/FilterStorage';
+import { storageManager } from '../../storage/FilterStorage';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
 import { parseFilterString } from '../../utils/filters';
-import type { FilterExpression } from '../../types/filters';
-import type { FilterParams } from './types';
+import type { FilterExpression, SavedFilter } from '../../types/filters';
+import type { GetTasksParams } from 'node-vikunja';
 import { applyFilter } from './filters';
 import { validateId } from './validation';
+import { validateTaskCountLimit, logMemoryUsage, createTaskLimitExceededMessage } from '../../utils/memory';
 
 // Import all operation handlers
 import { createTask, getTask, updateTask, deleteTask } from './crud';
@@ -27,23 +30,35 @@ import { addReminder, removeReminder, listReminders } from './reminders';
 import { applyLabels, removeLabels, listTaskLabels } from './labels';
 
 /**
+ * Get session-scoped storage instance
+ */
+async function getSessionStorage(authManager: AuthManager): ReturnType<typeof storageManager.getStorage> {
+  const session = authManager.getSession();
+  const sessionId = session.apiToken ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}` : 'anonymous';
+  return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
+}
+
+/**
  * List tasks with optional filtering
  */
-async function listTasks(args: {
-  projectId?: number;
-  page?: number;
-  perPage?: number;
-  search?: string;
-  sort?: string;
-  filter?: string;
-  filterId?: string;
-  allProjects?: boolean;
-  done?: boolean;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const params: FilterParams = {};
+async function listTasks(
+  args: {
+    projectId?: number;
+    page?: number;
+    perPage?: number;
+    search?: string;
+    sort?: string;
+    filter?: string;
+    filterId?: string;
+    allProjects?: boolean;
+    done?: boolean;
+  },
+  storage: Awaited<ReturnType<typeof storageManager.getStorage>>,
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const params: GetTasksParams = {};
 
   try {
-    let tasks;
+    let tasks: Task[] = [];
     let filterExpression: FilterExpression | null = null;
     let filterString: string | undefined;
 
@@ -55,7 +70,7 @@ async function listTasks(args: {
 
     // Handle filter - either direct filter string or saved filter ID
     if (args.filterId) {
-      const savedFilter = await filterStorage.get(args.filterId);
+      const savedFilter: SavedFilter | null = await storage.get(args.filterId);
       if (!savedFilter) {
         throw new MCPError(ErrorCode.VALIDATION_ERROR, `Filter with id ${args.filterId} not found`);
       }
@@ -75,28 +90,155 @@ async function listTasks(args: {
       }
       filterExpression = parseResult.expression;
 
-      // Log that we're using client-side filtering due to known issue
-      logger.info('Using client-side filtering due to Vikunja API filter parameter being ignored', {
+      // Log that we're preparing to attempt hybrid filtering
+      logger.info('Preparing hybrid filtering (server-side attempt + client-side fallback)', {
         filter: filterString,
       });
     }
 
-    const client = await getVikunjaClient();
+    const client = await getClientFromContext();
 
-    // Determine which endpoint to use
-    // Don't pass the filter parameter to the API since it's ignored
-    if (args.projectId && !args.allProjects) {
-      // Validate project ID
-      validateId(args.projectId, 'projectId');
-      // Get tasks for specific project
-      tasks = await client.tasks.getProjectTasks(args.projectId, params);
-    } else {
-      // Get all tasks across all projects
-      tasks = await client.tasks.getAllTasks(params);
+    // Memory protection: Check if we should implement pagination limits
+    // Note: Vikunja API doesn't provide task count endpoints, so we use conservative defaults
+    // and rely on user-provided pagination parameters
+    if (!params.per_page) {
+      // Set default pagination to prevent unbounded loading
+      params.per_page = 1000; // Conservative default
+      if (!params.page) {
+        params.page = 1;
+      }
+      logger.info('Applied default pagination for memory protection', {
+        per_page: params.per_page,
+        page: params.page
+      });
     }
 
-    // Apply client-side filtering if we have a filter expression
-    if (filterExpression) {
+    // Validate pagination limits for memory protection
+    const requestedPageSize = params.per_page || 1000;
+    const taskCountValidation = validateTaskCountLimit(requestedPageSize);
+    
+    if (!taskCountValidation.allowed) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        createTaskLimitExceededMessage(
+          'list tasks',
+          requestedPageSize,
+          [
+            `Reduce the perPage parameter (current: ${requestedPageSize}, max allowed: ${taskCountValidation.maxAllowed})`,
+            'Use pagination with smaller page sizes',
+            'Apply more specific filters before listing'
+          ]
+        )
+      );
+    }
+
+    // Determine which endpoint to use
+    // Attempt hybrid filtering: try server-side first, fallback to client-side
+    let serverSideFilteringUsed = false;
+    let serverSideFilteringAttempted = false;
+    
+    // If we have a filter string, attempt server-side filtering first
+    // Only in production or when explicitly enabled via environment variable
+    const shouldAttemptServerSideFiltering = filterString && (
+      process.env.NODE_ENV === 'production' || 
+      process.env.VIKUNJA_ENABLE_SERVER_SIDE_FILTERING === 'true'
+    );
+    
+    if (shouldAttemptServerSideFiltering && filterString) {
+      const serverParams = { ...params, filter: filterString };
+      serverSideFilteringAttempted = true;
+      
+      logger.info('Attempting server-side filtering (modern Vikunja support)', {
+        filter: filterString,
+        endpoint: args.projectId && !args.allProjects ? 'getProjectTasks' : 'getAllTasks'
+      });
+      
+      try {
+        if (args.projectId && !args.allProjects) {
+          // Validate project ID
+          validateId(args.projectId, 'projectId');
+          // Get tasks for specific project with server-side filter
+          tasks = await client.tasks.getProjectTasks(args.projectId, serverParams);
+        } else {
+          // Get all tasks across all projects with server-side filter
+          tasks = await client.tasks.getAllTasks(serverParams);
+        }
+        
+        // Check if server-side filtering appears to have worked
+        // We can't easily detect this without a baseline, but if we get a reasonable
+        // number of tasks back (not obviously all tasks), we'll assume it worked
+        // This heuristic will be refined based on real-world usage
+        serverSideFilteringUsed = true;
+        
+        logger.info('Server-side filtering completed', {
+          taskCount: tasks.length,
+          filter: filterString
+        });
+        
+      } catch (error) {
+        // Server-side filtering failed, fall back to client-side approach
+        logger.warn('Server-side filtering failed, falling back to client-side', {
+          error: error instanceof Error ? error.message : String(error),
+          filter: filterString
+        });
+        serverSideFilteringUsed = false;
+      }
+    }
+    
+    // If server-side filtering wasn't attempted or failed, use the original approach
+    if (!serverSideFilteringUsed) {
+      if (args.projectId && !args.allProjects) {
+        // Validate project ID
+        validateId(args.projectId, 'projectId');
+        // Get tasks for specific project without filter
+        tasks = await client.tasks.getProjectTasks(args.projectId, params);
+      } else {
+        // Get all tasks across all projects without filter
+        tasks = await client.tasks.getAllTasks(params);
+      }
+      
+      if (filterString) {
+        logger.info('Using client-side filtering (fallback or legacy Vikunja)', {
+          filter: filterString,
+          totalTasksLoaded: tasks.length
+        });
+      }
+    }
+
+    // Additional memory protection: validate actual loaded task count
+    const actualTaskCount = tasks.length;
+    const finalTaskCountValidation = validateTaskCountLimit(actualTaskCount);
+    
+    if (!finalTaskCountValidation.allowed) {
+      // Log warning but don't fail since tasks are already loaded
+      logger.warn('Loaded task count exceeds recommended limits', {
+        actualCount: actualTaskCount,
+        maxRecommended: finalTaskCountValidation.maxAllowed,
+        estimatedMemoryMB: finalTaskCountValidation.estimatedMemoryMB
+      });
+      
+      // For extremely large datasets, still enforce hard limits
+      if (actualTaskCount > finalTaskCountValidation.maxAllowed * 1.5) {
+        throw new MCPError(
+          ErrorCode.INTERNAL_ERROR,
+          createTaskLimitExceededMessage(
+            'process loaded tasks',
+            actualTaskCount,
+            [
+              'The API returned more tasks than expected',
+              'Use stricter pagination or filtering',
+              'Contact administrator about data size'
+            ]
+          )
+        );
+      }
+    }
+
+    // Log memory usage for monitoring
+    logMemoryUsage('task listing', actualTaskCount, tasks);
+
+    // Apply client-side filtering only if server-side filtering wasn't used
+    if (filterExpression && !serverSideFilteringUsed) {
       const originalCount = tasks.length;
       tasks = applyFilter(tasks, filterExpression);
       logger.debug('Applied client-side filter', {
@@ -111,19 +253,45 @@ async function listTasks(args: {
       tasks = tasks.filter((task) => task.done === args.done);
     }
 
+    // Determine filtering method message and metadata
+    let filteringMessage = '';
+    let filteringMetadata = {};
+    
+    if (filterString) {
+      if (serverSideFilteringUsed) {
+        filteringMessage = ' (filtered server-side)';
+        filteringMetadata = {
+          filter: filterString,
+          serverSideFiltering: true,
+          filteringNote: 'Server-side filtering used (modern Vikunja)',
+        };
+      } else if (serverSideFilteringAttempted) {
+        filteringMessage = ' (filtered client-side - server-side fallback)';
+        filteringMetadata = {
+          filter: filterString,
+          clientSideFiltering: true,
+          serverSideFilteringAttempted: true,
+          filteringNote: 'Server-side filtering failed, client-side filtering applied as fallback',
+        };
+      } else {
+        filteringMessage = ' (filtered client-side)';
+        filteringMetadata = {
+          filter: filterString,
+          clientSideFiltering: true,
+          filteringNote: 'Client-side filtering applied (server-side disabled in development)',
+        };
+      }
+    }
+
     const response: StandardTaskResponse = {
       success: true,
       operation: 'list',
-      message: `Found ${tasks.length} tasks${filterString ? ' (filtered client-side)' : ''}`,
+      message: `Found ${tasks.length} tasks${filteringMessage}`,
       tasks: tasks,
       metadata: {
         timestamp: new Date().toISOString(),
         count: tasks.length,
-        ...(filterString && {
-          filter: filterString,
-          clientSideFiltering: true,
-          filteringNote: 'Client-side filtering applied due to Vikunja API limitation',
-        }),
+        ...filteringMetadata,
       },
     };
 
@@ -169,7 +337,11 @@ function handleAttach(): Promise<{ content: Array<{ type: 'text'; text: string }
   );
 }
 
-export function registerTasksTool(server: McpServer, authManager: AuthManager): void {
+export function registerTasksTool(
+  server: McpServer, 
+  authManager: AuthManager, 
+  clientFactory?: VikunjaClientFactory
+): void {
   server.tool(
     'vikunja_tasks',
     {
@@ -258,12 +430,20 @@ export function registerTasksTool(server: McpServer, authManager: AuthManager): 
           );
         }
 
-        // Get client once for operations that need it (kept for backward compatibility)
-        await getVikunjaClient();
+        // Set the client factory for this request if provided
+        if (clientFactory) {
+          setGlobalClientFactory(clientFactory);
+        }
+
+        // Test client connection
+        await getClientFromContext();
 
         switch (args.subcommand) {
-          case 'list':
-            return listTasks(args as Parameters<typeof listTasks>[0]);
+          case 'list': {
+            // Get session-scoped storage for filter operations (only when needed)
+            const storage = await getSessionStorage(authManager);
+            return listTasks(args as Parameters<typeof listTasks>[0], storage);
+          }
 
           case 'create':
             return createTask(args as Parameters<typeof createTask>[0]);

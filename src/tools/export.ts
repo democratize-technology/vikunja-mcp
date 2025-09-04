@@ -11,9 +11,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
+import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import type { Project, Task, Label, User, VikunjaClient } from 'node-vikunja';
+import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 import { logger } from '../utils/logger';
 
 /**
@@ -47,9 +49,7 @@ async function exportProjectRecursive(
   includeChildren: boolean = false,
   visitedIds: Set<number> = new Set(),
 ): Promise<ProjectExportData> {
-  // Type assertion needed because node-vikunja types are incomplete
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-  const vikunjaClient = client as any;
+  const vikunjaClient = client as TypedVikunjaClient;
   // Prevent infinite recursion
   if (visitedIds.has(projectId)) {
     throw new MCPError(
@@ -60,21 +60,19 @@ async function exportProjectRecursive(
   visitedIds.add(projectId);
 
   // Get project details
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-  const project = (await vikunjaClient.projects.getProject(projectId)) as Project | null;
+  const project = await vikunjaClient.projects.getProject(projectId);
   if (!project) {
     throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${projectId} not found`);
   }
 
   // Get all tasks for the project
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-  const tasks = (await vikunjaClient.tasks.getProjectTasks(projectId)) as Task[];
+  const tasks = await vikunjaClient.tasks.getProjectTasks(projectId);
 
   // Get all labels used in the project
   const labelIds = new Set<number>();
-  tasks.forEach((task) => {
+  tasks.forEach((task: Task) => {
     if (task.labels && Array.isArray(task.labels)) {
-      task.labels.forEach((label) => {
+      task.labels.forEach((label: Label) => {
         if (label.id) {
           labelIds.add(label.id);
         }
@@ -86,8 +84,7 @@ async function exportProjectRecursive(
   const labels: Label[] = [];
   for (const labelId of labelIds) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const label = (await vikunjaClient.labels.getLabel(labelId)) as Label | null;
+      const label = await vikunjaClient.labels.getLabel(labelId);
       if (label) {
         labels.push(label);
       }
@@ -108,9 +105,8 @@ async function exportProjectRecursive(
 
   // Export child projects if requested
   if (includeChildren && project.id) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const allProjects = (await vikunjaClient.projects.getProjects({})) as Project[];
-    const childProjects = allProjects.filter((p) => p.parent_project_id === project.id);
+    const allProjects = await vikunjaClient.projects.getProjects({});
+    const childProjects = allProjects.filter((p: Project) => p.parent_project_id === project.id);
 
     if (childProjects.length > 0) {
       exportData.child_projects = [];
@@ -133,7 +129,7 @@ async function exportProjectRecursive(
 
 // Schema definitions
 
-export function registerExportTool(server: McpServer, authManager: AuthManager): void {
+export function registerExportTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   // Export project data
   server.tool(
     'vikunja_export_project',
@@ -162,10 +158,9 @@ export function registerExportTool(server: McpServer, authManager: AuthManager):
 
         validateId(projectId, 'projectId');
 
-        const client = await getVikunjaClient();
+        const client = await getClientFromContext();
 
         // Export the project data
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const exportData = await exportProjectRecursive(client, projectId, includeChildren);
 
         // Format the output as JSON
@@ -215,7 +210,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager):
       try {
         const { password } = args;
 
-        await getVikunjaClient();
+        await getClientFromContext();
 
         // The node-vikunja client might not have this endpoint, so we'll make a direct API call
         const session = authManager.getSession();
@@ -286,7 +281,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager):
       try {
         const { password } = args;
 
-        await getVikunjaClient();
+        await getClientFromContext();
 
         // The node-vikunja client might not have this endpoint, so we'll make a direct API call
         const session = authManager.getSession();

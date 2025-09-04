@@ -6,7 +6,7 @@
 import { z } from 'zod';
 import { MCPError, ErrorCode } from '../types/index';
 import type { StandardTaskResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import { logger } from '../utils/logger';
 import type { RelationKind } from 'node-vikunja';
 
@@ -68,7 +68,7 @@ interface RelationArgs {
 export async function handleRelationSubcommands(
   args: RelationArgs,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const client = await getVikunjaClient();
+  const client = await getClientFromContext();
 
   switch (args.subcommand) {
     case 'relate': {

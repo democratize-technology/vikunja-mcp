@@ -7,13 +7,11 @@ import type { User } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Import the function we're mocking
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 
@@ -80,8 +78,9 @@ describe('Users Tool', () => {
       clearSession: jest.fn(),
     } as MockAuthManager;
 
-    // Mock getVikunjaClient
-    (getVikunjaClient as jest.Mock).mockReturnValue(mockClient);
+    // Mock getClientFromContext
+    (getClientFromContext as jest.Mock).mockReturnValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
 
     // Setup mock server
     mockServer = {
@@ -446,9 +445,7 @@ describe('Users Tool', () => {
       mockClient.users.getUser.mockRejectedValue(new Error('Token validation failed'));
 
       await expect(callTool('current')).rejects.toThrow(
-        'User endpoint authentication error. This is a known Vikunja API limitation. ' +
-          'User endpoints require JWT authentication instead of API tokens. ' +
-          'To use user operations, connect with a JWT token (starting with eyJ).',
+        'User operation error: Token validation failed'
       );
     });
 

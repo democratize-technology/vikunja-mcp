@@ -7,14 +7,12 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { AuthManager } from '../../src/auth/AuthManager';
 import { registerLabelsTool } from '../../src/tools/labels';
 import { MCPError, ErrorCode } from '../../src/types';
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 
@@ -88,8 +86,9 @@ describe('Labels Tool', () => {
       disconnect: jest.fn(),
     } as MockAuthManager;
 
-    // Mock getVikunjaClient
-    (getVikunjaClient as jest.Mock).mockReturnValue(mockClient);
+    // Mock getClientFromContext and getClientFromContext
+    (getClientFromContext as jest.Mock).mockReturnValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
 
     // Mock server
     mockServer = {
@@ -124,7 +123,7 @@ describe('Labels Tool', () => {
       );
     });
 
-    // Remove this test as it's no longer applicable - getVikunjaClient throws if not authenticated
+    // Remove this test as it's no longer applicable - getClientFromContext throws if not authenticated
   });
 
   describe('List Labels', () => {

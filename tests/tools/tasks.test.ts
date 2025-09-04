@@ -7,13 +7,13 @@ import type { Task, User } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Import the function we're mocking
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 
@@ -147,13 +147,27 @@ describe('Tasks Tool', () => {
     // Setup mock auth manager
     mockAuthManager = {
       isAuthenticated: jest.fn().mockReturnValue(true),
-      getSession: jest.fn(),
-      setSession: jest.fn(),
-      clearSession: jest.fn(),
+      getSession: jest.fn().mockReturnValue({
+        apiUrl: 'https://api.vikunja.test',
+        apiToken: 'test-token',
+        authType: 'api-token' as const,
+        userId: 'test-user-123'
+      }),
+      getAuthType: jest.fn().mockReturnValue('api-token'),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      getStatus: jest.fn(),
+      saveSession: jest.fn(),
+      setTestUserId: jest.fn(),
+      setTestTokenExpiry: jest.fn(),
+      getTestUserId: jest.fn(),
+      getTestTokenExpiry: jest.fn(),
+      updateSessionProperty: jest.fn(),
     } as MockAuthManager;
 
-    // Mock getVikunjaClient
-    (getVikunjaClient as jest.Mock).mockReturnValue(mockClient);
+    // Mock getClientFromContext
+    (getClientFromContext as jest.Mock).mockReturnValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
 
     // Setup mock server
     mockServer = {
@@ -214,7 +228,10 @@ describe('Tasks Tool', () => {
 
       const result = await callTool('list');
 
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
+      });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
@@ -258,6 +275,8 @@ describe('Tasks Tool', () => {
       });
 
       expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
         sort_by: 'priority,dueDate',
       });
 
@@ -1358,9 +1377,10 @@ describe('Tasks Tool', () => {
     });
 
     it('should handle client initialization errors', async () => {
-      (getVikunjaClient as jest.Mock).mockImplementation(() => {
+      (getClientFromContext as jest.Mock).mockImplementation(() => {
         throw new Error('Failed to initialize client');
       });
+      (getClientFromContext as jest.Mock).mockRejectedValue(new Error('Failed to initialize client'));
 
       await expect(callTool('list')).rejects.toThrow('Failed to initialize client');
     });
@@ -1448,6 +1468,32 @@ describe('Tasks Tool', () => {
       expect(response.tasks).toHaveLength(3);
       expect(response.metadata.affectedFields).toEqual(['done']);
       expect(response.metadata.count).toBe(3);
+    });
+
+    it('should handle string "false" value for done field in bulk update', async () => {
+      const taskIds = [1, 2];
+      mockClient.tasks.getTask.mockImplementation((id: number) =>
+        Promise.resolve({ ...mockTask, id, done: false }),
+      );
+      mockClient.tasks.bulkUpdateTasks.mockResolvedValue({ message: 'Tasks updated successfully' });
+      
+      const result = await callTool('bulk-update', {
+        taskIds,
+        field: 'done',
+        value: 'false' as any, // String "false" should be converted to boolean false
+      });
+      
+      // Should call bulk update API with boolean false (not string "false")
+      expect(mockClient.tasks.bulkUpdateTasks).toHaveBeenCalledWith({
+        task_ids: [1, 2],
+        field: 'done',
+        value: false, // Converted from string "false" to boolean false
+      });
+      
+      const response = JSON.parse(result.content[0].text);
+      expect(response.success).toBe(true);
+      expect(response.operation).toBe('update');
+      expect(response.message).toBe('Successfully updated 2 tasks');
     });
 
     it('should validate required fields for bulk update', async () => {
@@ -2640,10 +2686,11 @@ describe('Tasks Tool', () => {
 
   describe('main handler error handling', () => {
     it('should handle non-Error exceptions in main handler', async () => {
-      // Mock getVikunjaClient to throw a non-Error directly
-      (getVikunjaClient as jest.Mock).mockImplementation(() => {
+      // Mock getClientFromContext to throw a non-Error directly
+      (getClientFromContext as jest.Mock).mockImplementation(() => {
         throw 'String error from client initialization';
       });
+      (getClientFromContext as jest.Mock).mockRejectedValue('String error from client initialization');
 
       await expect(callTool('list')).rejects.toThrow(
         'Task operation error: String error from client initialization',

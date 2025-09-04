@@ -1,61 +1,100 @@
 /**
- * Vikunja Client Factory
- * Creates and manages Vikunja client instances
+ * Vikunja Client Factory Exports
+ * Re-exports for backwards compatibility
  */
 
 import type { VikunjaClient } from 'node-vikunja';
 import type { AuthManager } from './auth/AuthManager';
+import type { 
+  VikunjaModule 
+} from './types/node-vikunja-extended';
+import { isVikunjaClientConstructor } from './types/node-vikunja-extended';
+import { VikunjaClientFactory } from './client/VikunjaClientFactory';
 
-// Global auth manager instance (set by index.ts)
-let authManager: AuthManager | null = null;
+export { VikunjaClientFactory } from './client/VikunjaClientFactory';
 
-export function setAuthManager(manager: AuthManager): void {
-  authManager = manager;
-}
-
-let clientInstance: VikunjaClient | null = null;
-let currentApiUrl: string | null = null;
-let currentApiToken: string | null = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let VikunjaClientClass: any = null;
 
 /**
- * Get an authenticated Vikunja client instance
+ * Client context for dependency injection
  */
-export async function getVikunjaClient(): Promise<VikunjaClient> {
-  if (!authManager) {
-    throw new Error('Auth manager not initialized. Call setAuthManager first.');
-  }
+class ClientContext {
+  private static instance: ClientContext | null = null;
+  private clientFactory: VikunjaClientFactory | null = null;
 
-  const session = authManager.getSession();
+  private constructor() {}
 
-  // Dynamically import VikunjaClient if not already loaded
-  if (!VikunjaClientClass) {
-    const module = await import('node-vikunja');
-    VikunjaClientClass = module.VikunjaClient;
-  }
-
-  // Check if we need to create a new client
-  if (!clientInstance || currentApiUrl !== session.apiUrl || currentApiToken !== session.apiToken) {
-    // Clean up old client if it exists
-    if (clientInstance) {
-      // Perform any necessary cleanup
-      clientInstance = null;
+  static getInstance(): ClientContext {
+    if (!ClientContext.instance) {
+      ClientContext.instance = new ClientContext();
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-    clientInstance = new VikunjaClientClass(session.apiUrl, session.apiToken);
-    currentApiUrl = session.apiUrl;
-    currentApiToken = session.apiToken;
+    return ClientContext.instance;
   }
 
-  return clientInstance as VikunjaClient;
+  /**
+   * Set the client factory for dependency injection
+   */
+  setClientFactory(factory: VikunjaClientFactory): void {
+    this.clientFactory = factory;
+  }
+
+  /**
+   * Clear the client factory (for testing)
+   */
+  clearClientFactory(): void {
+    this.clientFactory = null;
+  }
+
+  /**
+   * Get a client instance using the factory
+   */
+  async getClient(): Promise<VikunjaClient> {
+    if (this.clientFactory) {
+      return Promise.resolve(this.clientFactory.getClient());
+    }
+    throw new Error('No client factory available. Please authenticate first.');
+  }
+
+  /**
+   * Check if factory is available
+   */
+  hasFactory(): boolean {
+    return this.clientFactory !== null;
+  }
 }
 
 /**
- * Cleanup function to reset client instance
+ * Convenience function to get client from context
  */
-export function cleanupVikunjaClient(): void {
-  clientInstance = null;
-  currentApiUrl = null;
-  currentApiToken = null;
+export async function getClientFromContext(): Promise<VikunjaClient> {
+  return ClientContext.getInstance().getClient();
 }
+
+/**
+ * Set the global client factory for all tools
+ */
+export function setGlobalClientFactory(factory: VikunjaClientFactory): void {
+  ClientContext.getInstance().setClientFactory(factory);
+}
+
+/**
+ * Clear the global client factory (for testing)
+ */
+export function clearGlobalClientFactory(): void {
+  ClientContext.getInstance().clearClientFactory();
+}
+
+export { ClientContext };
+
+/**
+ * Creates a new VikunjaClientFactory with dependency injection
+ */
+export async function createVikunjaClientFactory(authManager: AuthManager): Promise<VikunjaClientFactory> {
+  // Dynamically import VikunjaClient
+  const module: VikunjaModule = await import('node-vikunja');
+  if (!isVikunjaClientConstructor(module.VikunjaClient)) {
+    throw new Error('Invalid VikunjaClient constructor imported');
+  }
+  
+  return new VikunjaClientFactory(authManager, module.VikunjaClient);
+}
+

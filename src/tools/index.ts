@@ -5,6 +5,7 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../auth/AuthManager';
+import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 
 import { registerAuthTool } from './auth';
 import { registerTasksTool } from './tasks';
@@ -18,30 +19,35 @@ import { registerWebhooksTool } from './webhooks';
 import { registerBatchImportTool } from './batch-import';
 import { registerExportTool } from './export';
 
-export function registerTools(server: McpServer, authManager: AuthManager): void {
-  // Register all tool handlers
+export function registerTools(
+  server: McpServer, 
+  authManager: AuthManager, 
+  clientFactory?: VikunjaClientFactory
+): void {
+  // Register all tool handlers with dependency injection
   registerAuthTool(server, authManager);
-  registerTasksTool(server, authManager);
-  registerProjectsTool(server, authManager);
-  registerLabelsTool(server, authManager);
-  registerTeamsTool(server, authManager);
+  registerTasksTool(server, authManager, clientFactory);
+  registerProjectsTool(server, authManager, clientFactory);
+  registerLabelsTool(server, authManager, clientFactory);
+  registerTeamsTool(server, authManager, clientFactory);
 
-  // Register filters tool (doesn't need auth manager)
-  registerFiltersTool(server);
+  // Register filters tool (needs auth manager for session-scoped storage)
+  registerFiltersTool(server, authManager, clientFactory);
 
   // Register templates tool
-  registerTemplatesTool(server, authManager);
+  registerTemplatesTool(server, authManager, clientFactory);
 
   // Register webhooks tool last to avoid circular dependency issues
-  registerWebhooksTool(server, authManager);
+  registerWebhooksTool(server, authManager, clientFactory);
 
   // Register batch import tool
-  registerBatchImportTool(server, authManager);
+  registerBatchImportTool(server, authManager, clientFactory);
 
   // Only register user and export tools if authenticated with JWT
   // These tools require JWT authentication to function properly
   if (authManager.isAuthenticated() && authManager.getAuthType() === 'jwt') {
-    registerUsersTool(server, authManager);
-    registerExportTool(server, authManager);
+    registerUsersTool(server, authManager, clientFactory);
+    registerExportTool(server, authManager, clientFactory);
   }
 }
+

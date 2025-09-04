@@ -7,13 +7,13 @@ import type { Task, User, Label, Project } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Import the function we're mocking
-import { getVikunjaClient } from '../../src/client';
+import { getClientFromContext } from '../../src/client';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
-  getVikunjaClient: jest.fn(),
-  setAuthManager: jest.fn(),
-  cleanupVikunjaClient: jest.fn(),
+  getClientFromContext: jest.fn(),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
 }));
 jest.mock('../../src/auth/AuthManager');
 
@@ -108,9 +108,20 @@ describe('Tasks Tool - Edge Cases', () => {
     // Setup mock auth manager
     mockAuthManager = {
       isAuthenticated: jest.fn().mockReturnValue(true),
-      getSession: jest.fn(),
+      getSession: jest.fn().mockReturnValue({
+        apiUrl: 'https://vikunja.example.com',
+        apiToken: 'tk_test-token-123',
+        authType: 'api-token',
+      }),
       setSession: jest.fn(),
       clearSession: jest.fn(),
+      getStatus: jest.fn().mockReturnValue({
+        authenticated: true,
+        apiUrl: 'https://vikunja.example.com',
+      }),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      getAuthType: jest.fn().mockReturnValue('api-token'),
     } as MockAuthManager;
 
     mockServer = {
@@ -123,7 +134,10 @@ describe('Tasks Tool - Edge Cases', () => {
     });
 
     // Setup mocks
-    (getVikunjaClient as jest.MockedFunction<typeof getVikunjaClient>).mockResolvedValue(
+    (getClientFromContext as jest.MockedFunction<typeof getClientFromContext>).mockResolvedValue(
+      mockClient,
+    );
+    (getClientFromContext as jest.MockedFunction<typeof getClientFromContext>).mockResolvedValue(
       mockClient,
     );
 
@@ -595,6 +609,8 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       expect(mockClient.tasks.getProjectTasks).toHaveBeenCalledWith(1, {
+        page: 1,
+        per_page: 1000,
         sort_by: 'priority desc, title asc',
       });
       const response = JSON.parse(result.content[0].text);
@@ -639,7 +655,10 @@ describe('Tasks Tool - Edge Cases', () => {
         filter: complexFilter,
       });
 
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({});
+      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 1000,
+      });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);

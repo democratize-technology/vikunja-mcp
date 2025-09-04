@@ -813,10 +813,9 @@ describe('Filter Utilities', () => {
       // Create a test case that might trigger the undefined currentChar branch
       // by using a string with special unicode that could be mishandled
       const result = parseFilterString('title = "\u0000\uFFFF"');
-      expect(result.error).toBeUndefined();
-      if (result.expression) {
-        expect(result.expression.groups[0].conditions[0].value).toBe('\u0000\uFFFF');
-      }
+      // Security enhancement: these control characters should now be rejected
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('invalid characters');
     });
 
     it('should handle unclosed quote that runs to end of input', () => {
@@ -868,11 +867,15 @@ describe('Filter Utilities', () => {
 
     // Stress test for very long filter strings
     it('should handle extremely long filter strings efficiently', () => {
+      // Create a filter string that's under the length limit
       const conditions = [];
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 50; i++) {
         conditions.push(`priority = ${i}`);
       }
       const filterStr = conditions.join(' || ');
+      
+      // Ensure it's under the limit
+      expect(filterStr.length).toBeLessThan(1000);
 
       const startTime = Date.now();
       const result = parseFilterString(filterStr);
@@ -880,7 +883,7 @@ describe('Filter Utilities', () => {
 
       expect(result.error).toBeUndefined();
       expect(result.expression).not.toBeNull();
-      expect(result.expression!.groups[0].conditions).toHaveLength(100);
+      expect(result.expression!.groups[0].conditions).toHaveLength(50);
 
       // Should parse in reasonable time (less than 100ms)
       expect(parseTime).toBeLessThan(100);
@@ -900,6 +903,58 @@ describe('Filter Utilities', () => {
       result = parseExpression('labels NOT IN label1, label2');
       expect(result).not.toBeNull();
       expect(result!.groups[0].conditions[0].operator).toBe('not in');
+    });
+
+    // Additional edge case tests for uncovered lines
+    it('should handle non-string input in sanitizeFilterInput', () => {
+      // This will trigger line 58: return { sanitized: '', isValid: false };
+      const result = parseFilterString(null as any);
+      expect(result.expression).toBeNull();
+      expect(result.error).toBeDefined();
+    });
+
+    it('should handle invalid date format validation', () => {
+      // This will trigger line 137: return false; in isValidDateValue 
+      const condition: FilterCondition = {
+        field: 'dueDate',
+        operator: '<',
+        value: '2024-13-32', // Invalid month/day
+      };
+      const errors = validateCondition(condition);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('valid date value');
+    });
+
+    it('should handle quoted strings that exceed length limit', () => {
+      // This will trigger line 387: break; in tokenizer for extremely long quoted values
+      const longString = '"' + 'a'.repeat(250) + '"';
+      const result = parseFilterString(`title = ${longString}`);
+      expect(result.expression).toBeNull();
+      expect(result.error).toBeDefined();
+    });
+
+    it('should handle unknown parsing errors gracefully', () => {
+      // This tests the fallback error handling in line 523-529
+      // We'll create a scenario that could trigger non-standard errors
+      const result = parseFilterString('title = "\uFFFF\u0000"'); // Control characters
+      expect(result.expression).toBeNull();
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('invalid characters');
+    });
+
+    it('should handle missing group after logical operator', () => {
+      // This will trigger line 564: throw new Error('Expected group after logical operator');
+      const result = parseFilterString('done = true ||');
+      expect(result.expression).toBeNull();
+      expect(result.error).toBeDefined();
+    });
+
+    it('should handle EOF token in consume method', () => {
+      // This will trigger line 687: throw new Error for EOF tokens
+      const result = parseFilterString('done = true)'); // Extra closing parenthesis
+      expect(result.expression).toBeNull();
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Unexpected token');
     });
   });
 

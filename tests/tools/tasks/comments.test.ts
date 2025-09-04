@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { handleComment, removeComment, listComments } from '../../../src/tools/tasks/comments';
-import { getVikunjaClient } from '../../../src/client';
+import { getClientFromContext } from '../../../src/client';
 import { MCPError, ErrorCode } from '../../../src/types';
 
 jest.mock('../../../src/client');
@@ -16,7 +16,7 @@ describe('Comment operations', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (getVikunjaClient as jest.Mock).mockResolvedValue(mockClient);
+    (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
   });
 
   describe('handleComment', () => {

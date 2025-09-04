@@ -7,39 +7,91 @@ import { MCPError, ErrorCode } from '../types/index';
 import { logger } from './logger';
 
 /**
- * Check if an error is authentication-related
+ * Check if an error is authentication-related using structured error classification
+ * This replaces unsafe string-based classification to prevent false positives
  */
 export function isAuthenticationError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
   }
 
+  // Layer 1: Check structured error properties (most reliable)
+  const errorWithStatus = error as Error & { status?: number; response?: { status?: number } };
+  
+  // Check for HTTP status codes as numbers (not strings)
+  if (errorWithStatus.status === 401 || errorWithStatus.status === 403) {
+    return true;
+  }
+  
+  // Check for Axios-style errors with response.status
+  if (errorWithStatus.response?.status === 401 || errorWithStatus.response?.status === 403) {
+    return true;
+  }
+
+  // Layer 2: Precise pattern matching for error messages (avoid false positives)
   const errorMessage = error.message.toLowerCase();
-  return (
-    errorMessage.includes('token') ||
-    errorMessage.includes('auth') ||
-    errorMessage.includes('401') ||
-    errorMessage.includes('unauthorized') ||
-    errorMessage.includes('forbidden') ||
-    errorMessage.includes('403')
-  );
+  
+  // Use regex patterns for exact matching instead of substring matching
+  // Trim and normalize the message first
+  const normalizedMessage = errorMessage.trim();
+  
+  const authErrorPatterns = [
+    /^unauthorized[!.]*$/i,        // "unauthorized" with optional punctuation
+    /^forbidden[!.]*$/i,          // "forbidden" with optional punctuation
+    /^unauthorized\s+\w+[!.]*$/i, // "unauthorized" + single word with optional punctuation
+    /^forbidden\s+\w+[!.]*$/i,    // "forbidden" + single word with optional punctuation
+    /^\w+\s+forbidden[!.]*$/i,    // single word + "forbidden" with optional punctuation
+    /^\w+\s+unauthorized[!.]*$/i, // single word + "unauthorized" with optional punctuation
+    /\bauthentication\s+failed\b/i, // "authentication failed" as phrase
+    /\bauthentication\s+required\b/i, // "authentication required" as phrase
+    /\bnot\s+authenticated\b/i,   // "not authenticated" as phrase
+    /\binvalid\s+token\b/i,       // "invalid token" as phrase
+    /\btoken\s+invalid\b/i,       // "token invalid" as phrase
+    /\btoken\s+expired\b/i,       // "token expired" as phrase (for auth detection)
+    /\baccess\s+denied\b/i,       // "access denied" as phrase
+    /\bauth\s+failed\b/i,         // "auth failed" as phrase
+    /\bauth_required\b/i,         // "auth_required" pattern
+    /\btoken_invalid\b/i,         // "token_invalid" pattern
+    /^401\b/,                   // HTTP status at start of message
+    /^403\b/,                   // HTTP status at start of message
+    /\berror:\s*401\b/i,          // "Error: 401" pattern
+    /\berror:\s*403\b/i           // "Error: 403" pattern
+  ];
+  
+  return authErrorPatterns.some(pattern => pattern.test(normalizedMessage));
 }
 
 /**
- * Check if an error is specifically a JWT expiration error
+ * Check if an error is specifically a JWT expiration error using precise pattern matching
+ * This replaces unsafe substring matching to prevent false positives
  */
 export function isJWTExpiredError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
   }
 
+  // Check for known JWT library error codes or properties
+  const errorWithCode = error as Error & { code?: string; name?: string };
+  
+  // Check for specific JWT library error codes
+  if (errorWithCode.code === 'TokenExpiredError' || errorWithCode.name === 'TokenExpiredError') {
+    return true;
+  }
+
+  // Use precise regex patterns for JWT expiration messages
   const errorMessage = error.message.toLowerCase();
-  return (
-    errorMessage.includes('token expired') ||
-    errorMessage.includes('jwt expired') ||
-    errorMessage.includes('exp claim') ||
-    (errorMessage.includes('token') && errorMessage.includes('expired'))
-  );
+  
+  const jwtExpirationPatterns = [
+    /\btoken\s+expired\b/,           // "token expired" as phrase
+    /\bjwt\s+expired\b/,             // "jwt expired" as phrase
+    /\bexp\s+claim\b/,               // "exp claim" for JWT exp validation
+    /\btoken\s+has\s+expired\b/,     // "token has expired"
+    /\bjwt\s+has\s+expired\b/,       // "jwt has expired"
+    /\bexpired\s+token\b/,           // "expired token"
+    /\bexpired\s+jwt\b/              // "expired jwt"
+  ];
+  
+  return jwtExpirationPatterns.some(pattern => pattern.test(errorMessage));
 }
 
 /**

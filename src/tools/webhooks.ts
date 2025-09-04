@@ -6,8 +6,9 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
+import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import type { Webhook } from '../types/vikunja';
 import { logger } from '../utils/logger';
 
@@ -147,7 +148,7 @@ interface StandardWebhookResponse {
   };
 }
 
-export function registerWebhooksTool(server: McpServer, authManager: AuthManager): void {
+export function registerWebhooksTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_webhooks',
     {
@@ -171,7 +172,7 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
         );
       }
 
-      await getVikunjaClient(); // Ensure client is initialized
+      await getClientFromContext(); // Ensure client is initialized
       const subcommand = args.subcommand || 'list';
       const session = authManager.getSession();
       const baseUrl = session.apiUrl;

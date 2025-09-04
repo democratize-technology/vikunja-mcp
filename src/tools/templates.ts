@@ -6,11 +6,21 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
+import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
-import { getVikunjaClient } from '../client';
+import { getClientFromContext } from '../client';
 import type { Project, Task } from 'node-vikunja';
-import { filterStorage as storage } from '../storage/FilterStorage';
+import { storageManager } from '../storage/FilterStorage';
 import { logger } from '../utils/logger';
+
+/**
+ * Get session-scoped storage instance
+ */
+async function getSessionStorage(authManager: AuthManager): ReturnType<typeof storageManager.getStorage> {
+  const session = authManager.getSession();
+  const sessionId = session.apiToken ? `${session.apiUrl}:${session.apiToken.substring(0, 8)}` : 'anonymous';
+  return storageManager.getStorage(sessionId, session.userId, session.apiUrl);
+}
 
 interface TemplateData {
   id: string;
@@ -35,7 +45,7 @@ interface TemplateData {
   variables?: Record<string, string>;
 }
 
-export function registerTemplatesTool(server: McpServer, authManager: AuthManager): void {
+export function registerTemplatesTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_templates',
     {
@@ -61,7 +71,8 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
           );
         }
 
-        const client = await getVikunjaClient();
+        const client = await getClientFromContext();
+        const storage = await getSessionStorage(authManager);
 
         switch (args.subcommand) {
           case 'create': {
