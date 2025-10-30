@@ -94,7 +94,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
       // Open database connection
       this.db = new Database(this.config.databasePath, {
         timeout: this.config.timeout,
-        verbose: this.config.debug ? (message?: unknown, ...args: unknown[]) => logger.debug(String(message), ...args) : undefined,
+        verbose: this.config.debug ? ((message?: unknown, ...args: unknown[]) => logger.debug(String(message), ...args)) : undefined,
       });
 
       // Configure database

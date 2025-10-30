@@ -7,16 +7,17 @@ import type { AuthManager } from '../auth/AuthManager';
 import { PermissionManager } from '../auth/permissions';
 import { MCPError, ErrorCode } from '../types/index';
 import { logger } from '../utils/logger';
+import type { z } from 'zod';
 
 /**
- * Tool handler function type
+ * Tool handler function type matching MCP SDK expectations
  */
-type ToolHandler<TArgs = any, TResult = any> = (args: TArgs) => Promise<TResult>;
+type ToolHandler<TArgs = Record<string, unknown>, TResult = unknown> = (args: TArgs) => Promise<TResult>;
 
 /**
  * Wraps a tool handler with permission checking
  */
-export function withPermissions<TArgs = any, TResult = any>(
+export function withPermissions<TArgs = Record<string, unknown>, TResult = unknown>(
   toolName: string,
   authManager: AuthManager,
   handler: ToolHandler<TArgs, TResult>
@@ -55,15 +56,24 @@ export function withPermissions<TArgs = any, TResult = any>(
 /**
  * Creates a complete tool definition with permission checking
  */
-export function createPermissionTool<TArgs = any, TResult = any>(
+export function createPermissionTool<TArgs = Record<string, unknown>, TResult = unknown>(
   toolName: string,
-  schema: any,
+  schema: z.ZodObject<z.ZodRawShape> & { description?: string; inputSchema?: unknown },
   authManager: AuthManager,
   handler: ToolHandler<TArgs, TResult>
-): any {
-  return {
+): {
+  name: string;
+  description?: string;
+  inputSchema: unknown;
+  handler: ToolHandler<TArgs, TResult>;
+} {
+  const result: {
+    name: string;
+    description?: string;
+    inputSchema: unknown;
+    handler: ToolHandler<TArgs, TResult>;
+  } = {
     name: toolName,
-    description: schema.description,
     inputSchema: schema.inputSchema || {
       type: 'object',
       properties: {},
@@ -71,12 +81,17 @@ export function createPermissionTool<TArgs = any, TResult = any>(
     // Wrap the handler with permission checking
     handler: withPermissions(toolName, authManager, handler),
   };
+
+  if (schema.description !== undefined) {
+    result.description = schema.description;
+  }
+
+  return result;
 }
 
 /**
  * Permission status utility for debugging and monitoring
  */
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class PermissionStatus {
   /**
    * Get permission status for all tools
@@ -104,16 +119,37 @@ export class PermissionStatus {
       'vikunja_download_user_export',
     ];
 
-    const status: Record<string, any> = {};
+    const status: Record<string, {
+      hasAccess: boolean;
+      authType?: string;
+      missingPermissions?: string[];
+      suggestedAuthType?: string;
+    }> = {};
 
     for (const toolName of allTools) {
       const result = PermissionManager.checkToolPermission(session, toolName);
-      status[toolName] = {
+      const toolStatus: {
+        hasAccess: boolean;
+        authType?: string;
+        missingPermissions?: string[];
+        suggestedAuthType?: string;
+      } = {
         hasAccess: result.hasPermission,
-        authType: session?.authType,
-        missingPermissions: result.missingPermissions,
-        suggestedAuthType: result.suggestedAuthType,
       };
+
+      if (result.missingPermissions !== undefined) {
+        toolStatus.missingPermissions = result.missingPermissions;
+      }
+
+      if (result.suggestedAuthType !== undefined) {
+        toolStatus.suggestedAuthType = result.suggestedAuthType;
+      }
+
+      if (session?.authType !== undefined) {
+        toolStatus.authType = session.authType;
+      }
+
+      status[toolName] = toolStatus;
     }
 
     return status;
