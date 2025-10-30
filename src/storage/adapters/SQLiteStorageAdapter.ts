@@ -17,7 +17,6 @@ import type {
   StorageAdapter,
   StorageSession} from '../interfaces';
 import {
-  StorageAdapterError,
   StorageInitializationError,
   StorageConnectionError,
   StorageDataError,
@@ -95,7 +94,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
       // Open database connection
       this.db = new Database(this.config.databasePath, {
         timeout: this.config.timeout,
-        verbose: this.config.debug ? logger.debug.bind(logger) : undefined,
+        verbose: this.config.debug ? (message?: unknown, ...args: unknown[]) => logger.debug(String(message), ...args) : undefined,
       });
 
       // Configure database
@@ -568,17 +567,15 @@ export class SQLiteStorageAdapter implements StorageAdapter {
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = `${this.config.databasePath}.backup.${timestamp}`;
-      
-      // Use SQLite backup API for consistent backup
-      const backup = this.db.backup(backupPath);
-      backup.step(-1); // Copy all pages
-      backup.finish();
-      
-      logger.info('Database backup created', {
-        originalPath: this.config.databasePath,
+
+      // Simple file-based backup using SQLite VACUUM INTO
+      this.db.exec(`VACUUM INTO '${backupPath}'`);
+
+      logger.info('Database backup created successfully', {
         backupPath,
+        databasePath: this.config.databasePath,
       });
-      
+
       return backupPath;
     } catch (error) {
       logger.error('Failed to create database backup', {
@@ -601,7 +598,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
       // Recreate database connection
       this.db = new Database(this.config.databasePath, {
         timeout: this.config.timeout,
-        verbose: this.config.debug ? logger.debug.bind(logger) : undefined,
+        verbose: this.config.debug ? (message?: unknown, ...args: unknown[]) => logger.debug(String(message), ...args) : undefined,
       });
 
       // Reconfigure database
@@ -642,9 +639,13 @@ export class SQLiteStorageAdapter implements StorageAdapter {
       if (!this.db) {
         // Attempt to reconnect
         const reconnectSuccess = await this.reconnect();
-        return {
+        const result: {
+          healthy: boolean;
+          error?: string;
+          details?: Record<string, unknown>;
+          recoveryAttempted?: boolean;
+        } = {
           healthy: reconnectSuccess,
-          error: reconnectSuccess ? undefined : 'Database not initialized and reconnection failed',
           details: {
             databasePath: this.config.databasePath,
             sessionId: this.session?.id,
@@ -652,6 +653,12 @@ export class SQLiteStorageAdapter implements StorageAdapter {
           },
           recoveryAttempted: true,
         };
+
+        if (!reconnectSuccess) {
+          result.error = 'Database not initialized and reconnection failed';
+        }
+
+        return result;
       }
 
       // Test basic database connection
@@ -713,19 +720,33 @@ export class SQLiteStorageAdapter implements StorageAdapter {
         const backupPath = await this.createBackup();
         const recoverySuccessful = await this.attemptRecovery();
         
-        return {
-          healthy: recoverySuccessful,
-          error: recoverySuccessful ? undefined : 'Database corruption detected and recovery failed',
-          details: {
-            databasePath: this.config.databasePath,
-            sessionId: this.session?.id,
-            initialized: !!this.db,
-            integrityCheckResult: integrityCheck.integrity_check,
-            backupPath: backupPath || undefined,
-          },
-          recoveryAttempted: true,
-          backupCreated: !!backupPath,
-        };
+        const result: {
+            healthy: boolean;
+            error?: string;
+            details?: Record<string, unknown>;
+            recoveryAttempted?: boolean;
+            backupCreated?: boolean;
+          } = {
+            healthy: recoverySuccessful,
+            details: {
+              databasePath: this.config.databasePath,
+              sessionId: this.session?.id,
+              initialized: !!this.db,
+              integrityCheckResult: integrityCheck.integrity_check,
+            },
+            recoveryAttempted: true,
+            backupCreated: !!backupPath,
+          };
+
+          if (!recoverySuccessful) {
+            result.error = 'Database corruption detected and recovery failed';
+          }
+
+          if (backupPath !== undefined) {
+            result.details!.backupPath = backupPath;
+          }
+
+          return result;
       }
 
       // Check if session table exists and is accessible
@@ -773,17 +794,28 @@ export class SQLiteStorageAdapter implements StorageAdapter {
    * Convert database row to SavedFilter object
    */
   private rowToFilter(row: FilterRow): SavedFilter {
-    return {
+    const result: SavedFilter = {
       id: row.id,
       name: row.name,
-      description: row.description || undefined,
       filter: row.filter,
-      expression: row.expression ? JSON.parse(row.expression) : undefined,
-      projectId: row.project_id || undefined,
       isGlobal: Boolean(row.is_global),
       created: new Date(row.created),
       updated: new Date(row.updated),
     };
+
+    if (row.description !== null) {
+      result.description = row.description;
+    }
+
+    if (row.expression !== null) {
+      result.expression = JSON.parse(row.expression);
+    }
+
+    if (row.project_id !== null) {
+      result.projectId = row.project_id;
+    }
+
+    return result;
   }
 
   /**

@@ -187,13 +187,16 @@ export interface StorageAdapterFactory {
  * Storage adapter error types
  */
 export class StorageAdapterError extends Error {
+  public readonly code: string;
+
   constructor(
     message: string,
-    public readonly code: string,
-    public readonly cause?: Error,
+    code: string,
+    public override readonly cause?: Error,
   ) {
     super(message);
     this.name = 'StorageAdapterError';
+    this.code = code;
   }
 }
 

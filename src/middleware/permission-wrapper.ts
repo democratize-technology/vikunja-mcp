@@ -3,7 +3,6 @@
  * Provides consistent permission checking and error handling for all tools
  */
 
-import type { Tool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../auth/AuthManager';
 import { PermissionManager } from '../auth/permissions';
 import { MCPError, ErrorCode } from '../types/index';
@@ -58,14 +57,17 @@ export function withPermissions<TArgs = any, TResult = any>(
  */
 export function createPermissionTool<TArgs = any, TResult = any>(
   toolName: string,
-  schema: Tool['schema'],
+  schema: any,
   authManager: AuthManager,
   handler: ToolHandler<TArgs, TResult>
-): Tool {
+): any {
   return {
     name: toolName,
     description: schema.description,
-    schema: schema,
+    inputSchema: schema.inputSchema || {
+      type: 'object',
+      properties: {},
+    },
     // Wrap the handler with permission checking
     handler: withPermissions(toolName, authManager, handler),
   };
@@ -128,25 +130,39 @@ export class PermissionStatus {
   } {
     const allPermissions = this.getAllToolPermissions(authManager);
     const availableTools = Object.keys(allPermissions).filter(
-      tool => allPermissions[tool].hasAccess
+      tool => allPermissions[tool]?.hasAccess
     );
     const restrictedTools = Object.keys(allPermissions).filter(
-      tool => !allPermissions[tool].hasAccess
+      tool => !allPermissions[tool]?.hasAccess
     );
 
     const session = authManager.isAuthenticated() ? authManager.getSession() : null;
-    
+
     let upgradeMessage: string | undefined;
     if (session?.authType === 'api-token' && restrictedTools.length > 0) {
       upgradeMessage = 'Reconnect with JWT authentication to access user management and export features.';
     }
 
-    return {
+    const result: {
+      authenticated: boolean;
+      authType?: string;
+      availableTools: string[];
+      restrictedTools: string[];
+      upgradeMessage?: string;
+    } = {
       authenticated: authManager.isAuthenticated(),
-      authType: session?.authType,
       availableTools,
       restrictedTools,
-      upgradeMessage,
     };
+
+    if (session?.authType !== undefined) {
+      result.authType = session.authType;
+    }
+
+    if (upgradeMessage !== undefined) {
+      result.upgradeMessage = upgradeMessage;
+    }
+
+    return result;
   }
 }

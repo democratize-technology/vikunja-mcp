@@ -248,14 +248,16 @@ export async function migrateMemoryToPersistent(): Promise<{
         // Migrate each filter
         for (const filter of filters) {
           try {
-            await persistentStorage.create({
+            const filterData: Omit<typeof filter, 'id' | 'created' | 'updated'> = {
               name: filter.name,
-              description: filter.description,
               filter: filter.filter,
-              expression: filter.expression,
-              projectId: filter.projectId,
               isGlobal: filter.isGlobal,
-            });
+              ...(filter.description !== undefined && { description: filter.description }),
+              ...(filter.expression !== undefined && { expression: filter.expression }),
+              ...(filter.projectId !== undefined && { projectId: filter.projectId }),
+            };
+
+            await persistentStorage.create(filterData);
             migratedFilters++;
           } catch (error) {
             const errorMsg = `Failed to migrate filter ${filter.id} from session ${sessionStat.sessionId}: ${error instanceof Error ? error.message : 'Unknown error'}`;
