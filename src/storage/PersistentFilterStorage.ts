@@ -154,7 +154,10 @@ export class PersistentFilterStorage implements FilterStorage {
     try {
       await this.ensureInitialized();
       this.updateAccessTime();
-      return await this.adapter!.list();
+      if (!this.adapter) {
+        throw new Error('Storage adapter not available');
+      }
+      return await this.adapter.list();
     } finally {
       release();
     }
@@ -165,7 +168,10 @@ export class PersistentFilterStorage implements FilterStorage {
     try {
       await this.ensureInitialized();
       this.updateAccessTime();
-      return await this.adapter!.get(id);
+      if (!this.adapter) {
+        throw new Error('Storage adapter not available');
+      }
+      return await this.adapter.get(id);
     } finally {
       release();
     }
@@ -176,7 +182,10 @@ export class PersistentFilterStorage implements FilterStorage {
     try {
       await this.ensureInitialized();
       this.updateAccessTime();
-      return await this.adapter!.create(filter);
+      if (!this.adapter) {
+        throw new Error('Storage adapter not available');
+      }
+      return await this.adapter.create(filter);
     } finally {
       release();
     }
@@ -190,7 +199,10 @@ export class PersistentFilterStorage implements FilterStorage {
     try {
       await this.ensureInitialized();
       this.updateAccessTime();
-      return await this.adapter!.update(id, filter);
+      if (!this.adapter) {
+        throw new Error('Storage adapter not available');
+      }
+      return await this.adapter.update(id, filter);
     } finally {
       release();
     }
@@ -201,7 +213,10 @@ export class PersistentFilterStorage implements FilterStorage {
     try {
       await this.ensureInitialized();
       this.updateAccessTime();
-      await this.adapter!.delete(id);
+      if (!this.adapter) {
+        throw new Error('Storage adapter not available');
+      }
+      await this.adapter.delete(id);
     } finally {
       release();
     }
@@ -212,7 +227,10 @@ export class PersistentFilterStorage implements FilterStorage {
     try {
       await this.ensureInitialized();
       this.updateAccessTime();
-      return await this.adapter!.findByName(name);
+      if (!this.adapter) {
+        throw new Error('Storage adapter not available');
+      }
+      return await this.adapter.findByName(name);
     } finally {
       release();
     }
@@ -226,7 +244,10 @@ export class PersistentFilterStorage implements FilterStorage {
     try {
       await this.ensureInitialized();
       this.updateAccessTime();
-      await this.adapter!.clear();
+      if (!this.adapter) {
+        throw new Error('Storage adapter not available');
+      }
+      await this.adapter.clear();
     } finally {
       release();
     }
@@ -240,7 +261,10 @@ export class PersistentFilterStorage implements FilterStorage {
     try {
       await this.ensureInitialized();
       this.updateAccessTime();
-      return await this.adapter!.getByProject(projectId);
+      if (!this.adapter) {
+        throw new Error('Storage adapter not available');
+      }
+      return await this.adapter.getByProject(projectId);
     } finally {
       release();
     }
@@ -261,8 +285,11 @@ export class PersistentFilterStorage implements FilterStorage {
     try {
       await this.ensureInitialized();
       this.updateAccessTime();
-      const stats = await this.adapter!.getStats();
-      
+      if (!this.adapter) {
+        throw new Error('Storage adapter not available');
+      }
+      const stats = await this.adapter.getStats();
+
       return {
         ...stats,
         // Override with session info in case adapter doesn't have access

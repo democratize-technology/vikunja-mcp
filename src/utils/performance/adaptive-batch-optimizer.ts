@@ -382,7 +382,11 @@ export class AdaptiveBatchOptimizerManager {
     if (!this.optimizers.has(operationType)) {
       this.optimizers.set(operationType, new AdaptiveBatchOptimizer(operationType, config));
     }
-    return this.optimizers.get(operationType)!;
+    const optimizer = this.optimizers.get(operationType);
+    if (!optimizer) {
+      throw new Error(`Failed to create optimizer for operation type: ${operationType}`);
+    }
+    return optimizer;
   }
 
   /**

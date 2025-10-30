@@ -20,20 +20,21 @@ export class InMemoryStorageAdapter implements StorageAdapter {
   private filters: Map<string, SavedFilter> = new Map();
   private session: StorageSession | null = null;
 
-  async initialize(session: StorageSession): Promise<void> {
+  initialize(session: StorageSession): Promise<void> {
     this.session = session;
     // No initialization needed for in-memory storage
+    return Promise.resolve();
   }
 
-  async list(): Promise<SavedFilter[]> {
-    return Array.from(this.filters.values()).sort((a, b) => b.updated.getTime() - a.updated.getTime());
+  list(): Promise<SavedFilter[]> {
+    return Promise.resolve(Array.from(this.filters.values()).sort((a, b) => b.updated.getTime() - a.updated.getTime()));
   }
 
-  async get(id: string): Promise<SavedFilter | null> {
-    return this.filters.get(id) || null;
+  get(id: string): Promise<SavedFilter | null> {
+    return Promise.resolve(this.filters.get(id) || null);
   }
 
-  async create(filter: Omit<SavedFilter, 'id' | 'created' | 'updated'>): Promise<SavedFilter> {
+  create(filter: Omit<SavedFilter, 'id' | 'created' | 'updated'>): Promise<SavedFilter> {
     const now = new Date();
     const savedFilter: SavedFilter = {
       ...filter,
@@ -43,10 +44,10 @@ export class InMemoryStorageAdapter implements StorageAdapter {
     };
 
     this.filters.set(savedFilter.id, savedFilter);
-    return savedFilter;
+    return Promise.resolve(savedFilter);
   }
 
-  async update(
+  update(
     id: string,
     filter: Partial<Omit<SavedFilter, 'id' | 'created' | 'updated'>>,
   ): Promise<SavedFilter> {
@@ -62,36 +63,38 @@ export class InMemoryStorageAdapter implements StorageAdapter {
     };
 
     this.filters.set(id, updated);
-    return updated;
+    return Promise.resolve(updated);
   }
 
-  async delete(id: string): Promise<void> {
+  delete(id: string): Promise<void> {
     if (!this.filters.has(id)) {
       throw new Error(`Filter with id ${id} not found`);
     }
     this.filters.delete(id);
+    return Promise.resolve();
   }
 
-  async findByName(name: string): Promise<SavedFilter | null> {
+  findByName(name: string): Promise<SavedFilter | null> {
     for (const filter of this.filters.values()) {
       if (filter.name === name) {
-        return filter;
+        return Promise.resolve(filter);
       }
     }
-    return null;
+    return Promise.resolve(null);
   }
 
-  async getByProject(projectId: number): Promise<SavedFilter[]> {
-    return Array.from(this.filters.values())
+  getByProject(projectId: number): Promise<SavedFilter[]> {
+    return Promise.resolve(Array.from(this.filters.values())
       .filter((f) => f.projectId === projectId || f.isGlobal)
-      .sort((a, b) => b.updated.getTime() - a.updated.getTime());
+      .sort((a, b) => b.updated.getTime() - a.updated.getTime()));
   }
 
-  async clear(): Promise<void> {
+  clear(): Promise<void> {
     this.filters.clear();
+    return Promise.resolve();
   }
 
-  async getStats(): Promise<{
+  getStats(): Promise<{
     filterCount: number;
     sessionId: string;
     createdAt: Date;
@@ -111,7 +114,7 @@ export class InMemoryStorageAdapter implements StorageAdapter {
     // Add overhead for Map structure and object references
     memoryBytes += this.filters.size * 100; // Approximate overhead per entry
 
-    return {
+    return Promise.resolve({
       filterCount: this.filters.size,
       sessionId: this.session.id,
       createdAt: this.session.createdAt,
@@ -120,26 +123,27 @@ export class InMemoryStorageAdapter implements StorageAdapter {
       additionalInfo: {
         memoryUsageKb: Math.max(0, Math.ceil(memoryBytes / 1024)),
       },
-    };
+    });
   }
 
-  async close(): Promise<void> {
+  close(): Promise<void> {
     // No cleanup needed for in-memory storage
     this.session = null;
+    return Promise.resolve();
   }
 
-  async healthCheck(): Promise<{
+  healthCheck(): Promise<{
     healthy: boolean;
     error?: string;
     details?: Record<string, unknown>;
   }> {
-    return {
+    return Promise.resolve({
       healthy: true,
       details: {
         storageType: 'memory',
         sessionId: this.session?.id,
         filterCount: this.filters.size,
       },
-    };
+    });
   }
 }

@@ -203,9 +203,12 @@ async function bulkUpdateTasksWithEnhancer(args: {
 
     // Define bulk API operation (tries the official bulk API first)
     const bulkApiOperation = async (ids: number[]): Promise<Task[]> => {
+      if (!args.field) {
+        throw new Error('Field is required for bulk operation');
+      }
       const bulkOperation = {
         task_ids: ids,
-        field: args.field!,
+        field: args.field,
         value: args.value,
       };
 

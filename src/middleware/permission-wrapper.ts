@@ -76,6 +76,7 @@ export function createPermissionTool<TArgs = any, TResult = any>(
 /**
  * Permission status utility for debugging and monitoring
  */
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class PermissionStatus {
   /**
    * Get permission status for all tools

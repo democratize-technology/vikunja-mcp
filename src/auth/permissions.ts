@@ -91,6 +91,7 @@ export interface PermissionCheckResult {
 /**
  * Centralized permission checker
  */
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class PermissionManager {
   /**
    * Check if current session has required permissions for a tool

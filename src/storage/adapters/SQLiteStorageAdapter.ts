@@ -94,7 +94,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
       // Open database connection
       this.db = new Database(this.config.databasePath, {
         timeout: this.config.timeout,
-        verbose: this.config.debug ? (message?: unknown, ...args: unknown[]) => logger.debug(String(message), ...args) : undefined,
+        verbose: this.config.debug ? ((message?: unknown, ...args: unknown[]) => logger.debug(String(message), ...args)) : undefined,
       });
 
       // Configure database
@@ -112,7 +112,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
       this.db.pragma('temp_store = memory');
 
       // Initialize schema
-      await this.initializeSchema();
+      this.initializeSchema();
       
       // Prepare statements
       this.prepareStatements();
@@ -133,7 +133,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
   /**
    * Initialize database schema with migrations
    */
-  private async initializeSchema(): Promise<void> {
+  private initializeSchema(): Promise<void> {
     if (!this.db) {
       throw new StorageInitializationError('Database not initialized');
     }
@@ -598,7 +598,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
       // Recreate database connection
       this.db = new Database(this.config.databasePath, {
         timeout: this.config.timeout,
-        verbose: this.config.debug ? (message?: unknown, ...args: unknown[]) => logger.debug(String(message), ...args) : undefined,
+        verbose: this.config.debug ? ((message?: unknown, ...args: unknown[]) => logger.debug(String(message), ...args)) : undefined,
       });
 
       // Reconfigure database
