@@ -153,12 +153,14 @@ export class PermissionManager {
     const errorMessage = this.generatePermissionErrorMessage(session.authType, missingPermissions);
     const suggestedAuthType = this.shouldSuggestJWT(missingPermissions) ? 'jwt' : undefined;
 
-    return {
+    const result: PermissionCheckResult = {
       hasPermission: false,
       missingPermissions,
-      suggestedAuthType,
       errorMessage,
+      ...(suggestedAuthType !== undefined && { suggestedAuthType }),
     };
+
+    return result;
   }
 
   /**

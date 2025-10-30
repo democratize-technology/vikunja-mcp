@@ -303,19 +303,24 @@ export class MigrationRunner {
    */
   async rollbackToPrevious(): Promise<void> {
     const currentVersion = this.getCurrentVersion();
-    
+
     if (currentVersion <= 0) {
       throw new Error('Cannot rollback: database is at initial version');
     }
 
     const appliedMigrations = this.getAppliedMigrations()
       .sort((a, b) => b.version - a.version);
-    
+
     if (appliedMigrations.length < 2) {
       throw new Error('Cannot rollback: no previous version found');
     }
 
-    const targetVersion = appliedMigrations[1].version;
+    const previousMigration = appliedMigrations[1];
+    if (previousMigration === undefined) {
+      throw new Error('Cannot rollback: no previous version found');
+    }
+
+    const targetVersion = previousMigration.version;
     await this.migrateTo(targetVersion);
   }
 
@@ -338,8 +343,13 @@ export class MigrationRunner {
     // Check for gaps in version sequence
     const sortedVersions = [...uniqueVersions].sort((a, b) => a - b);
     for (let i = 1; i < sortedVersions.length; i++) {
-      if (sortedVersions[i] !== sortedVersions[i - 1] + 1) {
-        errors.push(`Gap in migration versions: missing version ${sortedVersions[i - 1] + 1}`);
+      const currentVersion = sortedVersions[i];
+      const previousVersion = sortedVersions[i - 1];
+
+      if (currentVersion !== undefined && previousVersion !== undefined) {
+        if (currentVersion !== previousVersion + 1) {
+          errors.push(`Gap in migration versions: missing version ${previousVersion + 1}`);
+        }
       }
     }
 

@@ -5,5 +5,10 @@
 
 export { AuthManager } from './AuthManager';
 export { Permission, PermissionManager, TOOL_PERMISSIONS, type PermissionCheckResult } from './permissions';
-export { AuthManagerTestUtils } from './AuthManagerTestUtils';
-export { TestableAuthManager } from './TestableAuthManager';
+export {
+  AuthManagerTestUtilsImpl,
+  createTestableAuthManager,
+  createMockTestableAuthManager,
+  isTestableAuthManager
+} from './AuthManagerTestUtils';
+export type { TestableAuthManager } from './TestableAuthManager';

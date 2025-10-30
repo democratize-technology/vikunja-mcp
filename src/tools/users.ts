@@ -11,7 +11,6 @@ import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getClientFromContext } from '../client';
 import type { ExtendedUserSettings } from '../types/vikunja';
 import { handleAuthError } from '../utils/auth-error-handler';
-import { withPermissions } from '../middleware/permission-wrapper';
 
 interface SearchParams {
   page?: number;

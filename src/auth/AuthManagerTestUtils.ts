@@ -11,11 +11,11 @@ import type { ITestableAuthManager, TestableAuthManager } from './TestableAuthMa
 /**
  * Test utility class that extends AuthManager with testing methods
  * This class should ONLY be used in test environments
- * 
+ *
  * Security Note: This class implements testing methods that allow direct
  * session manipulation. It should never be accessible in production builds.
  */
-class AuthManagerTestUtilsImpl extends AuthManager implements ITestableAuthManager {
+export class AuthManagerTestUtilsImpl extends AuthManager implements ITestableAuthManager {
   /**
    * Set user ID for test scenarios
    * @param userId - User ID to set in the current session
@@ -156,7 +156,7 @@ export function createTestableAuthManager(): TestableAuthManager {
  */
 export function createMockTestableAuthManager(): jest.Mocked<TestableAuthManager> {
   validateTestEnvironment();
-  
+
   return {
     // Production AuthManager methods
     connect: jest.fn(),
@@ -166,14 +166,14 @@ export function createMockTestableAuthManager(): jest.Mocked<TestableAuthManager
     getStatus: jest.fn(),
     getAuthType: jest.fn(),
     saveSession: jest.fn(),
-    
+
     // Testing methods
     setTestUserId: jest.fn(),
     setTestTokenExpiry: jest.fn(),
     getTestUserId: jest.fn(),
     getTestTokenExpiry: jest.fn(),
     updateSessionProperty: jest.fn(),
-  } as jest.Mocked<TestableAuthManager>;
+  } as unknown as jest.Mocked<TestableAuthManager>;
 }
 
 /**
