@@ -112,7 +112,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
       this.db.pragma('temp_store = memory');
 
       // Initialize schema
-      this.initializeSchema();
+      await this.initializeSchema();
       
       // Prepare statements
       this.prepareStatements();
@@ -133,7 +133,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
   /**
    * Initialize database schema with migrations
    */
-  private initializeSchema(): Promise<void> {
+  private async initializeSchema(): Promise<void> {
     if (!this.db) {
       throw new StorageInitializationError('Database not initialized');
     }
