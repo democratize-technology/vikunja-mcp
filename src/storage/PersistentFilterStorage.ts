@@ -335,10 +335,26 @@ export class PersistentFilterStorage implements FilterStorage {
   }> {
     const release = await this.mutex.acquire();
     try {
-      if (!this.adapter || !this.initialized) {
+      // If not initialized, try to initialize it first
+      if (!this.initialized) {
+        try {
+          await this.initialize();
+        } catch (error) {
+          return {
+            healthy: false,
+            error: `Failed to initialize storage: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            details: {
+              sessionId: this.session.id,
+              initialized: this.initialized,
+            },
+          };
+        }
+      }
+
+      if (!this.adapter) {
         return {
           healthy: false,
-          error: 'Storage adapter not initialized',
+          error: 'Storage adapter not available',
           details: {
             sessionId: this.session.id,
             initialized: this.initialized,

@@ -11,6 +11,8 @@
 
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
+import { dirname } from 'path';
+import { mkdir } from 'fs/promises';
 import { logger } from '../../utils/logger';
 import type { SavedFilter } from '../../types/filters';
 import type {
@@ -90,7 +92,11 @@ export class SQLiteStorageAdapter implements StorageAdapter {
   async initialize(session: StorageSession): Promise<void> {
     try {
       this.session = session;
-      
+
+      // Ensure database directory exists
+      const dbDir = dirname(this.config.databasePath);
+      await mkdir(dbDir, { recursive: true });
+
       // Open database connection
       this.db = new Database(this.config.databasePath, {
         timeout: this.config.timeout,
@@ -351,11 +357,16 @@ export class SQLiteStorageAdapter implements StorageAdapter {
         throw new StorageDataError(`Filter with id ${id} not found`);
       }
 
-      // Merge updates
+      // Merge updates - ensure updated timestamp is always later than created
+      let updatedTime = new Date();
+      if (updatedTime.getTime() <= existing.updated.getTime()) {
+        updatedTime = new Date(existing.updated.getTime() + 1);
+      }
+
       const updated: SavedFilter = {
         ...existing,
         ...filter,
-        updated: new Date(),
+        updated: updatedTime,
       };
 
       // Update in database

@@ -194,11 +194,14 @@ describe('CircuitBreaker', () => {
     it('should track comprehensive metrics', async () => {
       const successOp = jest.fn().mockResolvedValue('success');
       const failOp = jest.fn().mockRejectedValue(new Error('failure'));
-      
+
+      // Add small delay to ensure measurable uptime
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       await circuitBreaker.execute(successOp);
       await circuitBreaker.execute(successOp);
       await expect(circuitBreaker.execute(failOp)).rejects.toThrow();
-      
+
       const metrics = circuitBreaker.getMetrics();
       expect(metrics.successes).toBe(2);
       expect(metrics.failures).toBe(1);
