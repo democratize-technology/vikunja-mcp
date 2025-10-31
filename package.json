@@ -20,7 +20,7 @@
     "test:watch": "jest --watch --silent",
     "test:coverage": "jest --coverage --silent",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src --ext .ts --config eslint.config.mjs",
     "format:src": "prettier --write 'src/**/*.ts'",
     "format:tests": "prettier --write 'tests/**/*.ts'",
     "format": "npm run format:src && npm run format:tests",
@@ -95,10 +95,10 @@
     ],
     "coverageThreshold": {
       "global": {
-        "branches": 80,
-        "functions": 85,
-        "lines": 89,
-        "statements": 89
+        "branches": 90,
+        "functions": 98,
+        "lines": 95,
+        "statements": 95
       }
     }
   },

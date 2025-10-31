@@ -2,9 +2,10 @@
  * Tests for Permission Wrapper Middleware
  */
 
-import { withPermissions, PermissionStatus } from '../../src/middleware/permission-wrapper';
+import { withPermissions, createPermissionTool, PermissionStatus } from '../../src/middleware/permission-wrapper';
 import { AuthManager } from '../../src/auth/AuthManager';
 import { MCPError, ErrorCode } from '../../src/types/index';
+import { z } from 'zod';
 
 // Mock the permission manager
 jest.mock('../../src/auth/permissions', () => ({
@@ -286,6 +287,123 @@ describe('Permission Wrapper Middleware', () => {
       expect(summary.availableTools).toEqual([]);
       expect(summary.restrictedTools.length).toBeGreaterThan(0);
       expect(summary.upgradeMessage).toBeUndefined();
+    });
+  });
+
+  describe('createPermissionTool', () => {
+    let mockSchema: z.ZodObject<any>;
+    let mockToolHandler: jest.Mock;
+
+    beforeEach(() => {
+      mockSchema = z.object({
+        test: z.string(),
+      });
+
+      // Use Object.defineProperty to set description since it's read-only
+      Object.defineProperty(mockSchema, 'description', {
+        value: 'Test tool schema',
+        writable: false,
+        configurable: true
+      });
+
+      mockToolHandler = jest.fn();
+    });
+
+    it('should create a complete tool definition with permission checking', () => {
+      // Arrange
+      const mockSession = { apiUrl: 'test', apiToken: 'test', authType: 'jwt' as const };
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getSession.mockReturnValue(mockSession);
+
+      (PermissionManager.checkToolPermission as jest.Mock).mockReturnValue({
+        hasPermission: true,
+        missingPermissions: [],
+      });
+
+      mockToolHandler.mockResolvedValue({ success: true });
+
+      // Act
+      const tool = createPermissionTool('test_tool', mockSchema, mockAuthManager, mockToolHandler);
+
+      // Assert
+      expect(tool.name).toBe('test_tool');
+      expect(tool.description).toBe('Test tool schema');
+      expect(tool.inputSchema).toBeDefined();
+      expect(typeof tool.handler).toBe('function');
+    });
+
+    it('should create tool without description when schema has no description', () => {
+      // Arrange
+      const schemaWithoutDesc = z.object({ test: z.string() });
+      // No description property
+
+      // Act
+      const tool = createPermissionTool('test_tool', schemaWithoutDesc, mockAuthManager, mockToolHandler);
+
+      // Assert
+      expect(tool.name).toBe('test_tool');
+      expect(tool.description).toBeUndefined();
+      expect(tool.inputSchema).toBeDefined();
+    });
+
+    it('should create tool with default input schema when schema has no inputSchema', () => {
+      // Arrange
+      const mockSchemaWithoutInputSchema = {
+        description: 'Test schema',
+        inputSchema: undefined,
+      } as any;
+
+      // Act
+      const tool = createPermissionTool('test_tool', mockSchemaWithoutInputSchema, mockAuthManager, mockToolHandler);
+
+      // Assert
+      expect(tool.inputSchema).toEqual({
+        type: 'object',
+        properties: {},
+      });
+    });
+
+    it('should wrap handler with permission checking', async () => {
+      // Arrange
+      const mockSession = { apiUrl: 'test', apiToken: 'test', authType: 'jwt' as const };
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getSession.mockReturnValue(mockSession);
+
+      (PermissionManager.checkToolPermission as jest.Mock).mockReturnValue({
+        hasPermission: true,
+        missingPermissions: [],
+      });
+
+      mockToolHandler.mockResolvedValue({ result: 'success' });
+
+      // Act
+      const tool = createPermissionTool('test_tool', mockSchema, mockAuthManager, mockToolHandler);
+      const result = await tool.handler({ test: 'args' });
+
+      // Assert
+      expect(result).toEqual({ result: 'success' });
+      expect(mockToolHandler).toHaveBeenCalledWith({ test: 'args' });
+      expect(PermissionManager.checkToolPermission).toHaveBeenCalledWith(mockSession, 'test_tool');
+    });
+
+    it('should enforce permissions through wrapped handler', async () => {
+      // Arrange
+      mockAuthManager.isAuthenticated.mockReturnValue(false);
+
+      (PermissionManager.checkToolPermission as jest.Mock).mockReturnValue({
+        hasPermission: false,
+        missingPermissions: ['basic_auth'],
+        errorMessage: 'Authentication required',
+      });
+
+      // Act
+      const tool = createPermissionTool('test_tool', mockSchema, mockAuthManager, mockToolHandler);
+
+      // Assert
+      await expect(tool.handler({ test: 'args' })).rejects.toThrow(
+        new MCPError(ErrorCode.AUTH_REQUIRED, 'Authentication required')
+      );
+      expect(mockToolHandler).not.toHaveBeenCalled();
     });
   });
 });

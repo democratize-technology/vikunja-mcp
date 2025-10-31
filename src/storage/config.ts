@@ -77,7 +77,8 @@ export function loadStorageConfig(): StorageConfig {
     if (envValue) {
       const parsedValue = parseEnvValue(envValue, configKey);
       if (parsedValue !== undefined) {
-        (config as any)[configKey] = parsedValue;
+        // Type assertion to safely assign parsed value
+        (config as Record<string, unknown>)[configKey] = parsedValue;
       }
     }
   }
