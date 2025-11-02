@@ -7,14 +7,17 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
+import type { ResponseMetadata } from '../types/responses';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getClientFromContext } from '../client';
+import { createOptimizedResponse, createAorpEnabledFactory } from '../utils/response-factory';
+import { Verbosity } from '../transforms/index';
 import type { Project, ProjectListParams, LinkSharing, LinkShareAuth } from 'node-vikunja';
-import { 
-  handleStatusCodeError, 
-  transformApiError, 
-  createAuthRequiredError, 
-  createValidationError 
+import {
+  handleStatusCodeError,
+  transformApiError,
+  createAuthRequiredError,
+  createValidationError
 } from '../utils/error-handler';
 
 /**
@@ -43,6 +46,111 @@ function validateHexColor(hexColor: string): void {
  * Maximum allowed depth for project hierarchy to prevent excessive nesting
  */
 const MAX_PROJECT_DEPTH = 10;
+
+/**
+ * Helper function to create response with optional optimization and AORP support
+ */
+function createProjectResponse(
+  operation: string,
+  message: string,
+  data: unknown,
+  metadata: Partial<ResponseMetadata> = {},
+  verbosity?: string,
+  useOptimizedFormat?: boolean,
+  useAorp?: boolean
+): unknown {
+  // Default to standard verbosity if not specified
+  const selectedVerbosity = verbosity || 'standard';
+
+  // Use optimized format if requested or if verbosity is not standard
+  const shouldOptimize = useOptimizedFormat || selectedVerbosity !== 'standard';
+
+  // Use AORP if explicitly requested
+  if (useAorp) {
+    const aorpFactory = createAorpEnabledFactory();
+    return aorpFactory.createResponse(operation, message, data, metadata, {
+      verbosity: selectedVerbosity as Verbosity,
+      useOptimization: shouldOptimize,
+      useAorp: true,
+      aorpOptions: {
+        builderConfig: {
+          confidenceMethod: 'adaptive',
+          enableNextSteps: true,
+          enableQualityIndicators: true
+        },
+        nextStepsConfig: {
+          maxSteps: 5,
+          enableContextual: true,
+          templates: {
+            [`${operation}`]: [
+              "Verify the project data appears correctly in listings",
+              "Check related tasks and subprojects",
+              "Test any automated workflows or notifications"
+            ],
+            'list-projects': [
+              "Review the returned projects for completeness",
+              "Apply filters or pagination if needed",
+              "Consider sorting by priority or due date"
+            ],
+            'get-project': [
+              "Verify all required project fields are present",
+              "Check project hierarchy and relationships",
+              "Review project permissions and sharing settings"
+            ],
+            'create-project': [
+              "Verify the created project appears in listings",
+              "Set up project permissions and sharing",
+              "Consider creating initial tasks or milestones"
+            ],
+            'update-project': [
+              "Confirm changes are reflected in the UI",
+              "Check related data for consistency",
+              "Notify team members of important changes"
+            ],
+            'delete-project': [
+              "Verify project no longer appears in searches",
+              "Check for any orphaned tasks or subprojects",
+              "Update documentation and references"
+            ]
+          }
+        },
+        qualityConfig: {
+          completenessWeight: 0.6,
+          reliabilityWeight: 0.4,
+          customIndicators: {
+            projectHierarchyDepth: (data: unknown) => {
+              // Simple indicator based on project depth
+              const dataObj = data as { project?: { parent_project_id?: number } };
+              if (dataObj?.project?.parent_project_id) return 0.8;
+              return 0.9; // Root projects are slightly "more complete"
+            },
+            taskCountEstimate: (data: unknown) => {
+              // Estimate based on project complexity
+              const dataObj = data as { project?: { description?: string } };
+              if (!dataObj?.project) return 0.5;
+              const desc = dataObj.project.description || '';
+              if (desc.length > 200) return 0.8;
+              if (desc.length > 50) return 0.6;
+              return 0.4;
+            }
+          }
+        }
+      }
+    });
+  }
+
+  if (shouldOptimize) {
+    return createOptimizedResponse(
+      operation,
+      message,
+      data,
+      metadata,
+      selectedVerbosity as Verbosity
+    );
+  }
+
+  return createStandardResponse(operation, message, data, metadata);
+}
 
 /**
  * Calculates the depth of a project in the hierarchy
@@ -144,6 +252,10 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
       password: z.string().optional(),
       passwordEnabled: z.boolean().optional(),
       expires: z.string().optional(),
+      // Response formatting options
+      verbosity: z.enum(['minimal', 'standard', 'detailed', 'complete']).optional(),
+      useOptimizedFormat: z.boolean().optional(),
+      useAorp: z.boolean().optional(),
     },
     async (args) => {
       try {
@@ -166,11 +278,14 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
 
               const projects = await client.projects.getProjects(params);
 
-              const response = createStandardResponse(
+              const response = createProjectResponse(
                 'list-projects',
                 `Retrieved ${projects.length} project${projects.length !== 1 ? 's' : ''}`,
                 { projects },
                 { count: projects.length, params },
+                args.verbosity,
+                args.useOptimizedFormat,
+                args.useAorp
               );
 
               return {
@@ -196,10 +311,13 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
             try {
               const project = await client.projects.getProject(args.id);
 
-              const response = createStandardResponse(
+              const response = createProjectResponse(
                 'get-project',
                 `Retrieved project "${project.title}"`,
                 { project },
+                {},
+                args.verbosity,
+                args.useOptimizedFormat
               );
 
               return {
@@ -249,12 +367,22 @@ export function registerProjectsTool(server: McpServer, authManager: AuthManager
 
               const project = await client.projects.createProject(projectData as Project);
 
-              const response = createStandardResponse(
-                'create-project',
-                `Project "${project.title}" created successfully`,
-                { project },
-                { affectedFields: Object.keys(projectData) },
-              );
+              const response = args.useAorp
+                ? createProjectResponse(
+                    'create-project',
+                    `Project "${project.title}" created successfully`,
+                    { project },
+                    { affectedFields: Object.keys(projectData) },
+                    args.verbosity,
+                    args.useOptimizedFormat,
+                    args.useAorp
+                  )
+                : createStandardResponse(
+                    'create-project',
+                    `Project "${project.title}" created successfully`,
+                    { project },
+                    { affectedFields: Object.keys(projectData) },
+                  );
 
               return {
                 content: [

@@ -135,8 +135,8 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].priority).toBeGreaterThanOrEqual(4);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].priority).toBeGreaterThanOrEqual(4);
     });
 
     it('should handle complex filter that cannot be converted', async () => {

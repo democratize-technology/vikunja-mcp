@@ -164,11 +164,11 @@ describe('Tasks Tool - Repeating Tasks', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('create');
-      expect(response.task).toBeDefined();
-      expect(response.task.title).toBe('Stock up on space ice cream');
-      expect(response.task.repeat_mode).toBe(0);
-      expect(response.task.repeat_after).toBe(30 * 24 * 60 * 60);
+      expect(response.operation).toBe('create-task');
+      expect(response.data.task).toBeDefined();
+      expect(response.data.task.title).toBe('Stock up on space ice cream');
+      expect(response.data.task.repeat_mode).toBe(0);
+      expect(response.data.task.repeat_after).toBe(30 * 24 * 60 * 60);
     });
 
     it('should handle weekly repeat mode', async () => {
@@ -200,8 +200,8 @@ describe('Tasks Tool - Repeating Tasks', () => {
       );
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.task.repeat_mode).toBe(0);
-      expect(response.task.repeat_after).toBe(1 * 7 * 24 * 60 * 60);
+      expect(response.data.task.repeat_mode).toBe(0);
+      expect(response.data.task.repeat_after).toBe(1 * 7 * 24 * 60 * 60);
     });
 
     it('should handle monthly repeat mode', async () => {
@@ -234,7 +234,7 @@ describe('Tasks Tool - Repeating Tasks', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.task.repeat_mode).toBe(1); // Monthly mode
+      expect(response.data.task.repeat_mode).toBe(1); // Monthly mode
     });
 
     it('should handle yearly repeat mode', async () => {
@@ -266,8 +266,8 @@ describe('Tasks Tool - Repeating Tasks', () => {
       );
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.task.repeat_mode).toBe(0);
-      expect(response.task.repeat_after).toBe(1 * 365 * 24 * 60 * 60);
+      expect(response.data.task.repeat_mode).toBe(0);
+      expect(response.data.task.repeat_after).toBe(1 * 365 * 24 * 60 * 60);
     });
 
     it('should create tasks via bulk-create with repeat_mode', async () => {
@@ -315,10 +315,10 @@ describe('Tasks Tool - Repeating Tasks', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('create');
-      expect(response.tasks).toHaveLength(2);
-      expect(response.tasks[0].repeat_mode).toBe(0);
-      expect(response.tasks[1].repeat_mode).toBe(0);
+      expect(response.operation).toBe('create-tasks');
+      expect(response.data.tasks).toHaveLength(2);
+      expect(response.data.tasks[0].repeat_mode).toBe(0);
+      expect(response.data.tasks[1].repeat_mode).toBe(0);
     });
   });
 
@@ -357,8 +357,8 @@ describe('Tasks Tool - Repeating Tasks', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.task.repeat_after).toBe(1 * 7 * 24 * 60 * 60);
-      expect(response.task.repeat_mode).toBe(0);
+      expect(response.data.task.repeat_after).toBe(1 * 7 * 24 * 60 * 60);
+      expect(response.data.task.repeat_mode).toBe(0);
     });
   });
 });

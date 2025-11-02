@@ -219,13 +219,13 @@ describe('Tasks Tool - Index Routing Coverage', () => {
   describe('All Subcommand Routing', () => {
     it('should route to list subcommand', async () => {
       const result = await callTool('list');
-      expect(result.content[0].text).toContain('"operation": "list"');
+      expect(result.content[0].text).toContain('"operation": "list-tasks"');
       expect(mockClient.tasks.getAllTasks).toHaveBeenCalled();
     });
 
     it('should route to create subcommand', async () => {
       const result = await callTool('create', { title: 'New Task', projectId: 1 });
-      expect(result.content[0].text).toContain('"operation": "create"');
+      expect(result.content[0].text).toContain('"operation": "create-task"');
       expect(mockClient.tasks.createTask).toHaveBeenCalledWith(1, {
         title: 'New Task',
         project_id: 1,
@@ -234,13 +234,13 @@ describe('Tasks Tool - Index Routing Coverage', () => {
 
     it('should route to get subcommand', async () => {
       const result = await callTool('get', { id: 1 });
-      expect(result.content[0].text).toContain('"operation": "get"');
+      expect(result.content[0].text).toContain('"operation": "get-task"');
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(1);
     });
 
     it('should route to update subcommand', async () => {
       const result = await callTool('update', { id: 1, title: 'Updated Task' });
-      expect(result.content[0].text).toContain('"operation": "update"');
+      expect(result.content[0].text).toContain('"operation": "update-task"');
       expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(1, expect.objectContaining({
         title: 'Updated Task'
       }));
@@ -248,7 +248,7 @@ describe('Tasks Tool - Index Routing Coverage', () => {
 
     it('should route to delete subcommand', async () => {
       const result = await callTool('delete', { id: 1 });
-      expect(result.content[0].text).toContain('"operation": "delete"');
+      expect(result.content[0].text).toContain('"operation": "delete-task"');
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);
     });
 
@@ -289,29 +289,29 @@ describe('Tasks Tool - Index Routing Coverage', () => {
     });
 
     it('should route to bulk-update subcommand', async () => {
-      const result = await callTool('bulk-update', { 
-        taskIds: [1, 2], 
-        field: 'priority', 
-        value: 3 
+      const result = await callTool('bulk-update', {
+        taskIds: [1, 2],
+        field: 'priority',
+        value: 3
       });
-      expect(result.content[0].text).toContain('"operation": "update"');
+      expect(result.content[0].text).toContain('"operation": "update-tasks"');
     });
 
     it('should route to bulk-delete subcommand', async () => {
       mockClient.tasks.deleteTask = jest.fn().mockResolvedValue(undefined);
       const result = await callTool('bulk-delete', { taskIds: [1, 2] });
-      expect(result.content[0].text).toContain('"operation": "delete"');
+      expect(result.content[0].text).toContain('"operation": "delete-tasks"');
     });
 
     it('should route to bulk-create subcommand', async () => {
-      const result = await callTool('bulk-create', { 
+      const result = await callTool('bulk-create', {
         projectId: 1,
         tasks: [
           { title: 'Task 1' },
           { title: 'Task 2' }
         ]
       });
-      expect(result.content[0].text).toContain('"operation": "create"');
+      expect(result.content[0].text).toContain('"operation": "create-tasks"');
     });
 
     it('should route to relate subcommand', async () => {
@@ -499,9 +499,9 @@ describe('Tasks Tool - Index Routing Coverage', () => {
       storageManager.getStorage.mockResolvedValue(mockStorage);
 
       const result = await callTool('list', { filterId: 'high-priority' });
-      
+
       expect(mockStorage.get).toHaveBeenCalledWith('high-priority');
-      expect(result.content[0].text).toContain('"operation": "list"');
+      expect(result.content[0].text).toContain('"operation": "list-tasks"');
     });
 
     it('should handle filter parsing errors', async () => {
@@ -520,7 +520,7 @@ describe('Tasks Tool - Index Routing Coverage', () => {
       process.env.NODE_ENV = 'production';
 
       const result = await callTool('list', { filter: 'priority > 5' });
-      expect(result.content[0].text).toContain('"operation": "list"');
+      expect(result.content[0].text).toContain('"operation": "list-tasks"');
 
       // Reset environment
       process.env.NODE_ENV = originalEnv;
@@ -528,7 +528,7 @@ describe('Tasks Tool - Index Routing Coverage', () => {
 
     it('should handle done status filtering', async () => {
       const result = await callTool('list', { done: true });
-      expect(result.content[0].text).toContain('"operation": "list"');
+      expect(result.content[0].text).toContain('"operation": "list-tasks"');
     });
   });
 
@@ -568,12 +568,12 @@ describe('Tasks Tool - Index Routing Coverage', () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
 
-      const result = await callTool('list', { 
-        projectId: 1, 
-        filter: 'priority > 5' 
+      const result = await callTool('list', {
+        projectId: 1,
+        filter: 'priority > 5'
       });
-      
-      expect(result.content[0].text).toContain('"operation": "list"');
+
+      expect(result.content[0].text).toContain('"operation": "list-tasks"');
       
       // Reset environment
       process.env.NODE_ENV = originalEnv;
@@ -595,7 +595,7 @@ describe('Tasks Tool - Index Routing Coverage', () => {
       });
 
       const result = await callTool('list', { filter: 'priority > 5' });
-      expect(result.content[0].text).toContain('"operation": "list"');
+      expect(result.content[0].text).toContain('"operation": "list-tasks"');
       
       // Should have been called twice - once for server-side (failed), once for fallback
       expect(mockClient.tasks.getAllTasks).toHaveBeenCalledTimes(2);
@@ -615,7 +615,7 @@ describe('Tasks Tool - Index Routing Coverage', () => {
       mockClient.tasks.getAllTasks = jest.fn().mockResolvedValue(largeTasks);
       
       const result = await callTool('list');
-      expect(result.content[0].text).toContain('"operation": "list"');
+      expect(result.content[0].text).toContain('"operation": "list-tasks"');
       expect(result.content[0].text).toContain('"count": 8000');
     });
 

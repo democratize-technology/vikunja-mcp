@@ -230,9 +230,9 @@ describe('Tasks Tool - Race Condition Fix', () => {
       const response = JSON.parse(result.content[0].text);
 
       expect(response.success).toBe(true);
-      expect(response.task.id).toBe(999);
-      expect(response.task.labels).toHaveLength(1);
-      expect(response.task.assignees).toHaveLength(1);
+      expect(response.data.task.id).toBe(999);
+      expect(response.data.task.labels).toHaveLength(1);
+      expect(response.data.task.assignees).toHaveLength(1);
 
       // Verify no cleanup was attempted
       expect(mockClient.tasks.deleteTask).not.toHaveBeenCalled();

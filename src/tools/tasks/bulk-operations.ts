@@ -3,8 +3,7 @@
  * Enhanced with intelligent batching, caching, and monitoring
  */
 
-import type { StandardTaskResponse } from '../../types/index';
-import { MCPError, ErrorCode } from '../../types/index';
+import { MCPError, ErrorCode, createStandardResponse } from '../../types/index';
 import { getClientFromContext } from '../../client';
 import type { Task } from 'node-vikunja';
 import { logger } from '../../utils/logger';
@@ -13,7 +12,7 @@ import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { BatchProcessor, type BatchResult } from '../../utils/performance/batch-processor';
 import { ResponseCache } from '../../utils/performance/response-cache';
 import { performanceMonitor } from '../../utils/performance/performance-monitor';
-import { 
+import {
   createBulkOperationEnhancer,
   type EnhancedBatchResult
 } from '../../utils/performance/bulk-operation-enhancer';
@@ -262,14 +261,13 @@ async function bulkUpdateTasksWithEnhancer(args: {
     );
 
     // Build enhanced response
-    const response = {
-      success: result.failed.length === 0,
-      operation: 'update',
-      message: result.failed.length === 0
+    const response = createStandardResponse(
+      'update-tasks',
+      result.failed.length === 0
         ? `Successfully updated ${taskIds.length} tasks using ${result.strategy} strategy`
         : `Partially updated ${result.successful.length}/${taskIds.length} tasks using ${result.strategy} strategy`,
-      tasks: result.successful,
-      metadata: {
+      { tasks: result.successful },
+      {
         timestamp: new Date().toISOString(),
         count: taskIds.length,
         affectedFields: [args.field],
@@ -288,7 +286,7 @@ async function bulkUpdateTasksWithEnhancer(args: {
           })),
         }),
       },
-    };
+    );
 
     logger.info('Enhanced bulk update completed', {
       strategy: result.strategy,
@@ -588,17 +586,16 @@ export async function bulkUpdateTasks(args: {
         }
       }
 
-      const response: StandardTaskResponse = {
-        success: true,
-        operation: 'update',
-        message: `Successfully updated ${taskIds.length} tasks`,
-        tasks: updatedTasks,
-        metadata: {
+      const response = createStandardResponse(
+        'update-tasks',
+        `Successfully updated ${taskIds.length} tasks`,
+        { tasks: updatedTasks },
+        {
           timestamp: new Date().toISOString(),
           count: taskIds.length,
           affectedFields: [args.field],
         },
-      };
+      );
 
       return {
         content: [
@@ -796,12 +793,11 @@ export async function bulkUpdateTasks(args: {
         failedFetches = fetchResult.failed.length;
       }
 
-      const response: StandardTaskResponse = {
-        success: true,
-        operation: 'update',
-        message: `Successfully updated ${taskIds.length} tasks${failedFetches > 0 ? ` (${failedFetches} tasks could not be fetched after update)` : ''}`,
-        tasks: updatedTasks,
-        metadata: {
+      const response = createStandardResponse(
+        'update-tasks',
+        `Successfully updated ${taskIds.length} tasks${failedFetches > 0 ? ` (${failedFetches} tasks could not be fetched after update)` : ''}`,
+        { tasks: updatedTasks },
+        {
           timestamp: new Date().toISOString(),
           affectedFields: [args.field],
           count: taskIds.length,
@@ -814,7 +810,7 @@ export async function bulkUpdateTasks(args: {
             cacheEfficiency: taskOperationCache.getMetrics().hitRatio,
           },
         },
-      };
+      );
 
       logger.info('Bulk update completed with performance optimization', {
         taskCount: taskIds.length,
@@ -905,18 +901,18 @@ export async function bulkDeleteTasks(args: {
 
       // If some succeeded, report partial success
       if (successCount > 0) {
-        const response: StandardTaskResponse = {
-          success: false,
-          operation: 'delete',
-          message: `Bulk delete partially completed. Successfully deleted ${successCount} tasks. Failed to delete task IDs: ${failedIds.join(', ')}`,
-          metadata: {
+        const response = createStandardResponse(
+          'delete-tasks',
+          `Bulk delete partially completed. Successfully deleted ${successCount} tasks. Failed to delete task IDs: ${failedIds.join(', ')}`,
+          { deletedTaskIds: failedIds.filter((id): id is number => id !== undefined) },
+          {
             timestamp: new Date().toISOString(),
             count: successCount,
             failedCount: failures.length,
             failedIds: failedIds.filter((id): id is number => id !== undefined),
-            previousState: tasksToDelete,
+            previousState: tasksToDelete as unknown as Record<string, unknown>,
           },
-        };
+        );
 
         return {
           content: [
@@ -935,16 +931,16 @@ export async function bulkDeleteTasks(args: {
       }
     }
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'delete',
-      message: `Successfully deleted ${taskIds.length} tasks`,
-      metadata: {
+    const response = createStandardResponse(
+      'delete-tasks',
+      `Successfully deleted ${taskIds.length} tasks`,
+      { deletedTaskIds: taskIds },
+      {
         timestamp: new Date().toISOString(),
         count: taskIds.length,
-        previousState: tasksToDelete,
+        previousState: tasksToDelete as unknown as Record<string, unknown>,
       },
-    };
+    );
 
     logger.debug('Bulk delete completed', {
       taskCount: taskIds.length,
@@ -1146,15 +1142,13 @@ export async function bulkCreateTasks(args: {
       );
     }
 
-    const response: StandardTaskResponse = {
-      success: failedTasks.length === 0,
-      operation: 'create',
-      message:
-        failedTasks.length > 0
-          ? `Bulk create partially completed. Successfully created ${successfulTasks.length} tasks, ${failedTasks.length} failed.`
-          : `Successfully created ${successfulTasks.length} tasks`,
-      tasks: successfulTasks,
-      metadata: {
+    const response = createStandardResponse(
+      'create-tasks',
+      failedTasks.length > 0
+        ? `Bulk create partially completed. Successfully created ${successfulTasks.length} tasks, ${failedTasks.length} failed.`
+        : `Successfully created ${successfulTasks.length} tasks`,
+      { tasks: successfulTasks },
+      {
         timestamp: new Date().toISOString(),
         count: successfulTasks.length,
         ...(failedTasks.length > 0 && {
@@ -1162,7 +1156,7 @@ export async function bulkCreateTasks(args: {
           failures: failedTasks,
         }),
       },
-    };
+    );
 
     logger.debug('Bulk create completed', {
       successCount: successfulTasks.length,

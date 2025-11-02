@@ -187,7 +187,7 @@ describe('Tasks Tool - Edge Cases', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.task).toMatchObject({
+      expect(response.data.task).toMatchObject({
         id: 1,
         title: '🚀 Deploy app с кириллицей 中文字符 العربية',
         description: 'Task with emojis 😊🎉 and special chars: <>&"\'',
@@ -235,7 +235,7 @@ describe('Tasks Tool - Edge Cases', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.task).toMatchObject({
+      expect(response.data.task).toMatchObject({
         title: longTitle,
         description: longDescription,
       });
@@ -279,7 +279,7 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       const response1 = JSON.parse(result1.content[0].text);
-      expect(response1.task.description).toBe('');
+      expect(response1.data.task.description).toBe('');
 
       // Test with undefined description (should not be included)
       const result2 = await callTool('create', {
@@ -336,8 +336,8 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.task.title).toBe('Task with "quotes" and \\backslashes\\ and /slashes/');
-      expect(response.task.description).toBe(
+      expect(response.data.task.title).toBe('Task with "quotes" and \\backslashes\\ and /slashes/');
+      expect(response.data.task.description).toBe(
         'Contains\nnewlines\tand\ttabs and "nested \"quotes\""',
       );
     });
@@ -383,9 +383,9 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.task.due_date).toBe('2024-12-31T23:59:59Z');
-      expect(response.task.start_date).toBe('2024-01-01T00:00:00+05:00');
-      expect(response.task.end_date).toBe('2024-06-30T12:00:00-08:00');
+      expect(response.data.task.due_date).toBe('2024-12-31T23:59:59Z');
+      expect(response.data.task.start_date).toBe('2024-01-01T00:00:00+05:00');
+      expect(response.data.task.end_date).toBe('2024-06-30T12:00:00-08:00');
     });
 
     it('should preserve timezone information in round-trip operations', async () => {
@@ -424,7 +424,7 @@ describe('Tasks Tool - Edge Cases', () => {
       // Get task
       const getResult = await callTool('get', { id: 1 });
       const getResponse = JSON.parse(getResult.content[0].text);
-      expect(getResponse.task.due_date).toBe('2024-07-15T14:30:00+03:00');
+      expect(getResponse.data.task.due_date).toBe('2024-07-15T14:30:00+03:00');
 
       // Update task
       const updateResult = await callTool('update', {
@@ -432,7 +432,7 @@ describe('Tasks Tool - Edge Cases', () => {
         title: 'Updated title',
       });
       const updateResponse = JSON.parse(updateResult.content[0].text);
-      expect(updateResponse.task.due_date).toBe('2024-07-15T14:30:00+03:00');
+      expect(updateResponse.data.task.due_date).toBe('2024-07-15T14:30:00+03:00');
     });
 
     it('should handle daylight saving time edge cases', async () => {
@@ -474,7 +474,7 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.task.due_date).toBe('2024-03-10T02:30:00-05:00');
+      expect(response.data.task.due_date).toBe('2024-03-10T02:30:00-05:00');
     });
 
     it('should handle dates at timezone boundaries', async () => {
@@ -519,9 +519,9 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.task.due_date).toBe('2024-01-01T00:00:00Z');
-      expect(response.task.start_date).toBe('2024-01-01T23:59:59+12:00');
-      expect(response.task.end_date).toBe('2024-01-01T00:00:01-12:00');
+      expect(response.data.task.due_date).toBe('2024-01-01T00:00:00Z');
+      expect(response.data.task.start_date).toBe('2024-01-01T23:59:59+12:00');
+      expect(response.data.task.end_date).toBe('2024-01-01T00:00:01-12:00');
     });
   });
 
@@ -564,7 +564,7 @@ describe('Tasks Tool - Edge Cases', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.tasks).toEqual(largeTasks);
+      expect(response.data.tasks).toEqual(largeTasks);
       expect(response.metadata.count).toBe(150);
 
       // Verify API was called with pagination params
@@ -614,7 +614,7 @@ describe('Tasks Tool - Edge Cases', () => {
         sort_by: 'priority desc, title asc',
       });
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(100);
+      expect(response.data.tasks).toHaveLength(100);
     });
 
     it('should handle complex filter queries efficiently', async () => {
@@ -696,20 +696,20 @@ describe('Tasks Tool - Edge Cases', () => {
       mockClient.tasks.getProjectTasks.mockResolvedValueOnce(tasks60.slice(0, 20));
       const page1 = await callTool('list', { projectId: 1, page: 1, perPage: 20 });
       const page1Response = JSON.parse(page1.content[0].text);
-      expect(page1Response.tasks).toHaveLength(20);
+      expect(page1Response.data.tasks).toHaveLength(20);
       expect(page1Response.metadata.count).toBe(20);
 
       // Last page (exactly full)
       mockClient.tasks.getProjectTasks.mockResolvedValueOnce(tasks60.slice(40, 60));
       const page3 = await callTool('list', { projectId: 1, page: 3, perPage: 20 });
       const page3Response = JSON.parse(page3.content[0].text);
-      expect(page3Response.tasks).toHaveLength(20);
+      expect(page3Response.data.tasks).toHaveLength(20);
 
       // Beyond last page (empty)
       mockClient.tasks.getProjectTasks.mockResolvedValueOnce([]);
       const page4 = await callTool('list', { projectId: 1, page: 4, perPage: 20 });
       const page4Response = JSON.parse(page4.content[0].text);
-      expect(page4Response.tasks).toHaveLength(0);
+      expect(page4Response.data.tasks).toHaveLength(0);
     });
   });
 
@@ -820,7 +820,7 @@ describe('Tasks Tool - Edge Cases', () => {
       // Get task
       const getResult = await callTool('get', { id: 1 });
       const getResponse = JSON.parse(getResult.content[0].text);
-      expect(getResponse.task.title).toBe('Original title');
+      expect(getResponse.data.task.title).toBe('Original title');
 
       // Update task (will succeed despite stale data)
       const updateResult = await callTool('update', {
@@ -829,7 +829,7 @@ describe('Tasks Tool - Edge Cases', () => {
       });
       const updateResponse = JSON.parse(updateResult.content[0].text);
       expect(updateResponse.success).toBe(true);
-      expect(updateResponse.task.description).toBe('Our update');
+      expect(updateResponse.data.task.description).toBe('Our update');
     });
 
     it('should handle rapid sequential operations', async () => {
@@ -889,7 +889,7 @@ describe('Tasks Tool - Edge Cases', () => {
       results.forEach((result, index) => {
         const response = JSON.parse(result.content[0].text);
         expect(response.success).toBe(true);
-        expect(response.task.priority).toBe(index + 2);
+        expect(response.data.task.priority).toBe(index + 2);
       });
     });
   });
@@ -934,8 +934,8 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       const minResponse = JSON.parse(minResult.content[0].text);
-      expect(minResponse.task.priority).toBe(0);
-      expect(minResponse.task.percent_done).toBe(0);
+      expect(minResponse.data.task.priority).toBe(0);
+      expect(minResponse.data.task.percent_done).toBe(0);
 
       // Test maximum values
       const maxTask: Task = {
@@ -976,9 +976,9 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       const maxResponse = JSON.parse(maxResult.content[0].text);
-      expect(maxResponse.task.priority).toBe(10);
-      expect(maxResponse.task.percent_done).toBe(100);
-      expect(maxResponse.task.repeat_after).toBe(31536000);
+      expect(maxResponse.data.task.priority).toBe(10);
+      expect(maxResponse.data.task.percent_done).toBe(100);
+      expect(maxResponse.data.task.repeat_after).toBe(31536000);
     });
 
     it('should handle string fields at maximum lengths', async () => {
@@ -1024,9 +1024,9 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.task.title).toBe(maxLengthTitle);
-      expect(response.task.description).toBe(maxLengthDescription);
-      expect(response.task.hex_color).toBe(maxLengthHexColor);
+      expect(response.data.task.title).toBe(maxLengthTitle);
+      expect(response.data.task.description).toBe(maxLengthDescription);
+      expect(response.data.task.hex_color).toBe(maxLengthHexColor);
     });
 
     it('should handle arrays with 0, 1, and many items', async () => {
@@ -1077,7 +1077,7 @@ describe('Tasks Tool - Edge Cases', () => {
         projectId: 1,
       });
       const response0 = JSON.parse(result0.content[0].text);
-      expect(response0.task.labels).toHaveLength(0);
+      expect(response0.data.task.labels).toHaveLength(0);
 
       // Test with 1 label
       const task1Label: Task = {
@@ -1095,7 +1095,7 @@ describe('Tasks Tool - Edge Cases', () => {
         labels: ['Label 1'],
       });
       const response1 = JSON.parse(result1.content[0].text);
-      expect(response1.task.labels).toHaveLength(1);
+      expect(response1.data.task.labels).toHaveLength(1);
 
       // Test with many labels and assignees
       const manyUsers = Array.from({ length: 10 }, (_, i) => ({
@@ -1125,9 +1125,9 @@ describe('Tasks Tool - Edge Cases', () => {
       });
 
       const responseMany = JSON.parse(resultMany.content[0].text);
-      expect(responseMany.task.labels).toHaveLength(10);
-      expect(responseMany.task.assignees).toHaveLength(10);
-      expect(responseMany.task.reminder_dates).toHaveLength(5);
+      expect(responseMany.data.task.labels).toHaveLength(10);
+      expect(responseMany.data.task.assignees).toHaveLength(10);
+      expect(responseMany.data.task.reminder_dates).toHaveLength(5);
     });
 
     it('should handle optional vs required field combinations', async () => {
@@ -1221,9 +1221,9 @@ describe('Tasks Tool - Edge Cases', () => {
 
       const fullResponse = JSON.parse(fullResult.content[0].text);
       expect(fullResponse.success).toBe(true);
-      expect(fullResponse.task.title).toBe('Full task');
-      expect(fullResponse.task.description).toBe('Complete description');
-      expect(fullResponse.task.priority).toBe(8);
+      expect(fullResponse.data.task.title).toBe('Full task');
+      expect(fullResponse.data.task.description).toBe('Complete description');
+      expect(fullResponse.data.task.priority).toBe(8);
     });
   });
 });

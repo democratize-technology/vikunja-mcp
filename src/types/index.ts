@@ -38,3 +38,21 @@ export {
   createStandardResponse,
   createErrorResponse,
 } from './responses';
+
+// Export AORP types and interfaces
+export {
+  type AorpResponse,
+  type AorpFactoryResult,
+  type AorpFactoryOptions,
+  type AorpImmediate,
+  type AorpActionable,
+  type AorpQuality,
+  type AorpDetails,
+  type AorpStatus,
+  type AorpUrgency,
+  type AorpBuilderConfig,
+  type AorpTransformationContext,
+  type NextStepsConfig,
+  type QualityConfig,
+  type AorpError
+} from '../aorp/types';

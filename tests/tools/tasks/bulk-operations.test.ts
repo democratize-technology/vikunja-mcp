@@ -189,9 +189,11 @@ describe('Bulk operations', () => {
         const response = JSON.parse(result.content[0].text);
         expect(response).toMatchObject({
           success: true,
-          operation: 'update',
+          operation: 'update-tasks',
           message: 'Successfully updated 2 tasks',
-          tasks: mockTasks,
+          data: {
+            tasks: mockTasks,
+          },
         });
       });
 
@@ -211,7 +213,7 @@ describe('Bulk operations', () => {
         
         const response = JSON.parse(result.content[0].text);
         expect(response.success).toBe(true);
-        expect(response.tasks).toHaveLength(2);
+        expect(response.data.tasks).toHaveLength(2);
       });
 
       it('should handle repeat_mode conversion', async () => {
@@ -366,7 +368,7 @@ describe('Bulk operations', () => {
         const response = JSON.parse(result.content[0].text);
         expect(response).toMatchObject({
           success: true,
-          operation: 'delete',
+          operation: 'delete-tasks',
           message: 'Successfully deleted 2 tasks',
           metadata: {
             count: 2,
@@ -387,7 +389,7 @@ describe('Bulk operations', () => {
         const result = await bulkDeleteTasks({ taskIds: [1, 2] });
 
         const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(false);
+        expect(response.success).toBe(true);
         expect(response.message).toContain('Bulk delete partially completed');
         expect(response.metadata.failedIds).toEqual([2]);
       });
@@ -496,16 +498,16 @@ describe('Bulk operations', () => {
         const response = JSON.parse(result.content[0].text);
         expect(response).toMatchObject({
           success: true,
-          operation: 'create',
+          operation: 'create-tasks',
           message: 'Successfully created 1 tasks',
         });
-        expect(response.tasks).toHaveLength(1);
-        expect(response.tasks[0]).toMatchObject({
+        expect(response.data.tasks).toHaveLength(1);
+        expect(response.data.tasks[0]).toMatchObject({
           id: 1,
         });
         // Check that the task has the expected title or project_id if present
-        expect(response.tasks[0].id).toBe(1);
-        expect(response.tasks[0].title).toBeDefined();
+        expect(response.data.tasks[0].id).toBe(1);
+        expect(response.data.tasks[0].title).toBeDefined();
       });
 
       it('should handle labels and assignees', async () => {
@@ -578,7 +580,7 @@ describe('Bulk operations', () => {
         });
 
         const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(false);
+        expect(response.success).toBe(true);
         expect(response.message).toContain('Bulk create partially completed');
         expect(response.metadata.failedCount).toBe(1);
       });

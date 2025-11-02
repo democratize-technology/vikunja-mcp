@@ -194,9 +194,9 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('list');
+      expect(response.operation).toBe('list-tasks');
       expect(response.metadata.count).toBe(1);
-      expect(response.tasks[0].done).toBe(true);
+      expect(response.data.tasks[0].done).toBe(true);
     });
 
     it('should include labels and assignees in response', async () => {
@@ -210,8 +210,8 @@ describe('Tasks Tool', () => {
       const result = await callTool('list');
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks[0].labels).toEqual([{ id: 1, title: 'Important' }]);
-      expect(response.tasks[0].assignees).toEqual([{ id: 1, username: 'user1' }]);
+      expect(response.data.tasks[0].labels).toEqual([{ id: 1, title: 'Important' }]);
+      expect(response.data.tasks[0].assignees).toEqual([{ id: 1, username: 'user1' }]);
     });
     it('should list tasks with default options', async () => {
       const mockTasks: Task[] = [mockTask];
@@ -226,9 +226,9 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('list');
+      expect(response.operation).toBe('list-tasks');
       expect(response.metadata.count).toBe(mockTasks.length);
-      expect(response.tasks).toHaveLength(mockTasks.length);
+      expect(response.data.tasks).toHaveLength(mockTasks.length);
     });
 
     it('should list tasks with all options specified', async () => {
@@ -253,7 +253,7 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('list');
+      expect(response.operation).toBe('list-tasks');
       expect(response.metadata.count).toBe(mockTasks.length);
     });
 
@@ -324,7 +324,7 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toBe('Task created successfully');
-      expect(response.task).toBeDefined();
+      expect(response.data.task).toBeDefined();
     });
 
     it('should create a task with all optional fields', async () => {
@@ -479,7 +479,7 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toBe('Task created successfully');
-      expect(response.task).toBeDefined();
+      expect(response.data.task).toBeDefined();
     });
 
     it('should handle non-Error failures during label assignment', async () => {
@@ -530,8 +530,8 @@ describe('Tasks Tool', () => {
       );
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.task.repeat_after).toBe(1);
-      expect(response.task.repeat_mode).toBe('day');
+      expect(response.data.task.repeat_after).toBe(1);
+      expect(response.data.task.repeat_mode).toBe('day');
     });
 
     it('should validate repeatAfter is non-negative', async () => {
@@ -574,15 +574,15 @@ describe('Tasks Tool', () => {
       const result = await callTool('get', { id: 1 });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('get');
-      expect(response.task.hex_color).toBe('#FF0000');
-      expect(response.task.labels[0].hex_color).toBe('#00FF00');
-      expect(response.task.assignees[0].email).toBe('user1@test.com');
-      expect(response.task.attachments).toHaveLength(1);
-      expect(response.task.attachments[0].file_name).toBe('test.pdf');
-      expect(response.task.created_by).toBe(1);
-      expect(response.task.created).toBe('2024-01-01T00:00:00Z');
-      expect(response.task.updated).toBe('2024-01-02T00:00:00Z');
+      expect(response.operation).toBe('get-task');
+      expect(response.data.task.hex_color).toBe('#FF0000');
+      expect(response.data.task.labels[0].hex_color).toBe('#00FF00');
+      expect(response.data.task.assignees[0].email).toBe('user1@test.com');
+      expect(response.data.task.attachments).toHaveLength(1);
+      expect(response.data.task.attachments[0].file_name).toBe('test.pdf');
+      expect(response.data.task.created_by).toBe(1);
+      expect(response.data.task.created).toBe('2024-01-01T00:00:00Z');
+      expect(response.data.task.updated).toBe('2024-01-02T00:00:00Z');
     });
     it('should get a task by ID', async () => {
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
@@ -593,8 +593,8 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.task).toBeDefined();
-      expect(response.task.id).toBe(1);
+      expect(response.data.task).toBeDefined();
+      expect(response.data.task.id).toBe(1);
     });
 
     it('should handle task not found', async () => {
@@ -644,7 +644,7 @@ describe('Tasks Tool', () => {
         expect.objectContaining({ done: false })
       );
       const response = JSON.parse(result.content[0].text);
-      expect(response.task.done).toBe(false);
+      expect(response.data.task.done).toBe(false);
     });
 
     it('should handle invalid done values', async () => {
@@ -673,7 +673,7 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.task).toBeDefined();
+      expect(response.data.task).toBeDefined();
     });
 
     it('should update a task with all optional fields', async () => {
@@ -708,7 +708,7 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.task).toBeDefined();
+      expect(response.data.task).toBeDefined();
     });
 
     it('should handle assignee updates with diff logic', async () => {
@@ -793,9 +793,9 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.task.description).toBe('Important description');
-      expect(response.task.priority).toBe(4);
-      expect(response.task.done).toBe(true);
+      expect(response.data.task.description).toBe('Important description');
+      expect(response.data.task.priority).toBe(4);
+      expect(response.data.task.done).toBe(true);
     });
 
     it('should handle label updates', async () => {
@@ -967,9 +967,9 @@ describe('Tasks Tool', () => {
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('delete');
+      expect(response.operation).toBe('delete-task');
       expect(response.message).toBe('Task "Test Task" deleted successfully');
-      expect(response.task).toBeDefined();
+      expect(response.data.task).toBeDefined();
     });
 
     it('should handle deletion errors', async () => {
@@ -991,9 +991,9 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('delete');
+      expect(response.operation).toBe('delete-task');
       expect(response.message).toBe('Task 1 deleted successfully');
-      expect(response.task).toBeUndefined();
+      expect(response.data.task).toBeUndefined();
     });
 
     it('should handle non-Error API errors in delete', async () => {
@@ -1027,7 +1027,7 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toBe('Users assigned to task successfully');
-      expect(response.task.assignees).toHaveLength(1);
+      expect(response.data.task.assignees).toHaveLength(1);
     });
 
     it('should handle bulk assign errors', async () => {
@@ -1071,7 +1071,7 @@ describe('Tasks Tool', () => {
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.task.assignees).toHaveLength(2);
+      expect(response.data.task.assignees).toHaveLength(2);
     });
 
     it('should validate parameters', async () => {
@@ -1098,7 +1098,7 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toBe('Users removed from task successfully');
-      expect(response.task.assignees).toHaveLength(0);
+      expect(response.data.task.assignees).toHaveLength(0);
     });
 
     it('should unassign multiple users from a task', async () => {
@@ -1119,7 +1119,7 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('unassign');
+      expect(response.operation).toBe('unassign-users');
     });
 
     it('should handle unassign errors', async () => {
@@ -1185,9 +1185,9 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('list');
+      expect(response.operation).toBe('list-tasks');
       expect(response.message).toBe('Task has 2 assignee(s)');
-      expect(response.task.assignees).toHaveLength(2);
+      expect(response.data.task.assignees).toHaveLength(2);
       expect(response.metadata.count).toBe(2);
     });
 
@@ -1205,7 +1205,7 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toBe('Task has 0 assignee(s)');
-      expect(response.task.assignees).toHaveLength(0);
+      expect(response.data.task.assignees).toHaveLength(0);
       expect(response.metadata.count).toBe(0);
     });
 
@@ -1260,14 +1260,14 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       // Should only include id, title, and assignees
-      expect(response.task).toEqual({
+      expect(response.data.task).toEqual({
         id: 1,
         title: 'Test Task',
         assignees: [mockUser],
       });
       // Should not include other task fields
-      expect(response.task.description).toBeUndefined();
-      expect(response.task.done).toBeUndefined();
+      expect(response.data.task.description).toBeUndefined();
+      expect(response.data.task.done).toBeUndefined();
     });
   });
 
@@ -1283,7 +1283,7 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('comment');
+      expect(response.operation).toBe('list-comments');
       expect(response.metadata.count).toBe(1);
       expect(response.comments).toHaveLength(1);
     });
@@ -1383,9 +1383,9 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
 
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('list');
+      expect(response.operation).toBe('list-tasks');
       expect(response.metadata.count).toBe(0);
-      expect(response.tasks).toEqual([]);
+      expect(response.data.tasks).toEqual([]);
     });
 
     it('should handle undefined optional fields', async () => {
@@ -1404,7 +1404,7 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response).toBeDefined();
       expect(response.success).toBe(true);
-      expect(response.task.id).toBe(1);
+      expect(response.data.task.id).toBe(1);
     });
   });
 
@@ -1454,9 +1454,9 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('update');
+      expect(response.operation).toBe('update-task');
       expect(response.message).toBe('Successfully updated 3 tasks');
-      expect(response.tasks).toHaveLength(3);
+      expect(response.data.tasks).toHaveLength(3);
       expect(response.metadata.affectedFields).toEqual(['done']);
       expect(response.metadata.count).toBe(3);
     });
@@ -1483,7 +1483,7 @@ describe('Tasks Tool', () => {
       
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('update');
+      expect(response.operation).toBe('update-task');
       expect(response.message).toBe('Successfully updated 2 tasks');
     });
 
@@ -1701,9 +1701,9 @@ describe('Tasks Tool', () => {
       // Verify successful response
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.tasks).toHaveLength(2);
-      expect(response.tasks[0].priority).toBe(5);
-      expect(response.tasks[1].priority).toBe(5);
+      expect(response.data.tasks).toHaveLength(2);
+      expect(response.data.tasks[0].priority).toBe(5);
+      expect(response.data.tasks[1].priority).toBe(5);
     });
 
     it('should detect and fix bulk update failures when API returns unchanged values', async () => {
@@ -1750,11 +1750,11 @@ describe('Tasks Tool', () => {
       // Parse response and verify tasks have been updated via fallback
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.tasks).toHaveLength(2);
+      expect(response.data.tasks).toHaveLength(2);
       
       // Verify that the returned tasks now show the UPDATED priority values
-      const updatedTask1 = response.tasks.find(t => t.id === 371);
-      const updatedTask2 = response.tasks.find(t => t.id === 372);
+      const updatedTask1 = response.data.tasks.find(t => t.id === 371);
+      const updatedTask2 = response.data.tasks.find(t => t.id === 372);
       
       expect(updatedTask1.priority).toBe(5); // Updated to 5
       expect(updatedTask2.priority).toBe(5); // Updated to 5
@@ -1786,7 +1786,7 @@ describe('Tasks Tool', () => {
 
       expect(mockClient.tasks.updateTask).toHaveBeenCalledTimes(2);
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks.every(t => t.done === true)).toBe(true);
+      expect(response.data.tasks.every(t => t.done === true)).toBe(true);
     });
 
     it('should detect bulk update failures for due_date field', async () => {
@@ -1816,7 +1816,7 @@ describe('Tasks Tool', () => {
 
       expect(mockClient.tasks.updateTask).toHaveBeenCalledTimes(2);
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks.every(t => t.due_date === newDueDate)).toBe(true);
+      expect(response.data.tasks.every(t => t.due_date === newDueDate)).toBe(true);
     });
 
     it('should detect bulk update failures for project_id field', async () => {
@@ -1845,7 +1845,7 @@ describe('Tasks Tool', () => {
 
       expect(mockClient.tasks.updateTask).toHaveBeenCalledTimes(2);
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks.every(t => t.project_id === 5)).toBe(true);
+      expect(response.data.tasks.every(t => t.project_id === 5)).toBe(true);
     });
 
     it('should validate recurring fields in bulk update', async () => {
@@ -2015,7 +2015,7 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toContain('Successfully updated 3 tasks');
-      expect(response.tasks).toHaveLength(3);
+      expect(response.data.tasks).toHaveLength(3);
       expect(response.metadata.fetchErrors).toBeUndefined();
     });
 
@@ -2262,7 +2262,7 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('delete');
+      expect(response.operation).toBe('delete-task');
       expect(response.message).toBe('Successfully deleted 3 tasks');
       expect(response.metadata.count).toBe(3);
       expect(response.metadata.previousState).toHaveLength(3);
@@ -2392,7 +2392,7 @@ describe('Tasks Tool', () => {
       expect(result.content[0].text).toContain('Successfully created 3 tasks');
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(3);
+      expect(response.data.tasks).toHaveLength(3);
       expect(response.metadata.count).toBe(3);
     });
 
@@ -2479,7 +2479,7 @@ describe('Tasks Tool', () => {
       expect(result.content[0].text).toContain('Successfully created 2 tasks, 1 failed');
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(2);
+      expect(response.data.tasks).toHaveLength(2);
       expect(response.metadata.failedCount).toBe(1);
       expect(response.metadata.failures).toHaveLength(1);
       expect(response.metadata.failures[0]).toEqual({
@@ -2534,8 +2534,8 @@ describe('Tasks Tool', () => {
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks[0].labels).toHaveLength(2);
-      expect(response.tasks[0].assignees).toHaveLength(2);
+      expect(response.data.tasks[0].labels).toHaveLength(2);
+      expect(response.data.tasks[0].assignees).toHaveLength(2);
     });
 
     it('should clean up task if labels/assignees fail', async () => {

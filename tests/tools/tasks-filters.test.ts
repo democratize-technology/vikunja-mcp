@@ -182,11 +182,11 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('list');
+      expect(response.operation).toBe('list-tasks');
       // Verify client-side filtering worked
-      expect(response.tasks).toHaveLength(2);
-      expect(response.tasks[0].priority).toBe(5);
-      expect(response.tasks[1].priority).toBe(3);
+      expect(response.data.tasks).toHaveLength(2);
+      expect(response.data.tasks[0].priority).toBe(5);
+      expect(response.data.tasks[1].priority).toBe(3);
       expect(response.metadata.clientSideFiltering).toBe(true);
       expect(response.metadata.serverSideFilteringAttempted).toBe(false);
       expect(response.metadata.serverSideFilteringUsed).toBe(false);
@@ -217,11 +217,11 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('list');
+      expect(response.operation).toBe('list-tasks');
       // Verify client-side filtering was used
-      expect(response.tasks).toHaveLength(2);
-      expect(response.tasks[0].priority).toBe(5);
-      expect(response.tasks[1].priority).toBe(3);
+      expect(response.data.tasks).toHaveLength(2);
+      expect(response.data.tasks[0].priority).toBe(5);
+      expect(response.data.tasks[1].priority).toBe(3);
       expect(response.metadata.clientSideFiltering).toBe(true);
       expect(response.metadata.serverSideFilteringUsed).toBe(false);
       expect(response.metadata.serverSideFilteringAttempted).toBe(false);
@@ -242,8 +242,8 @@ describe('Tasks Tool - Filter Integration', () => {
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(3); // task1, task2, task4
-      expect(response.tasks.map((t: any) => t.id)).toEqual([1, 2, 4]);
+      expect(response.data.tasks).toHaveLength(3); // task1, task2, task4
+      expect(response.data.tasks.map((t: any) => t.id)).toEqual([1, 2, 4]);
     });
 
     it('should return validation error for invalid filter syntax', async () => {
@@ -275,8 +275,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'dueDate < now+3d' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(1);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(1);
     });
 
     it('should handle filter with assignee/label arrays', async () => {
@@ -310,8 +310,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'assignees in 1 && labels in 10' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(2); // task1 and task3
-      expect(response.tasks.map((t: any) => t.id)).toEqual([1, 3]);
+      expect(response.data.tasks).toHaveLength(2); // task1 and task3
+      expect(response.data.tasks.map((t: any) => t.id)).toEqual([1, 3]);
     });
 
     it('should handle string filters with like operator', async () => {
@@ -324,8 +324,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'title like "bug"' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(1);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(1);
     });
   });
 
@@ -353,10 +353,10 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('list');
+      expect(response.operation).toBe('list-tasks');
       // Verify client-side filtering worked
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].priority).toBe(5);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].priority).toBe(5);
       expect(response.metadata.clientSideFiltering).toBe(true);
     });
 
@@ -394,9 +394,9 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const response = JSON.parse(result.content[0].text);
       // Verify client-side filtering worked (done = false && priority >= 3)
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].done).toBe(false);
-      expect(response.tasks[0].priority).toBe(4);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].done).toBe(false);
+      expect(response.data.tasks[0].priority).toBe(4);
     });
 
     it('should throw error for non-existent filter ID', async () => {
@@ -435,8 +435,8 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const response = JSON.parse(result.content[0].text);
       // Verify the saved filter was used for client-side filtering
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].priority).toBe(5);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].priority).toBe(5);
     });
 
     it('should work with pagination and saved filters', async () => {
@@ -467,8 +467,8 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const response = JSON.parse(result.content[0].text);
       // Verify client-side filtering worked
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].done).toBe(false);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].done).toBe(false);
     });
 
     it('should work with search and saved filters', async () => {
@@ -517,8 +517,8 @@ describe('Tasks Tool - Filter Integration', () => {
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].done).toBe(false);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].done).toBe(false);
     });
   });
 
@@ -532,8 +532,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'percentDone >= 50' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(2);
-      expect(response.tasks.map((t: any) => t.id)).toEqual([2, 3]);
+      expect(response.data.tasks).toHaveLength(2);
+      expect(response.data.tasks.map((t: any) => t.id)).toEqual([2, 3]);
     });
 
     it('should handle created date field filtering', async () => {
@@ -550,8 +550,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'created < now' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(1);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(1);
     });
 
     it('should handle updated date field filtering', async () => {
@@ -568,8 +568,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'updated > now-3d' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(2);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(2);
     });
 
     it('should handle description field filtering with empty descriptions', async () => {
@@ -581,8 +581,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'description like "task"' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(2);
-      expect(response.tasks.map((t: any) => t.id)).toEqual([1, 3]);
+      expect(response.data.tasks).toHaveLength(2);
+      expect(response.data.tasks.map((t: any) => t.id)).toEqual([1, 3]);
     });
 
     it('should handle invalid field names in filters', async () => {
@@ -616,8 +616,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'dueDate = "2024-01-15T00:00:00Z"' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(1);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(1);
     });
 
     it('should handle date inequality (!=) operator', async () => {
@@ -629,8 +629,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'dueDate != "2024-01-15T00:00:00Z"' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(2);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(2);
     });
 
     it('should handle date greater than (>) operator', async () => {
@@ -647,8 +647,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'dueDate > now' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(2);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(2);
     });
 
     it('should handle date greater than or equal (>=) operator', async () => {
@@ -668,8 +668,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'dueDate >= now' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(2);
-      expect(response.tasks.map((t: any) => t.id)).toEqual([2, 3]);
+      expect(response.data.tasks).toHaveLength(2);
+      expect(response.data.tasks.map((t: any) => t.id)).toEqual([2, 3]);
     });
 
     it('should handle date less than (<) operator', async () => {
@@ -686,8 +686,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'dueDate < now' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(1);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(1);
     });
 
     it('should handle date less than or equal (<=) operator', async () => {
@@ -705,8 +705,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'dueDate <= now' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(2);
-      expect(response.tasks.map((t: any) => t.id)).toEqual([1, 2]);
+      expect(response.data.tasks).toHaveLength(2);
+      expect(response.data.tasks.map((t: any) => t.id)).toEqual([1, 2]);
     });
 
     it('should handle invalid date comparison operator', async () => {
@@ -733,7 +733,7 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'created > now-60s' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(2);
+      expect(response.data.tasks).toHaveLength(2);
     });
 
     it('should handle minutes (m) time unit', async () => {
@@ -748,8 +748,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'created > now-7m' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(1);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(1);
     });
 
     it('should handle hours (h) time unit', async () => {
@@ -764,8 +764,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'created > now-3h' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(1);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(1);
     });
 
     it('should handle months (M) time unit', async () => {
@@ -782,8 +782,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'created > now-2M' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(1);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(1);
     });
 
     it('should handle years (y) time unit', async () => {
@@ -800,8 +800,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'created > now-2y' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(1);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(1);
     });
 
     it('should handle "now" without offset', async () => {
@@ -819,7 +819,7 @@ describe('Tasks Tool - Filter Integration', () => {
 
       const response = JSON.parse(result.content[0].text);
       // Should match neither task as they're not exactly "now"
-      expect(response.tasks).toHaveLength(0);
+      expect(response.data.tasks).toHaveLength(0);
     });
 
     it('should handle invalid time unit in relative date', async () => {
@@ -829,7 +829,7 @@ describe('Tasks Tool - Filter Integration', () => {
       // Invalid relative dates are parsed as literal strings, which won't match any tasks
       const result = await callTool('list', { filter: 'dueDate > now-5x' });
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(0);
+      expect(response.data.tasks).toHaveLength(0);
     });
   });
 
@@ -843,8 +843,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'title != "Important task"' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(2);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(2);
     });
 
     it('should handle invalid string comparison operator', async () => {
@@ -854,7 +854,7 @@ describe('Tasks Tool - Filter Integration', () => {
       // Invalid operators for strings just return false (no match)
       const result = await callTool('list', { filter: 'title > "test"' });
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(0);
+      expect(response.data.tasks).toHaveLength(0);
     });
   });
 
@@ -866,7 +866,7 @@ describe('Tasks Tool - Filter Integration', () => {
       // Invalid operators for arrays just return false (no match)
       const result = await callTool('list', { filter: 'labels = 1' });
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(0);
+      expect(response.data.tasks).toHaveLength(0);
     });
   });
 
@@ -879,8 +879,8 @@ describe('Tasks Tool - Filter Integration', () => {
       const result = await callTool('list', { filter: 'priority != 5' });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.tasks).toHaveLength(1);
-      expect(response.tasks[0].id).toBe(2);
+      expect(response.data.tasks).toHaveLength(1);
+      expect(response.data.tasks[0].id).toBe(2);
     });
   });
 });

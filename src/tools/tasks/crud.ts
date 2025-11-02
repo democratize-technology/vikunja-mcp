@@ -2,15 +2,100 @@
  * CRUD operations for tasks
  */
 
-import type { StandardTaskResponse } from '../../types/index';
-import { MCPError, ErrorCode } from '../../types/index';
+import { MCPError, ErrorCode, createStandardResponse } from '../../types/index';
 import { getClientFromContext } from '../../client';
 import type { Task } from 'node-vikunja';
 import { logger } from '../../utils/logger';
+import { createAorpEnabledFactory } from '../../utils/response-factory';
+import { Verbosity } from '../../transforms/index';
+import type { AorpBuilderConfig } from '../../aorp/types';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { AUTH_ERROR_MESSAGES } from './constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from './validation';
+
+/**
+ * Helper function to create response with optional optimization and AORP support
+ */
+function createTaskCrudResponse(
+  operation: string,
+  message: string,
+  data: any,
+  metadata: any = {},
+  verbosity?: string,
+  useOptimizedFormat?: boolean,
+  useAorp?: boolean,
+  aorpConfig?: AorpBuilderConfig,
+  sessionId?: string
+) {
+  // Default to standard verbosity if not specified
+  const selectedVerbosity = verbosity || 'standard';
+
+  // Use optimized format if requested or if verbosity is not standard
+  const shouldOptimize = useOptimizedFormat || selectedVerbosity !== 'standard';
+
+  // Use AORP if explicitly requested
+  if (useAorp) {
+    const aorpFactory = createAorpEnabledFactory();
+    return aorpFactory.createResponse(operation, message, data, metadata, {
+      verbosity: selectedVerbosity as Verbosity,
+      useOptimization: shouldOptimize,
+      useAorp: true,
+      aorpOptions: {
+        builderConfig: {
+          confidenceMethod: 'adaptive',
+          enableNextSteps: true,
+          enableQualityIndicators: true,
+          ...aorpConfig
+        },
+        nextStepsConfig: {
+          maxSteps: 5,
+          enableContextual: true,
+          templates: {
+            [`${operation}`]: [
+              "Verify the task data appears correctly in listings",
+              "Check related tasks and dependencies",
+              "Test any automated workflows or notifications"
+            ]
+          }
+        },
+        qualityConfig: {
+          completenessWeight: 0.6,
+          reliabilityWeight: 0.4,
+          customIndicators: {
+            taskPriority: (data: any) => {
+              // Higher completeness for high-priority tasks
+              if (!data?.task) return 0.7;
+              const priority = data.task.priority || 0;
+              return Math.min(1.0, 0.5 + (priority / 5) * 0.5);
+            },
+            taskCompleteness: (data: any) => {
+              // Based on task fields completeness
+              if (!data?.task) return 0.5;
+              const task = data.task;
+              let score = 0.3; // Base score for having a task
+              if (task.title) score += 0.2;
+              if (task.description) score += 0.2;
+              if (task.due_date) score += 0.1;
+              if (task.priority !== undefined) score += 0.1;
+              if (task.labels && task.labels.length > 0) score += 0.05;
+              if (task.assignees && task.assignees.length > 0) score += 0.05;
+              return Math.min(1.0, score);
+            }
+          }
+        },
+        ...(sessionId && { sessionId })
+      }
+    });
+  }
+
+  if (shouldOptimize) {
+    // For tasks, we'll use the standard response with optimization
+    return createStandardResponse(operation, message, data, metadata);
+  }
+
+  return createStandardResponse(operation, message, data, metadata);
+}
 
 /**
  * Create a new task
@@ -25,6 +110,11 @@ export async function createTask(args: {
   assignees?: number[];
   repeatAfter?: number;
   repeatMode?: 'day' | 'week' | 'month' | 'year';
+  verbosity?: string;
+  useOptimizedFormat?: boolean;
+  useAorp?: boolean;
+  aorpConfig?: AorpBuilderConfig;
+  sessionId?: string;
 }): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (!args.projectId) {
@@ -157,15 +247,22 @@ export async function createTask(args: {
     // Fetch the complete task with labels and assignees
     const completeTask = createdTask.id ? await client.tasks.getTask(createdTask.id) : createdTask;
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'create',
-      message: 'Task created successfully',
-      task: completeTask,
-      metadata: {
+    const response = createTaskCrudResponse(
+      'create-task',
+      'Task created successfully',
+      { task: completeTask },
+      {
         timestamp: new Date().toISOString(),
+        projectId: args.projectId,
+        labelsAdded: args.labels && args.labels.length > 0,
+        assigneesAdded: args.assignees && args.assignees.length > 0,
       },
-    };
+      args.verbosity,
+      args.useOptimizedFormat,
+      args.useAorp,
+      args.aorpConfig,
+      args.sessionId
+    );
 
     logger.debug('Tasks tool response', {
       subcommand: 'create',
@@ -196,6 +293,11 @@ export async function createTask(args: {
  */
 export async function getTask(args: {
   id?: number;
+  verbosity?: string;
+  useOptimizedFormat?: boolean;
+  useAorp?: boolean;
+  aorpConfig?: AorpBuilderConfig;
+  sessionId?: string;
 }): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (!args.id) {
@@ -206,15 +308,20 @@ export async function getTask(args: {
     const client = await getClientFromContext();
     const task = await client.tasks.getTask(args.id);
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'get',
-      message: `Retrieved task "${task.title}"`,
-      task: task,
-      metadata: {
+    const response = createTaskCrudResponse(
+      'get-task',
+      `Retrieved task "${task.title}"`,
+      { task },
+      {
         timestamp: new Date().toISOString(),
+        taskId: args.id,
       },
-    };
+      args.verbosity,
+      args.useOptimizedFormat,
+      args.useAorp,
+      args.aorpConfig,
+      args.sessionId
+    );
 
     return {
       content: [
@@ -246,6 +353,11 @@ export async function updateTask(args: {
   assignees?: number[];
   repeatAfter?: number;
   repeatMode?: 'day' | 'week' | 'month' | 'year';
+  verbosity?: string;
+  useOptimizedFormat?: boolean;
+  useAorp?: boolean;
+  aorpConfig?: AorpBuilderConfig;
+  sessionId?: string;
 }): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (!args.id) {
@@ -378,17 +490,22 @@ export async function updateTask(args: {
     // Fetch the complete updated task
     const completeTask = await client.tasks.getTask(args.id);
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'update',
-      message: 'Task updated successfully',
-      task: completeTask,
-      metadata: {
+    const response = createTaskCrudResponse(
+      'update-task',
+      'Task updated successfully',
+      { task: completeTask },
+      {
         timestamp: new Date().toISOString(),
         affectedFields,
         previousState: previousState as Partial<Task>,
+        taskId: args.id,
       },
-    };
+      args.verbosity,
+      args.useOptimizedFormat,
+      args.useAorp,
+      args.aorpConfig,
+      args.sessionId
+    );
 
     return {
       content: [
@@ -414,6 +531,11 @@ export async function updateTask(args: {
  */
 export async function deleteTask(args: {
   id?: number;
+  verbosity?: string;
+  useOptimizedFormat?: boolean;
+  useAorp?: boolean;
+  aorpConfig?: AorpBuilderConfig;
+  sessionId?: string;
 }): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
     if (!args.id) {
@@ -434,17 +556,23 @@ export async function deleteTask(args: {
 
     await client.tasks.deleteTask(args.id);
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'delete',
-      message: taskToDelete
+    const response = createTaskCrudResponse(
+      'delete-task',
+      taskToDelete
         ? `Task "${taskToDelete.title}" deleted successfully`
         : `Task ${args.id} deleted successfully`,
-      ...(taskToDelete && { task: taskToDelete }),
-      metadata: {
+      taskToDelete ? { task: taskToDelete } : { deletedTaskId: args.id },
+      {
         timestamp: new Date().toISOString(),
+        taskId: args.id,
+        taskTitle: taskToDelete?.title,
       },
-    };
+      args.verbosity,
+      args.useOptimizedFormat,
+      args.useAorp,
+      args.aorpConfig,
+      args.sessionId
+    );
 
     return {
       content: [

@@ -57,21 +57,22 @@ if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
   logger.info(`Using detected auth type: ${detectedAuthType}`);
 }
 
-// Initialize factory and register tools
-initializeFactory().then(() => {
-  if (clientFactory) {
-    registerTools(server, authManager, clientFactory);
-  } else {
-    registerTools(server, authManager, undefined);
-  }
-}).catch((error) => {
-  logger.error('Failed to initialize:', error);
-  // Fall back to legacy registration for backwards compatibility
-  registerTools(server, authManager, undefined);
-});
-
 // Start the server
 async function main(): Promise<void> {
+  // Initialize factory and register tools BEFORE connecting to transport
+  try {
+    await initializeFactory();
+    if (clientFactory) {
+      registerTools(server, authManager, clientFactory);
+    } else {
+      registerTools(server, authManager, undefined);
+    }
+  } catch (error) {
+    logger.error('Failed to initialize:', error);
+    // Fall back to legacy registration for backwards compatibility
+    registerTools(server, authManager, undefined);
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 

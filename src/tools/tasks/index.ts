@@ -8,10 +8,12 @@ import { z } from 'zod';
 import type { Task } from 'node-vikunja';
 import type { AuthManager } from '../../auth/AuthManager';
 import type { VikunjaClientFactory } from '../../client/VikunjaClientFactory';
-import { MCPError, ErrorCode } from '../../types/index';
-import type { StandardTaskResponse } from '../../types/index';
+import { MCPError, ErrorCode, createStandardResponse } from '../../types/index';
 import { getClientFromContext, setGlobalClientFactory } from '../../client';
 import { logger } from '../../utils/logger';
+import { createAorpEnabledFactory } from '../../utils/response-factory';
+import { Verbosity } from '../../transforms/index';
+import type { AorpBuilderConfig } from '../../aorp/types';
 import { storageManager } from '../../storage/FilterStorage';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
 import { parseFilterString } from '../../utils/filters';
@@ -27,6 +29,139 @@ import { assignUsers, unassignUsers, listAssignees } from './assignees';
 import { handleComment } from './comments';
 import { addReminder, removeReminder, listReminders } from './reminders';
 import { applyLabels, removeLabels, listTaskLabels } from './labels';
+
+/**
+ * Helper function to create response with optional optimization and AORP support
+ */
+function createTaskResponse(
+  operation: string,
+  message: string,
+  data: any,
+  metadata: any = {},
+  verbosity?: string,
+  useOptimizedFormat?: boolean,
+  useAorp?: boolean,
+  aorpConfig?: AorpBuilderConfig,
+  sessionId?: string
+) {
+  // Default to standard verbosity if not specified
+  const selectedVerbosity = verbosity || 'standard';
+
+  // Use optimized format if requested or if verbosity is not standard
+  const shouldOptimize = useOptimizedFormat || selectedVerbosity !== 'standard';
+
+  // Use AORP if explicitly requested
+  if (useAorp) {
+    const aorpFactory = createAorpEnabledFactory();
+    return aorpFactory.createResponse(operation, message, data, metadata, {
+      verbosity: selectedVerbosity as Verbosity,
+      useOptimization: shouldOptimize,
+      useAorp: true,
+      aorpOptions: {
+        builderConfig: {
+          confidenceMethod: 'adaptive',
+          enableNextSteps: true,
+          enableQualityIndicators: true,
+          ...aorpConfig
+        },
+        nextStepsConfig: {
+          maxSteps: 5,
+          enableContextual: true,
+          templates: {
+            [`${operation}`]: [
+              "Verify the task data appears correctly in listings",
+              "Check related tasks and dependencies",
+              "Test any automated workflows or notifications"
+            ],
+            'list-tasks': [
+              "Review the returned tasks for completeness",
+              "Apply filters or pagination if needed",
+              "Consider sorting by priority or due date"
+            ],
+            'get-task': [
+              "Verify all required task fields are present",
+              "Check task relationships and dependencies",
+              "Review task assignees and labels"
+            ],
+            'create-task': [
+              "Verify the created task appears in listings",
+              "Set up task dependencies and reminders",
+              "Notify relevant team members"
+            ],
+            'update-task': [
+              "Confirm changes are reflected in the UI",
+              "Check related data for consistency",
+              "Notify team members of important changes"
+            ],
+            'delete-task': [
+              "Verify task no longer appears in searches",
+              "Check for any orphaned subtasks or dependencies",
+              "Update project timelines and milestones"
+            ],
+            'assign-task': [
+              "Verify assignee received notification",
+              "Update task status and priority if needed",
+              "Check assignee availability and workload"
+            ],
+            'unassign-task': [
+              "Verify task is properly unassigned",
+              "Consider reassigning to another team member",
+              "Update task status and deadlines"
+            ],
+            'bulk-create-tasks': [
+              "Verify all tasks were created successfully",
+              "Check for duplicate tasks or conflicts",
+              "Set up task relationships and dependencies"
+            ],
+            'bulk-update-tasks': [
+              "Verify all updates were applied correctly",
+              "Check for data consistency across tasks",
+              "Review project timeline impacts"
+            ],
+            'bulk-delete-tasks': [
+              "Verify all tasks were deleted",
+              "Check for orphaned dependencies",
+              "Update project metrics and reports"
+            ]
+          }
+        },
+        qualityConfig: {
+          completenessWeight: 0.6,
+          reliabilityWeight: 0.4,
+          customIndicators: {
+            taskPriority: (data: any) => {
+              // Higher completeness for high-priority tasks
+              if (!data?.task) return 0.7;
+              const priority = data.task.priority || 0;
+              return Math.min(1.0, 0.5 + (priority / 5) * 0.5);
+            },
+            taskCompleteness: (data: any) => {
+              // Based on task fields completeness
+              if (!data?.task) return 0.5;
+              const task = data.task;
+              let score = 0.3; // Base score for having a task
+              if (task.title) score += 0.2;
+              if (task.description) score += 0.2;
+              if (task.due_date) score += 0.1;
+              if (task.priority !== undefined) score += 0.1;
+              if (task.labels && task.labels.length > 0) score += 0.05;
+              if (task.assignees && task.assignees.length > 0) score += 0.05;
+              return Math.min(1.0, score);
+            }
+          }
+        },
+        ...(sessionId && { sessionId })
+      }
+    });
+  }
+
+  if (shouldOptimize) {
+    // For tasks, we'll use the standard response with optimization
+    return createStandardResponse(operation, message, data, metadata);
+  }
+
+  return createStandardResponse(operation, message, data, metadata);
+}
 
 /**
  * Get session-scoped storage instance
@@ -51,6 +186,11 @@ async function listTasks(
     filterId?: string;
     allProjects?: boolean;
     done?: boolean;
+    verbosity?: string;
+    useOptimizedFormat?: boolean;
+    useAorp?: boolean;
+    aorpConfig?: AorpBuilderConfig;
+    sessionId?: string;
   },
   storage: Awaited<ReturnType<typeof storageManager.getStorage>>,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
@@ -224,17 +364,21 @@ async function listTasks(
       }
     }
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'list',
-      message: `Found ${tasks.length} tasks${filteringMessage}`,
-      tasks: tasks,
-      metadata: {
+    const response = createTaskResponse(
+      'list-tasks',
+      `Found ${tasks.length} tasks${filteringMessage}`,
+      { tasks },
+      {
         timestamp: new Date().toISOString(),
         count: tasks.length,
         ...filteringMetadata,
       },
-    };
+      args.verbosity,
+      args.useOptimizedFormat,
+      args.useAorp,
+      args.aorpConfig,
+      args.sessionId
+    );
 
     logger.debug('Tasks tool response', { subcommand: 'list', itemCount: tasks.length });
 
@@ -358,6 +502,12 @@ export function registerTasksTool(
       reminderId: z.number().optional(),
       // Add relation schema
       ...relationSchema,
+      // Response formatting options
+      verbosity: z.enum(['minimal', 'standard', 'detailed', 'complete']).optional(),
+      useOptimizedFormat: z.boolean().optional(),
+      useAorp: z.boolean().optional(),
+      aorpConfig: z.any().optional(), // AorpBuilderConfig - using any for Zod compatibility
+      sessionId: z.string().optional(),
     },
     async (args) => {
       try {

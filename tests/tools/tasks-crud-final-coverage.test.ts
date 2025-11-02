@@ -64,9 +64,9 @@ describe('Tasks CRUD - Final Coverage', () => {
       
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('get');
+      expect(response.operation).toBe('get-task');
       expect(response.message).toBe('Retrieved task "Test Task Title"');
-      expect(response.task).toEqual(mockTask);
+      expect(response.data.task).toEqual(mockTask);
       expect(response.metadata.timestamp).toBeDefined();
       
       expect(result.content[0].type).toBe('text');
@@ -88,7 +88,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toBe('Retrieved task "undefined"');
-      expect(response.task).toEqual(mockTask);
+      expect(response.data.task).toEqual(mockTask);
     });
 
     it('should handle task with null title gracefully', async () => {
@@ -107,7 +107,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toBe('Retrieved task "null"');
-      expect(response.task).toEqual(mockTask);
+      expect(response.data.task).toEqual(mockTask);
     });
   });
 
