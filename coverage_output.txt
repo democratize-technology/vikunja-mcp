@@ -1,0 +1,191 @@
+
+> @democratize-technology/vikunja-mcp@0.2.0 test:coverage
+> jest --coverage --silent
+
+PASS tests/middleware/permission-wrapper.test.ts
+PASS tests/utils/filters.test.ts
+PASS tests/tools/tasks-filters.test.ts
+PASS tests/tools/projects.test.ts
+PASS tests/tools/templates.test.ts
+PASS tests/tools/tasks-index-routing.test.ts
+PASS tests/storage/persistent-storage.test.ts
+PASS tests/tools/tasks.test.ts
+PASS tests/tools/tasks-memory-protection.test.ts
+PASS tests/tools/tasks/bulk-operations.test.ts
+PASS tests/storage/FilterStorage.test.ts
+PASS tests/tools/tasks-edge-cases.test.ts
+PASS tests/integration/rate-limiting-integration.test.ts
+PASS tests/client.test.ts
+PASS tests/tools/tasks-reminders.test.ts
+PASS tests/storage/storage-integration.test.ts
+PASS tests/tools/tasks-auth-errors.test.ts
+PASS tests/tools/batch-import.test.ts
+PASS tests/tools/webhooks.test.ts
+PASS tests/tools/filters.test.ts
+PASS tests/tools/projects-nested.test.ts
+PASS tests/utils/redos-performance-benchmark.test.ts
+PASS tests/utils/performance/bulk-operation-enhancer.test.ts
+PASS tests/utils/performance/performance-monitor.test.ts
+PASS tests/tools/tasks-crud-edge-cases.test.ts
+PASS tests/tools/tasks-race-condition.test.ts
+PASS tests/tools/tasks-crud-final-coverage.test.ts
+PASS tests/tools/tasks-filter-sql-syntax.test.ts
+PASS tests/tools/users.test.ts
+PASS tests/utils/filtering/ServerSideFilteringStrategy.test.ts
+PASS tests/config/ConfigurationManager.test.ts
+PASS tests/index.test.ts
+PASS tests/tools/tasks-relations.test.ts
+PASS tests/utils/retry.test.ts
+PASS tests/tools/tasks-crud-auth-errors.test.ts
+PASS tests/tools/teams.test.ts
+PASS tests/utils/filtering/ClientSideFilteringStrategy.test.ts
+PASS tests/auth/AuthManager.test.ts
+PASS tests/utils/auth-error-handler.test.ts
+PASS tests/utils/performance/batch-processor.test.ts
+PASS tests/tools/tasks-crud-validation.test.ts
+PASS tests/tools/labels.test.ts
+PASS tests/utils/filtering/HybridFilteringStrategy.test.ts
+PASS tests/utils/performance/index.test.ts
+PASS tests/tools/export.test.ts
+PASS tests/tools/auth.test.ts
+PASS tests/utils/error-handler.test.ts
+PASS tests/tools/tasks/assignees.test.ts
+PASS tests/tools/tasks-repeating.test.ts
+PASS tests/tools/tasks/validation.test.ts
+PASS tests/tools/auth-rate-limiting.test.ts
+PASS tests/tools/tasks/labels.test.ts
+PASS tests/utils/filters-security.test.ts
+PASS tests/tools/tasks/filters.test.ts
+PASS tests/storage/concurrent-storage.test.ts
+PASS tests/client/VikunjaClientFactory.test.ts
+PASS tests/middleware/tool-wrapper.test.ts
+PASS tests/utils/performance/index-coverage.test.ts
+PASS tests/utils/performance/adaptive-batch-optimizer-edge-cases.test.ts
+PASS tests/auth/permissions.test.ts
+PASS tests/utils/filtering/FilteringContext.test.ts
+PASS tests/utils/security.test.ts
+PASS tests/utils/validators/security-validator-simple.test.ts
+PASS tests/tools/index.test.ts
+PASS tests/middleware/index.test.ts
+PASS tests/tools/tasks/comments.test.ts
+PASS tests/types/filters.test.ts
+PASS tests/utils/security-integration.test.ts
+PASS tests/utils/filtering/index.test.ts
+PASS tests/utils/tokenizer/token-types-coverage.test.ts
+PASS tests/utils/logger.test.ts
+PASS tests/utils/filters-redos-security.test.ts
+PASS tests/types/node-vikunja-extended.test.ts
+PASS tests/utils/memory.test.ts
+PASS tests/types/errors.test.ts
+PASS tests/utils/performance/response-cache.test.ts
+PASS tests/middleware/rate-limiting.test.ts
+PASS tests/utils/performance/circuit-breaker.test.ts (6.467 s)
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+---------------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+File                             | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                                                                                                                       
+---------------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+All files                        |   91.05 |    84.42 |   89.48 |   91.12 |                                                                                                                                                                                                         
+ src                             |   83.82 |       70 |   88.88 |   83.07 |                                                                                                                                                                                                         
+  client.ts                      |   88.88 |    66.66 |     100 |   88.46 | 94-98                                                                                                                                                                                                   
+  index.ts                       |   80.48 |    71.42 |   71.42 |   79.48 | 75-89,94-96                                                                                                                                                                                             
+ src/auth                        |   88.14 |    81.15 |      75 |   90.62 |                                                                                                                                                                                                         
+  AuthManager.ts                 |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  AuthManagerTestUtils.ts        |   95.55 |    67.85 |      90 |   95.45 | 131,185                                                                                                                                                                                                 
+  index.ts                       |       0 |      100 |       0 |       0 | 6-12                                                                                                                                                                                                    
+  permissions.ts                 |   94.11 |       84 |     100 |   93.87 | 134,198,207                                                                                                                                                                                             
+ src/client                      |   95.65 |    88.88 |     100 |   95.65 |                                                                                                                                                                                                         
+  VikunjaClientFactory.ts        |   95.65 |    88.88 |     100 |   95.65 | 46                                                                                                                                                                                                      
+ src/config                      |   78.44 |    73.33 |   53.84 |   82.19 |                                                                                                                                                                                                         
+  ConfigurationManager.ts        |   86.88 |     79.1 |   73.07 |   93.13 | 171,204-206,308-309,392,433                                                                                                                                                                             
+  index.ts                       |     100 |      100 |       0 |     100 |                                                                                                                                                                                                         
+  migration-examples.ts          |       0 |        0 |       0 |       0 | 6-180                                                                                                                                                                                                   
+  types.ts                       |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+ src/middleware                  |   99.41 |    95.76 |     100 |   99.41 |                                                                                                                                                                                                         
+  index.ts                       |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  permission-wrapper.ts          |     100 |    96.66 |     100 |     100 | 140                                                                                                                                                                                                     
+  rate-limiting.ts               |   98.97 |    95.45 |     100 |   98.97 | 164                                                                                                                                                                                                     
+  tool-wrapper.ts                |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+ src/storage                     |   69.59 |    44.36 |   72.72 |   69.27 |                                                                                                                                                                                                         
+  FilterStorage.ts               |   99.34 |    93.75 |   96.55 |   99.33 | 364                                                                                                                                                                                                     
+  PersistentFilterStorage.ts     |   65.29 |    33.78 |   69.69 |   65.59 | 28-29,34,83,97-101,114,120-133,149,158,172,186,203,217,231,243-269,289,319,343,355,374,424-432,454,469-507,516,520-534,546,579                                                                          
+  config.ts                      |   71.42 |    60.86 |   85.71 |   71.42 | 51,56-61,88,96-98,125,131,137-138,144,148,178-185,208,216,226                                                                                                                                           
+  index.ts                       |   78.72 |    51.35 |   69.23 |   76.74 | 68-74,117-121,162-165,184-188,241-242,272-274,284-286,307-310                                                                                                                                           
+  interfaces.ts                  |   85.71 |      100 |      75 |   85.71 | 212-213                                                                                                                                                                                                 
+  migrations.ts                  |   33.58 |    13.88 |   45.83 |   31.74 | 105,123-126,153-172,186-252,273-365,381,387-392,400,404,408,412,421-434                                                                                                                                 
+ src/storage/adapters            |   66.47 |    44.67 |   73.17 |   66.66 |                                                                                                                                                                                                         
+  InMemoryStorageAdapter.ts      |   66.66 |    41.66 |      60 |   68.29 | 56,71,78-94,106,112                                                                                                                                                                                     
+  SQLiteStorageAdapter.ts        |   63.56 |    39.79 |   77.27 |   63.56 | 103,132,144,202,214,282,286,293,304,308,315,326,330,364,398,402,418,427-434,445,449,463,474,478,485,496,500,507-528,546,550,554,578,598-672,682,688,707-708,756-774,778,789-793,804-836,844-848,869,913 
+  factory.ts                     |   81.63 |    72.22 |     100 |   81.63 | 40-47,83,90,94,108                                                                                                                                                                                      
+ src/tools                       |   99.92 |    96.91 |     100 |     100 |                                                                                                                                                                                                         
+  auth.ts                        |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  batch-import.ts                |   99.57 |    88.54 |     100 |     100 | 97-100,143,156,192-199,224,311-335,365,379,387,426,448-450,467,477,489,507-511                                                                                                                          
+  export.ts                      |     100 |     90.9 |     100 |     100 | 74-88,114                                                                                                                                                                                               
+  filters.ts                     |     100 |     98.3 |     100 |     100 | 110,219                                                                                                                                                                                                 
+  index.ts                       |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  labels.ts                      |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  projects.ts                    |     100 |    99.02 |     100 |     100 | 285,679                                                                                                                                                                                                 
+  tasks-relations.ts             |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  tasks.ts                       |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  teams.ts                       |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  templates.ts                   |     100 |    99.21 |     100 |     100 | 21                                                                                                                                                                                                      
+  users.ts                       |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  webhooks.ts                    |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+ src/tools/tasks                 |   92.08 |    86.83 |   89.09 |   91.79 |                                                                                                                                                                                                         
+  assignees.ts                   |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  bulk-operations.ts             |    80.9 |    76.51 |   73.17 |   80.44 | 149-151,164-314,584-586,651-659,681,699,719-725,765,786-796,839,965,1044                                                                                                                                
+  comments.ts                    |     100 |       90 |     100 |     100 | 133                                                                                                                                                                                                     
+  constants.ts                   |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  crud.ts                        |     100 |    96.37 |     100 |     100 | 61-62,129,310-312                                                                                                                                                                                       
+  filters.ts                     |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  index.ts                       |   97.52 |     92.4 |     100 |   97.41 | 446-452                                                                                                                                                                                                 
+  labels.ts                      |   91.04 |    73.52 |   88.88 |   90.62 | 56,127-137,221                                                                                                                                                                                          
+  reminders.ts                   |     100 |    84.37 |     100 |     100 | 48,86,170,194,229                                                                                                                                                                                       
+  validation.ts                  |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+ src/types                       |     100 |    93.75 |     100 |     100 |                                                                                                                                                                                                         
+  errors.ts                      |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  filters.ts                     |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  index.ts                       |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  node-vikunja-extended.ts       |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  responses.ts                   |     100 |       80 |     100 |     100 | 90                                                                                                                                                                                                      
+ src/utils                       |   99.05 |    98.13 |     100 |   99.01 |                                                                                                                                                                                                         
+  auth-error-handler.ts          |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  error-handler.ts               |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  filters.ts                     |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  logger.ts                      |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  memory.ts                      |   96.61 |    94.28 |     100 |   96.49 | 28-29                                                                                                                                                                                                   
+  retry.ts                       |     100 |    94.73 |     100 |     100 | 45                                                                                                                                                                                                      
+  security.ts                    |   98.21 |     97.5 |     100 |   98.11 | 60                                                                                                                                                                                                      
+ src/utils/filtering             |     100 |    95.34 |     100 |     100 |                                                                                                                                                                                                         
+  ClientSideFilteringStrategy.ts |     100 |    94.44 |     100 |     100 | 59                                                                                                                                                                                                      
+  FilteringContext.ts            |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  HybridFilteringStrategy.ts     |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  ServerSideFilteringStrategy.ts |     100 |    93.75 |     100 |     100 | 64                                                                                                                                                                                                      
+  index.ts                       |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+ src/utils/parser                |   96.26 |    86.56 |     100 |   96.26 |                                                                                                                                                                                                         
+  FilterParser.ts                |   96.26 |    86.56 |     100 |   96.26 | 79,237,265,293                                                                                                                                                                                          
+ src/utils/performance           |    98.2 |    90.11 |     100 |   98.59 |                                                                                                                                                                                                         
+  adaptive-batch-optimizer.ts    |   96.63 |       80 |     100 |   97.34 | 250-251,387                                                                                                                                                                                             
+  batch-processor.ts             |     100 |    93.75 |     100 |     100 | 118,277                                                                                                                                                                                                 
+  bulk-operation-enhancer.ts     |    94.5 |    88.09 |     100 |    94.5 | 236,311-323                                                                                                                                                                                             
+  circuit-breaker.ts             |   98.11 |    86.48 |     100 |   99.04 | 260                                                                                                                                                                                                     
+  index.ts                       |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  performance-monitor.ts         |     100 |    93.93 |     100 |     100 | 232,298,306,338                                                                                                                                                                                         
+  response-cache.ts              |   99.24 |    97.56 |     100 |     100 | 343                                                                                                                                                                                                     
+ src/utils/tokenizer             |   99.13 |       95 |     100 |   99.13 |                                                                                                                                                                                                         
+  TokenTypes.ts                  |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  Tokenizer.ts                   |   99.09 |       95 |     100 |   99.09 | 160                                                                                                                                                                                                     
+ src/utils/validators            |   99.34 |    94.17 |     100 |   99.32 |                                                                                                                                                                                                         
+  ConditionValidator.ts          |     100 |    96.29 |     100 |     100 | 133                                                                                                                                                                                                     
+  DateValidator.ts               |   97.82 |    93.02 |     100 |   97.61 | 121                                                                                                                                                                                                     
+  SecurityValidator.ts           |     100 |      100 |     100 |     100 |                                                                                                                                                                                                         
+  ValidationOrchestrator.ts      |     100 |    89.47 |     100 |     100 | 24,114                                                                                                                                                                                                  
+---------------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Jest: "global" coverage threshold for statements (95%) not met: 91.05%
+Jest: "global" coverage threshold for branches (90%) not met: 84.42%
+Jest: "global" coverage threshold for lines (95%) not met: 91.12%
+Jest: "global" coverage threshold for functions (98%) not met: 89.48%
+
+Test Suites: 78 passed, 78 total
+Tests:       2159 passed, 2159 total
+Snapshots:   0 total
+Time:        8.934 s
