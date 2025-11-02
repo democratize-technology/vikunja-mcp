@@ -11,6 +11,8 @@
 
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
+import { dirname } from 'path';
+import { mkdir } from 'fs/promises';
 import { logger } from '../../utils/logger';
 import type { SavedFilter } from '../../types/filters';
 import type {
@@ -90,11 +92,15 @@ export class SQLiteStorageAdapter implements StorageAdapter {
   async initialize(session: StorageSession): Promise<void> {
     try {
       this.session = session;
-      
+
+      // Ensure database directory exists
+      const dbDir = dirname(this.config.databasePath);
+      await mkdir(dbDir, { recursive: true });
+
       // Open database connection
       this.db = new Database(this.config.databasePath, {
         timeout: this.config.timeout,
-        verbose: this.config.debug ? (message?: unknown, ...args: unknown[]) => logger.debug(String(message), ...args) : undefined,
+        verbose: this.config.debug ? ((message?: unknown, ...args: unknown[]) => logger.debug(String(message), ...args)) : undefined,
       });
 
       // Configure database
@@ -271,9 +277,17 @@ export class SQLiteStorageAdapter implements StorageAdapter {
 
   async list(): Promise<SavedFilter[]> {
     this.ensureInitialized();
-    
+
+    if (!this.statements.list) {
+      throw new StorageConnectionError('Prepared statement for list operation not initialized');
+    }
+
+    if (!this.session) {
+      throw new StorageConnectionError('Storage session not initialized');
+    }
+
     try {
-      const rows = this.statements.list!.all(this.session!.id) as FilterRow[];
+      const rows = this.statements.list.all(this.session.id) as FilterRow[];
       return rows.map(this.rowToFilter);
     } catch (error) {
       throw new StorageDataError(
@@ -285,9 +299,17 @@ export class SQLiteStorageAdapter implements StorageAdapter {
 
   async get(id: string): Promise<SavedFilter | null> {
     this.ensureInitialized();
-    
+
+    if (!this.statements.get) {
+      throw new StorageConnectionError('Prepared statement for get operation not initialized');
+    }
+
+    if (!this.session) {
+      throw new StorageConnectionError('Storage session not initialized');
+    }
+
     try {
-      const row = this.statements.get!.get(this.session!.id, id) as FilterRow | undefined;
+      const row = this.statements.get.get(this.session.id, id) as FilterRow | undefined;
       return row ? this.rowToFilter(row) : null;
     } catch (error) {
       throw new StorageDataError(
@@ -299,7 +321,15 @@ export class SQLiteStorageAdapter implements StorageAdapter {
 
   async create(filter: Omit<SavedFilter, 'id' | 'created' | 'updated'>): Promise<SavedFilter> {
     this.ensureInitialized();
-    
+
+    if (!this.statements.create) {
+      throw new StorageConnectionError('Prepared statement for create operation not initialized');
+    }
+
+    if (!this.session) {
+      throw new StorageConnectionError('Storage session not initialized');
+    }
+
     try {
       const now = new Date();
       const savedFilter: SavedFilter = {
@@ -309,9 +339,9 @@ export class SQLiteStorageAdapter implements StorageAdapter {
         updated: now,
       };
 
-      this.statements.create!.run(
+      this.statements.create.run(
         savedFilter.id,
-        this.session!.id,
+        this.session.id,
         savedFilter.name,
         savedFilter.description || null,
         savedFilter.filter,
@@ -330,7 +360,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
           error,
         );
       }
-      
+
       throw new StorageDataError(
         `Failed to create filter: ${error instanceof Error ? error.message : 'Unknown error'}`,
         error instanceof Error ? error : undefined,
@@ -351,15 +381,28 @@ export class SQLiteStorageAdapter implements StorageAdapter {
         throw new StorageDataError(`Filter with id ${id} not found`);
       }
 
-      // Merge updates
+      // Merge updates - ensure updated timestamp is always later than created
+      let updatedTime = new Date();
+      if (updatedTime.getTime() <= existing.updated.getTime()) {
+        updatedTime = new Date(existing.updated.getTime() + 1);
+      }
+
       const updated: SavedFilter = {
         ...existing,
         ...filter,
-        updated: new Date(),
+        updated: updatedTime,
       };
 
       // Update in database
-      const result = this.statements.update!.run(
+      if (!this.statements.update) {
+        throw new StorageConnectionError('Prepared statement for update operation not initialized');
+      }
+
+      if (!this.session) {
+        throw new StorageConnectionError('Storage session not initialized');
+      }
+
+      const result = this.statements.update.run(
         updated.name,
         updated.description || null,
         updated.filter,
@@ -367,7 +410,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
         updated.projectId || null,
         updated.isGlobal ? 1 : 0,
         updated.updated.toISOString(),
-        this.session!.id,
+        this.session.id,
         id,
       );
 
@@ -397,10 +440,18 @@ export class SQLiteStorageAdapter implements StorageAdapter {
 
   async delete(id: string): Promise<void> {
     this.ensureInitialized();
-    
+
+    if (!this.statements.delete) {
+      throw new StorageConnectionError('Prepared statement for delete operation not initialized');
+    }
+
+    if (!this.session) {
+      throw new StorageConnectionError('Storage session not initialized');
+    }
+
     try {
-      const result = this.statements.delete!.run(this.session!.id, id);
-      
+      const result = this.statements.delete.run(this.session.id, id);
+
       if (result.changes === 0) {
         throw new StorageDataError(`Filter with id ${id} not found`);
       }
@@ -408,7 +459,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
       if (error instanceof StorageDataError) {
         throw error;
       }
-      
+
       throw new StorageDataError(
         `Failed to delete filter ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
         error instanceof Error ? error : undefined,
@@ -418,9 +469,17 @@ export class SQLiteStorageAdapter implements StorageAdapter {
 
   async findByName(name: string): Promise<SavedFilter | null> {
     this.ensureInitialized();
-    
+
+    if (!this.statements.findByName) {
+      throw new StorageConnectionError('Prepared statement for findByName operation not initialized');
+    }
+
+    if (!this.session) {
+      throw new StorageConnectionError('Storage session not initialized');
+    }
+
     try {
-      const row = this.statements.findByName!.get(this.session!.id, name) as FilterRow | undefined;
+      const row = this.statements.findByName.get(this.session.id, name) as FilterRow | undefined;
       return row ? this.rowToFilter(row) : null;
     } catch (error) {
       throw new StorageDataError(
@@ -432,9 +491,17 @@ export class SQLiteStorageAdapter implements StorageAdapter {
 
   async getByProject(projectId: number): Promise<SavedFilter[]> {
     this.ensureInitialized();
-    
+
+    if (!this.statements.getByProject) {
+      throw new StorageConnectionError('Prepared statement for getByProject operation not initialized');
+    }
+
+    if (!this.session) {
+      throw new StorageConnectionError('Storage session not initialized');
+    }
+
     try {
-      const rows = this.statements.getByProject!.all(this.session!.id, projectId) as FilterRow[];
+      const rows = this.statements.getByProject.all(this.session.id, projectId) as FilterRow[];
       return rows.map(this.rowToFilter);
     } catch (error) {
       throw new StorageDataError(
@@ -446,9 +513,17 @@ export class SQLiteStorageAdapter implements StorageAdapter {
 
   async clear(): Promise<void> {
     this.ensureInitialized();
-    
+
+    if (!this.statements.clear) {
+      throw new StorageConnectionError('Prepared statement for clear operation not initialized');
+    }
+
+    if (!this.session) {
+      throw new StorageConnectionError('Storage session not initialized');
+    }
+
     try {
-      this.statements.clear!.run(this.session!.id);
+      this.statements.clear.run(this.session.id);
     } catch (error) {
       throw new StorageDataError(
         `Failed to clear filters: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -466,20 +541,32 @@ export class SQLiteStorageAdapter implements StorageAdapter {
     additionalInfo?: Record<string, unknown>;
   }> {
     this.ensureInitialized();
-    
+
+    if (!this.statements.getStats) {
+      throw new StorageConnectionError('Prepared statement for getStats operation not initialized');
+    }
+
+    if (!this.session) {
+      throw new StorageConnectionError('Storage session not initialized');
+    }
+
+    if (!this.db) {
+      throw new StorageConnectionError('Database connection not initialized');
+    }
+
     try {
-      const result = this.statements.getStats!.get(this.session!.id) as { filter_count: number };
-      
+      const result = this.statements.getStats.get(this.session.id) as { filter_count: number };
+
       // Get database file stats
-      const dbStats = this.db!.prepare("PRAGMA page_count").get() as { page_count: number };
-      const dbPageSize = this.db!.prepare("PRAGMA page_size").get() as { page_size: number };
+      const dbStats = this.db.prepare("PRAGMA page_count").get() as { page_count: number };
+      const dbPageSize = this.db.prepare("PRAGMA page_size").get() as { page_size: number };
       const dbSize = dbStats.page_count * dbPageSize.page_size;
 
       return {
         filterCount: result.filter_count,
-        sessionId: this.session!.id,
-        createdAt: this.session!.createdAt,
-        lastAccessAt: this.session!.lastAccessAt,
+        sessionId: this.session.id,
+        createdAt: this.session.createdAt,
+        lastAccessAt: this.session.lastAccessAt,
         storageType: 'sqlite',
         additionalInfo: {
           databasePath: this.config.databasePath,

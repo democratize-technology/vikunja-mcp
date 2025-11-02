@@ -77,7 +77,8 @@ export function loadStorageConfig(): StorageConfig {
     if (envValue) {
       const parsedValue = parseEnvValue(envValue, configKey);
       if (parsedValue !== undefined) {
-        (config as any)[configKey] = parsedValue;
+        // Type assertion to safely assign parsed value
+        (config as Record<string, unknown>)[configKey] = parsedValue;
       }
     }
   }
@@ -197,14 +198,24 @@ export function getStorageConfigForType(type: StorageConfig['type']): StorageCon
  * Create storage configuration from partial configuration
  */
 export function createStorageConfig(partial: Partial<StorageConfig> = {}): StorageConfig {
+  // Check for explicitly null required fields before applying defaults (undefined is ok, we'll use defaults)
+  if (partial.type === 'sqlite' && partial.databasePath === null) {
+    throw new Error('Invalid storage configuration: Database path is required for SQLite storage');
+  }
+
+  if ((partial.type === 'postgresql' || partial.type === 'redis') &&
+      partial.connectionString === null) {
+    throw new Error(`Invalid storage configuration: Connection string is required for ${partial.type} storage`);
+  }
+
   const defaultConfig = getStorageConfigForType(partial.type || 'memory');
   const mergedConfig = { ...defaultConfig, ...partial };
-  
+
   const validation = validateStorageConfig(mergedConfig);
   if (!validation.valid) {
     throw new Error(`Invalid storage configuration: ${validation.errors.join(', ')}`);
   }
-  
+
   return mergedConfig;
 }
 

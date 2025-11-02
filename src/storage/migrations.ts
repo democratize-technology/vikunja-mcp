@@ -65,12 +65,26 @@ export const MIGRATIONS: StorageMigration[] = [
 ];
 
 /**
+ * Type definition for better-sqlite3 Database interface
+ * This provides type safety for database operations
+ */
+interface BetterSqlite3Db {
+  exec(sql: string): void;
+  prepare(sql: string): {
+    run(...params: unknown[]): { changes: number; lastInsertRowid: number };
+    get(...params: unknown[]): unknown;
+    all(...params: unknown[]): unknown[];
+  };
+  transaction<T>(fn: () => T): () => T;
+}
+
+/**
  * Migration runner for executing database schema migrations
  */
 export class MigrationRunner {
-  private db: any; // Database connection (better-sqlite3 instance)
+  private db: BetterSqlite3Db; // Database connection (better-sqlite3 instance)
 
-  constructor(db: any) {
+  constructor(db: BetterSqlite3Db) {
     this.db = db;
   }
 
@@ -98,12 +112,12 @@ export class MigrationRunner {
   getCurrentVersion(): number {
     try {
       this.initializeMigrationTable();
-      
+
       const result = this.db.prepare(`
-        SELECT MAX(version) as current_version 
+        SELECT MAX(version) as current_version
         FROM schema_version
-      `).get();
-      
+      `).get() as { current_version?: number } | undefined;
+
       return result?.current_version || 0;
     } catch (error) {
       logger.error('Failed to get current schema version', {
@@ -124,12 +138,39 @@ export class MigrationRunner {
   }> {
     try {
       this.initializeMigrationTable();
-      
-      return this.db.prepare(`
-        SELECT version, description, applied_at, checksum 
-        FROM schema_version 
+
+      const rows = this.db.prepare(`
+        SELECT version, description, applied_at, checksum
+        FROM schema_version
         ORDER BY version
-      `).all();
+      `).all() as Array<{
+        version: number;
+        description?: string;
+        applied_at: string;
+        checksum?: string;
+      }>;
+
+      return rows.map(row => {
+        const result: {
+          version: number;
+          description?: string;
+          appliedAt: string;
+          checksum?: string;
+        } = {
+          version: row.version,
+          appliedAt: row.applied_at,
+        };
+
+        if (row.description !== undefined) {
+          result.description = row.description;
+        }
+
+        if (row.checksum !== undefined) {
+          result.checksum = row.checksum;
+        }
+
+        return result;
+      });
     } catch (error) {
       logger.error('Failed to get applied migrations', {
         error: error instanceof Error ? error.message : 'Unknown error',

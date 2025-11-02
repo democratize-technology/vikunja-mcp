@@ -255,7 +255,11 @@ export class CircuitBreakerManager {
     if (!this.breakers.has(name)) {
       this.breakers.set(name, new CircuitBreaker(name, options));
     }
-    return this.breakers.get(name)!;
+    const breaker = this.breakers.get(name);
+    if (!breaker) {
+      throw new Error(`Failed to create circuit breaker for service: ${name}`);
+    }
+    return breaker;
   }
 
   /**

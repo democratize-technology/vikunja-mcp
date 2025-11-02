@@ -40,9 +40,12 @@ export class DefaultStorageAdapterFactory implements StorageAdapterFactory {
           logger.warn(`Storage type ${config.type} not yet implemented, falling back to memory storage`);
           return new InMemoryStorageAdapter();
         
-        default:
-          logger.warn(`Unknown storage type ${config.type}, falling back to memory storage`);
+        default: {
+          // Use type assertion to handle the case where type might be invalid
+          const unknownType = config.type as string;
+          logger.warn(`Unknown storage type ${unknownType}, falling back to memory storage`);
           return new InMemoryStorageAdapter();
+        }
       }
     } catch (error) {
       logger.error('Failed to create storage adapter, falling back to memory storage', {

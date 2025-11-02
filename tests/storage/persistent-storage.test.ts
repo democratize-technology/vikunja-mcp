@@ -541,10 +541,10 @@ describe('Persistent Storage Implementation', () => {
       expect(config.databasePath).toBe(testDbPath);
     });
 
-    it('should throw error for invalid configuration', () => {
+    it('should throw error for explicitly null required fields', () => {
       expect(() => createStorageConfig({
         type: 'sqlite',
-        // Missing required databasePath
+        databasePath: null, // Explicitly null should throw
       })).toThrow('Invalid storage configuration');
     });
 
@@ -653,12 +653,23 @@ describe('Persistent Storage Implementation', () => {
 
       await adapter.initialize(session);
 
-      // Simulate corruption by closing database and attempting operations
+      // Create a filter first
+      await adapter.create({
+        name: 'Test Filter',
+        filter: 'done = false',
+        isGlobal: false,
+      });
+
+      // Simulate corruption by closing and deleting the database file
       await adapter.close();
+
+      // Delete the database file to simulate corruption
+      await rm(testDbPath, { force: true });
 
       const healthCheck = await adapter.healthCheck();
       expect(healthCheck.healthy).toBe(false);
       expect(healthCheck.error).toBeDefined();
+      expect(healthCheck.error).toContain('reconnection failed');
     });
 
     it('should handle concurrent access safely', async () => {

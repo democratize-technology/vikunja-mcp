@@ -245,6 +245,15 @@ export async function migrateMemoryToPersistent(): Promise<{
         // Create persistent storage instance
         const persistentStorage = await persistentStorageManager.getStorage(sessionStat.sessionId);
 
+        // Check if persistent storage actually used persistent backend
+        const stats = await persistentStorage.getStats();
+        const usedPersistentStorage = stats.storageType === 'sqlite';
+
+        if (!usedPersistentStorage) {
+          errors.push(`Session ${sessionStat.sessionId}: Persistent storage not available, data may not be migrated to persistent storage`);
+          logger.warn(`Migration warning: Persistent storage not available for session ${sessionStat.sessionId}`);
+        }
+
         // Migrate each filter
         for (const filter of filters) {
           try {
