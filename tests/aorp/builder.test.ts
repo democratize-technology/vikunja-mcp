@@ -1,0 +1,410 @@
+/**
+ * AORP Builder Tests
+ * Tests the fluent API and response building functionality
+ */
+
+import { AorpBuilder } from '../../src/aorp/builder';
+import type { AorpTransformationContext } from '../../src/aorp/types';
+
+describe('AorpBuilder', () => {
+  let mockContext: AorpTransformationContext;
+
+  beforeEach(() => {
+    mockContext = {
+      operation: 'test_operation',
+      success: true,
+      dataSize: 100,
+      processingTime: 150,
+      verbosity: 'standard'
+    };
+  });
+
+  describe('Basic Builder Functionality', () => {
+    test('should create builder with default configuration', () => {
+      const builder = new AorpBuilder(mockContext);
+      expect(builder).toBeInstanceOf(AorpBuilder);
+    });
+
+    test('should build minimal valid response', () => {
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Test operation successful', 0.9)
+        .nextSteps(['Step 1', 'Step 2'])
+        .recommendations('Primary recommendation', ['Secondary 1', 'Secondary 2'])
+        .workflowGuidance('Use this data for next actions')
+        .qualityScores(0.8, 0.9, 'medium')
+        .data({ test: 'data' }, 'Test summary')
+        .build();
+
+      expect(response.immediate.status).toBe('success');
+      expect(response.immediate.key_insight).toBe('Test operation successful');
+      expect(response.immediate.confidence).toBe(0.9);
+      expect(response.actionable.next_steps).toEqual(['Step 1', 'Step 2']);
+      expect(response.actionable.recommendations.primary).toBe('Primary recommendation');
+      expect(response.actionable.recommendations.secondary).toEqual(['Secondary 1', 'Secondary 2']);
+      expect(response.actionable.workflow_guidance).toBe('Use this data for next actions');
+      expect(response.quality.completeness).toBe(0.8);
+      expect(response.quality.reliability).toBe(0.9);
+      expect(response.quality.urgency).toBe('medium');
+      expect(response.details.data).toEqual({ test: 'data' });
+      expect(response.details.summary).toBe('Test summary');
+    });
+
+    test('should throw error when required fields are missing', () => {
+      expect(() => {
+        new AorpBuilder(mockContext).build();
+      }).toThrow('Immediate response information is required');
+    });
+
+    test('should allow individual field setting', () => {
+      const response = new AorpBuilder(mockContext)
+        .immediate({
+          status: 'success',
+          key_insight: 'Test insight',
+          confidence: 0.85,
+          session_id: 'session-123'
+        })
+        .actionable({
+          next_steps: ['Action 1'],
+          recommendations: { primary: 'Main recommendation' },
+          workflow_guidance: 'Guidance text'
+        })
+        .quality({
+          completeness: 0.7,
+          reliability: 0.8,
+          urgency: 'high',
+          indicators: { custom: 'value' }
+        })
+        .details({
+          summary: 'Test summary',
+          data: { result: 'success' },
+          metadata: { timestamp: '2024-01-01T00:00:00Z' }
+        })
+        .build();
+
+      expect(response.immediate.session_id).toBe('session-123');
+      expect(response.quality.indicators).toEqual({ custom: 'value' });
+      expect(response.details.metadata.timestamp).toBe('2024-01-01T00:00:00Z');
+    });
+  });
+
+  describe('Fluent API Methods', () => {
+    test('should chain methods correctly', () => {
+      const builder = new AorpBuilder(mockContext);
+
+      const chainedBuilder = builder
+        .status('success', 'Test', 0.9)
+        .sessionId('test-session')
+        .addNextStep('Step 1')
+        .addNextStep('Step 2')
+        .addMetadata('key1', 'value1')
+        .addMetadata('key2', 'value2');
+
+      expect(chainedBuilder).toBe(builder);
+    });
+
+    test('should handle session ID setting', () => {
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Test')
+        .sessionId('session-456')
+        .data({})
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.immediate.session_id).toBe('session-456');
+    });
+
+    test('should handle debug information', () => {
+      const debugInfo = { logs: ['log1', 'log2'], performance: { time: 100 } };
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Test')
+        .data({})
+        .debug(debugInfo)
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.details.debug).toEqual(debugInfo);
+    });
+  });
+
+  describe('Auto-generation Features', () => {
+    test('should auto-generate next steps for successful operations', () => {
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Operation successful')
+        .data({ id: 123, title: 'Test Task' })
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.actionable.next_steps).toContain('Review the returned items for completeness');
+      expect(response.actionable.next_steps.length).toBeGreaterThan(0);
+    });
+
+    test('should auto-generate next steps for failed operations', () => {
+      const errorContext = { ...mockContext, success: false };
+      const response = new AorpBuilder(errorContext)
+        .status('error', 'Operation failed')
+        .data(null)
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.actionable.next_steps).toContain('Review error details and fix the underlying issue');
+      expect(response.actionable.next_steps.length).toBeGreaterThan(0);
+    });
+
+    test('should auto-generate quality indicators', () => {
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Test')
+        .data({ id: 1, title: 'Test' })
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.quality.completeness).toBeGreaterThan(0);
+      expect(response.quality.completeness).toBeLessThanOrEqual(1);
+      expect(response.quality.reliability).toBeGreaterThan(0);
+      expect(response.quality.reliability).toBeLessThanOrEqual(1);
+      expect(['low', 'medium', 'high', 'critical']).toContain(response.quality.urgency);
+      expect(response.quality.indicators).toBeDefined();
+    });
+
+    test('should auto-generate workflow guidance', () => {
+      const createContext = { ...mockContext, operation: 'create' };
+      const response = new AorpBuilder(createContext)
+        .status('success', 'Resource created')
+        .data({ id: 123 })
+        .generateNextSteps()
+        .generateQuality()
+        .generateWorkflowGuidance()
+        .build();
+
+      expect(response.actionable.workflow_guidance).toContain('created successfully');
+      expect(response.actionable.workflow_guidance).toContain('ID');
+    });
+  });
+
+  describe('Static Factory Methods', () => {
+    test('should create successful response builder', () => {
+      const builder = AorpBuilder.success(
+        mockContext,
+        'Operation completed successfully',
+        { id: 123, title: 'Test' }
+      );
+
+      expect(builder).toBeInstanceOf(AorpBuilder);
+      const response = builder.build();
+      expect(response.immediate.status).toBe('success');
+      expect(response.immediate.key_insight).toBe('Operation completed successfully');
+      expect(response.details.data).toEqual({ id: 123, title: 'Test' });
+    });
+
+    test('should create error response builder', () => {
+      const errorContext = { ...mockContext, success: false };
+      const builder = AorpBuilder.error(
+        errorContext,
+        'Operation failed',
+        { error: 'Details' }
+      );
+
+      expect(builder).toBeInstanceOf(AorpBuilder);
+      const response = builder.build();
+      expect(response.immediate.status).toBe('error');
+      expect(response.immediate.key_insight).toBe('Operation failed');
+      expect(response.details.data).toEqual({ error: 'Details' });
+    });
+
+    test('should create builder with custom configuration', () => {
+      const customConfig = {
+        confidenceMethod: 'simple' as const,
+        enableNextSteps: false,
+        enableQualityIndicators: false
+      };
+
+      const builder = AorpBuilder.create(mockContext, customConfig);
+      const response = builder
+        .status('success', 'Test')
+        .data({})
+        .workflowGuidance('Test')
+        .build();
+
+      expect(response.actionable.next_steps).toEqual([]);
+      // When quality indicators are disabled, default values are used
+      expect(response.quality.completeness).toBe(0.5);
+    });
+  });
+
+  describe('Configuration Options', () => {
+    test('should respect confidence calculation method', () => {
+      const simpleConfig = { confidenceMethod: 'simple' as const };
+      const response = new AorpBuilder(mockContext, simpleConfig)
+        .status('success', 'Test')
+        .data({})
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.immediate.confidence).toBe(0.9); // Simple success = 0.9
+    });
+
+    test('should handle disabled next steps', () => {
+      const config = { enableNextSteps: false };
+      const response = new AorpBuilder(mockContext, config)
+        .status('success', 'Test')
+        .data({})
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.actionable.next_steps).toEqual([]);
+    });
+
+    test('should handle disabled quality indicators', () => {
+      const config = { enableQualityIndicators: false };
+      const response = new AorpBuilder(mockContext, config)
+        .status('success', 'Test')
+        .data({})
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      // When quality indicators are disabled, default values are used
+      expect(response.quality.completeness).toBe(0.5);
+      expect(response.quality.reliability).toBe(0.8);
+    });
+  });
+
+  describe('Custom Quality Indicators', () => {
+    test('should calculate custom quality indicators', () => {
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Test')
+        .data({ field1: 'value1', field2: 'value2', field3: 'value3' })
+        .generateNextSteps()
+        .generateQuality({
+          customIndicators: {
+            dataComplexity: (data: any) => {
+              if (!data) return 0;
+              return Object.keys(data).length / 10; // Normalize to 0-1
+            },
+            responseTime: () => 0.7
+          }
+        })
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.quality.indicators?.dataComplexity).toBe(0.3); // 3 fields / 10
+      expect(response.quality.indicators?.responseTime).toBe(0.7);
+    });
+
+    test('should handle errors in custom indicators gracefully', () => {
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Test')
+        .data({})
+        .generateNextSteps()
+        .generateQuality({
+          customIndicators: {
+            errorProne: () => {
+              throw new Error('Test error');
+            },
+            working: () => 0.5
+          }
+        })
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.quality.indicators?.errorProne).toBe(0); // Default on error
+      expect(response.quality.indicators?.working).toBe(0.5);
+    });
+  });
+
+  describe('Build with Auto-generation', () => {
+    test('should build complete response with auto-generation', () => {
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Test operation')
+        .data({ result: 'success' }, 'Test operation completed')
+        .buildWithAutogeneration();
+
+      expect(response.immediate.status).toBe('success');
+      expect(response.actionable.next_steps.length).toBeGreaterThan(0);
+      expect(response.quality.completeness).toBeGreaterThan(0);
+      expect(response.actionable.workflow_guidance).toBeDefined();
+    });
+
+    test('should accept custom next steps and quality configs', () => {
+      const nextStepsConfig = {
+        maxSteps: 3,
+        templates: {
+          test_operation: ['Custom step 1', 'Custom step 2']
+        }
+      };
+
+      const qualityConfig = {
+        completenessWeight: 0.7,
+        reliabilityWeight: 0.3
+      };
+
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Test')
+        .data({})
+        .buildWithAutogeneration(nextStepsConfig, qualityConfig);
+
+      expect(response.actionable.next_steps.length).toBeLessThanOrEqual(3);
+      expect(response.actionable.next_steps).toContain('Custom step 1');
+    });
+  });
+
+  describe('Edge Cases', () => {
+    test('should handle empty data', () => {
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Test')
+        .data(null)
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.details.data).toBeNull();
+      expect(response.quality.completeness).toBe(0);
+    });
+
+    test('should handle array data', () => {
+      const arrayData = [1, 2, 3, 4, 5];
+      const response = new AorpBuilder(mockContext)
+        .status('success', 'Test')
+        .data(arrayData)
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.details.data).toEqual(arrayData);
+      expect(response.quality.completeness).toBe(0.5); // 5 items / 10 max
+    });
+
+    test('should handle session ID in immediate info', () => {
+      const response = new AorpBuilder(mockContext)
+        .immediate({
+          status: 'success',
+          key_insight: 'Test',
+          confidence: 0.8,
+          session_id: 'custom-session-id'
+        })
+        .data({})
+        .generateNextSteps()
+        .generateQuality()
+        .workflowGuidance('Test guidance')
+        .build();
+
+      expect(response.immediate.session_id).toBe('custom-session-id');
+    });
+  });
+});
