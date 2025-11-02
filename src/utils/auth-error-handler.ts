@@ -55,7 +55,12 @@ export function isAuthenticationError(error: unknown): boolean {
     /^401\b/,                   // HTTP status at start of message
     /^403\b/,                   // HTTP status at start of message
     /\berror:\s*401\b/i,          // "Error: 401" pattern
-    /\berror:\s*403\b/i           // "Error: 403" pattern
+    /\berror:\s*403\b/i,           // "Error: 403" pattern
+    // Vikunja-specific patterns
+    /\bmissing,\s+malformed,\s+expired\s+or\s+otherwise\s+invalid\s+token\s+provided\b/i, // Vikunja API error
+    /\bmalformed\s+token\b/i,     // "malformed token"
+    /\bexpired\s+token\b/i,       // "expired token"
+    /\bmissing\s+token\b/i        // "missing token"
   ];
   
   return authErrorPatterns.some(pattern => pattern.test(normalizedMessage));
@@ -124,6 +129,22 @@ export function createAuthErrorMessage(operation: string, originalError: string)
     operationType = 'labels';
   } else if (operation.includes('assignee')) {
     operationType = 'assignees';
+  }
+
+  // Check for specific Vikunja token errors and provide enhanced guidance
+  const errorMessage = originalError.toLowerCase();
+  if (errorMessage.includes('missing, malformed, expired') ||
+      errorMessage.includes('malformed token') ||
+      errorMessage.includes('expired token') ||
+      errorMessage.includes('missing token')) {
+
+    return `Authentication failed: Invalid or expired API token.\n\n` +
+      `To fix this:\n` +
+      `1. Log into your Vikunja instance\n` +
+      `2. Go to Settings > API Access\n` +
+      `3. Generate a new API token or copy your existing one\n` +
+      `4. Reconnect with: vikunja_auth.connect({ apiUrl: '${process.env.VIKUNJA_URL || 'https://your-vikunja.com/api/v1'}', apiToken: 'your-new-token' })\n\n` +
+      `Note: API tokens start with 'tk_' and JWT tokens start with 'eyJ'. Make sure you're using the correct token type.`;
   }
 
   return (

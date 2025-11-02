@@ -131,13 +131,20 @@ export function wrapToolError(
 
 /**
  * Create a standardized error for authentication requirements
- * 
- * @returns MCPError for authentication required scenarios
+ *
+ * @param operation - Optional context about what operation required authentication
+ * @returns MCPError for authentication required scenarios with helpful next steps
  */
-export function createAuthRequiredError(): MCPError {
+export function createAuthRequiredError(operation?: string): MCPError {
+  const context = operation ? ` to ${operation}` : '';
   return new MCPError(
     ErrorCode.AUTH_REQUIRED,
-    'Authentication required. Please use vikunja_auth.connect first.'
+    `Authentication required${context}. Please connect first:\n` +
+    `vikunja_auth.connect({\n` +
+    `  apiUrl: 'https://your-vikunja.com/api/v1',\n` +
+    `  apiToken: 'your-api-token'\n` +
+    `})\n\n` +
+    `Get your API token from Vikunja Settings > API Access.`
   );
 }
 
@@ -153,15 +160,69 @@ export function createValidationError(message: string): MCPError {
 
 /**
  * Create a standardized error for internal server errors
- * 
+ *
  * @param message - The error message
  * @param originalError - Optional original error for context
  * @returns MCPError for internal errors
  */
 export function createInternalError(message: string, originalError?: unknown): MCPError {
-  const errorMessage = originalError instanceof Error 
+  const errorMessage = originalError instanceof Error
     ? `${message}: ${originalError.message}`
     : message;
-    
+
   return new MCPError(ErrorCode.INTERNAL_ERROR, errorMessage);
+}
+
+/**
+ * Transform generic fetch errors into helpful authentication guidance
+ *
+ * This function catches common "fetch failed" errors that usually indicate
+ * authentication or connectivity issues and provides actionable guidance.
+ *
+ * @param error - The original error
+ * @param operation - Context about what operation failed
+ * @returns MCPError with helpful authentication guidance
+ */
+export function handleFetchError(error: unknown, operation: string): MCPError {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+
+  // Detect common authentication-related fetch failures
+  if (
+    errorMessage.includes('fetch failed') ||
+    errorMessage.includes('ECONNREFUSED') ||
+    errorMessage.includes('ENOTFOUND') ||
+    errorMessage.includes('401') ||
+    errorMessage.includes('403')
+  ) {
+    return new MCPError(
+      ErrorCode.AUTH_REQUIRED,
+      `Failed to ${operation}. This usually means authentication is needed.\n\n` +
+      `Please check:\n` +
+      `1. You're connected: vikunja_auth.connect({ apiUrl: '...', apiToken: '...' })\n` +
+      `2. Your API token is valid and has permissions\n` +
+      `3. The API URL is correct and accessible\n\n` +
+      `Get help: vikunja_auth.status()`
+    );
+  }
+
+  // For other fetch errors, provide network troubleshooting
+  if (
+    errorMessage.includes('timeout') ||
+    errorMessage.includes('TIMEOUT') ||
+    errorMessage.includes('ETIMEDOUT')
+  ) {
+    return new MCPError(
+      ErrorCode.API_ERROR,
+      `Request timeout while trying to ${operation}. Please check:\n` +
+      `1. Network connection is stable\n` +
+      `2. Vikunja server is accessible\n` +
+      `3. Try again in a few moments`
+    );
+  }
+
+  // Default error transformation
+  return new MCPError(
+    ErrorCode.API_ERROR,
+    `Failed to ${operation}: ${errorMessage}`
+  );
 }

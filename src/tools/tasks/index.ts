@@ -21,6 +21,7 @@ import type { FilterExpression, SavedFilter } from '../../types/filters';
 import type { GetTasksParams } from 'node-vikunja';
 import { validateTaskCountLimit, logMemoryUsage, createTaskLimitExceededMessage } from '../../utils/memory';
 import { FilteringContext, type FilteringArgs } from '../../utils/filtering';
+import { createAuthRequiredError, handleFetchError } from '../../utils/error-handler';
 
 /**
  * Zod schema for AorpBuilderConfig
@@ -47,7 +48,62 @@ import { addReminder, removeReminder, listReminders } from './reminders';
 import { applyLabels, removeLabels, listTaskLabels } from './labels';
 
 /**
- * Helper function to create response with optional optimization and AORP support
+ * Intelligent AORP activation logic
+ * Automatically determines when AORP would provide the most value
+ */
+function shouldIntelligentlyActivateAorp(
+  operation: string,
+  data: TaskResponseData,
+  verbosity: string
+): boolean {
+  // Always enable AORP for complex operations that benefit from next steps
+  const complexOperations = [
+    'create-task',
+    'update-task',
+    'delete-task',
+    'bulk-create-tasks',
+    'bulk-update-tasks',
+    'bulk-delete-tasks',
+    'relate',
+    'unrelate'
+  ];
+
+  // Always enable for list operations with large datasets
+  const taskCount = Array.isArray(data.tasks) ? data.tasks.length : 1;
+
+  // Enable AORP based on operation complexity and data size
+  if (complexOperations.includes(operation)) {
+    return true; // Complex operations always benefit from guidance
+  }
+
+  if (operation === 'list-tasks' && taskCount > 5) {
+    return true; // Lists with more than 5 tasks benefit from summaries
+  }
+
+  // Enable for non-standard verbosity levels (user wants optimization)
+  if (verbosity !== 'standard') {
+    return true;
+  }
+
+  // Enable for get-task operations when task has rich data
+  if (operation === 'get-task' && Array.isArray(data.tasks) && data.tasks.length > 0) {
+    const task = data.tasks[0];
+    if (task) {
+      const hasRichContent = task.description ||
+                           (task.labels && task.labels.length > 0) ||
+                           (task.assignees && task.assignees.length > 0) ||
+                           task.due_date;
+      if (hasRichContent) {
+        return true;
+      }
+    }
+  }
+
+  return false; // Default to standard responses for simple cases
+}
+
+/**
+ * Helper function to create response with optional optimization and intelligent AORP support
  */
 function createTaskResponse(
   operation: string,
@@ -68,8 +124,11 @@ function createTaskResponse(
   // Use optimized format if requested or if verbosity is not standard
   const shouldOptimize = useOptimizedFormat || selectedVerbosity !== 'standard';
 
-  // Use AORP if explicitly requested
-  if (useAorp) {
+  // Intelligent AORP activation - auto-detect when beneficial
+  const shouldUseAorp = useAorp || shouldIntelligentlyActivateAorp(operation, data, selectedVerbosity);
+
+  // Use AORP if explicitly requested or intelligently detected
+  if (shouldUseAorp) {
     const aorpFactory = createAorpEnabledFactory();
     return aorpFactory.createResponse(operation, message, data, metadata, {
       verbosity: selectedVerbosity as Verbosity,
@@ -423,10 +482,7 @@ async function listTasks(
       filterId: args.filterId,
     });
 
-    throw new MCPError(
-      ErrorCode.API_ERROR,
-      `Failed to list tasks: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    throw handleFetchError(error, 'list tasks');
   }
 }
 
@@ -533,12 +589,9 @@ export function registerTasksTool(
       try {
         logger.debug('Executing tasks tool', { subcommand: args.subcommand, args });
 
-        // Check authentication
+        // Check authentication with enhanced error message
         if (!authManager.isAuthenticated()) {
-          throw new MCPError(
-            ErrorCode.AUTH_REQUIRED,
-            'Authentication required. Please use vikunja_auth.connect first.',
-          );
+          throw createAuthRequiredError('access task management features');
         }
 
         // Set the client factory for this request if provided
