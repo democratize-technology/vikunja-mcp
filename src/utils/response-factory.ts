@@ -9,7 +9,8 @@ import type {
   Verbosity,
   TransformerConfig,
   TransformationResult,
-  OptimizedTask
+  OptimizedTask,
+  Task
 } from '../transforms/index';
 import {
   defaultTaskTransformer,
@@ -116,7 +117,7 @@ export class ResponseFactory {
 
     // Determine if optimization should be used
     const useOptimization = options.useOptimization ?? this.config.enableOptimization;
-    const verbosity = options.verbosity ?? this.config.defaultVerbosity;
+    const verbosity = options.verbosity ?? this.config.defaultVerbosity ?? TransformVerbosity.STANDARD;
 
     if (!useOptimization) {
       // Create standard response without optimization
@@ -132,7 +133,7 @@ export class ResponseFactory {
       success: true,
       operation,
       message,
-      data: optimizedResult.data,
+      data: optimizedResult.data as T,
       metadata: {
         timestamp: new Date().toISOString(),
         count: Array.isArray(optimizedResult.data) ? optimizedResult.data.length : 1,
@@ -167,14 +168,74 @@ export class ResponseFactory {
   }
 
   /**
+   * Validate that unknown data conforms to Task interface
+   * Accepts both node-vikunja Task and transformer Task formats
+   */
+  private validateTask(data: unknown): data is Task {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+
+    const task = data as Record<string, unknown>;
+    return (
+      typeof task.id === 'number' &&
+      typeof task.title === 'string' &&
+      typeof task.done === 'boolean'
+    );
+  }
+
+  /**
+   * Convert unknown task data to transformer Task format
+   */
+  private convertToTask(data: unknown): Task {
+    if (this.validateTask(data)) {
+      // The data already matches the Task interface structure
+      const taskData = data as Record<string, unknown>;
+
+      const task: Record<string, unknown> = {
+        id: taskData.id as number,
+        title: taskData.title as string,
+        done: taskData.done as boolean,
+        priority: (taskData.priority as number) || 0,
+        created_at: taskData.created_at as string || new Date().toISOString(),
+        updated_at: taskData.updated_at as string || new Date().toISOString(),
+      };
+
+      // Only include optional fields if they exist
+      const optionalFields: Array<keyof Task> = [
+        'description', 'due_date', 'start_date', 'end_date', 'completed_at',
+        'project_id', 'hex_color', 'position', 'identifier', 'index',
+        'parent_task_id', 'repeat_after'
+      ];
+
+      optionalFields.forEach(field => {
+        if (taskData[field] !== undefined && taskData[field] !== null) {
+          task[field] = taskData[field];
+        }
+      });
+
+      // Include any additional properties
+      Object.entries(taskData).forEach(([key, value]) => {
+        if (!['id', 'title', 'done', 'priority', 'created_at', 'updated_at', ...optionalFields].includes(key)) {
+          task[key] = value;
+        }
+      });
+
+      return task as Task;
+    }
+
+    throw new Error('Invalid task data structure');
+  }
+
+  /**
    * Create optimized response for task data
    */
   createTaskResponse(
     operation: string,
     message: string,
-    tasks: unknown | unknown[],
+    tasks: unknown,
     metadata: Partial<ResponseMetadata> = {},
-    verbosity: Verbosity = this.config.defaultVerbosity
+    verbosity: Verbosity = this.config.defaultVerbosity ?? TransformVerbosity.STANDARD
   ): OptimizedResponse<OptimizedTask | OptimizedTask[]> {
     const startTime = Date.now();
 
@@ -187,9 +248,13 @@ export class ResponseFactory {
     let transformationResult: TransformationResult;
 
     if (Array.isArray(tasks)) {
-      transformationResult = defaultTaskTransformer.transformTasks(tasks, transformerConfig);
+      // Convert and validate array of tasks
+      const convertedTasks = tasks.map(item => this.convertToTask(item));
+      transformationResult = defaultTaskTransformer.transformTasks(convertedTasks, transformerConfig);
     } else {
-      transformationResult = defaultTaskTransformer.transformTask(tasks, transformerConfig);
+      // Convert and validate single task
+      const convertedTask = this.convertToTask(tasks);
+      transformationResult = defaultTaskTransformer.transformTask(convertedTask, transformerConfig);
     }
 
     const totalTime = Date.now() - startTime;
@@ -201,7 +266,7 @@ export class ResponseFactory {
       success: true,
       operation,
       message,
-      data: transformationResult.data,
+      data: transformationResult.data as OptimizedTask | OptimizedTask[],
       metadata: {
         timestamp: new Date().toISOString(),
         count: Array.isArray(transformationResult.data) ? transformationResult.data.length : 1,
@@ -248,11 +313,15 @@ export class ResponseFactory {
     };
 
     if (Array.isArray(data)) {
-      // Assume it's an array of tasks
-      return defaultTaskTransformer.transformTasks(data, transformerConfig);
-    } else if (data && typeof data === 'object' && 'id' in data && 'title' in data) {
-      // Assume it's a single task
-      return defaultTaskTransformer.transformTask(data, transformerConfig);
+      // Validate and transform array of tasks
+      const validTasks = data.filter(item => this.validateTask(item)).map(item => this.convertToTask(item));
+      if (validTasks.length !== data.length) {
+        console.warn(`Some items in array are not valid tasks and were filtered out`);
+      }
+      return defaultTaskTransformer.transformTasks(validTasks, transformerConfig);
+    } else if (this.validateTask(data)) {
+      // Validate and transform single task
+      return defaultTaskTransformer.transformTask(this.convertToTask(data), transformerConfig);
     } else {
       // For other data types, return as-is with basic metrics
       const originalSize = JSON.stringify(data).length;
@@ -486,7 +555,7 @@ export function createOptimizedResponse<T>(
 export function createTaskResponse(
   operation: string,
   message: string,
-  tasks: unknown | unknown[],
+  tasks: unknown,
   metadata: Partial<ResponseMetadata> = {},
   verbosity: Verbosity = TransformVerbosity.STANDARD
 ): OptimizedResponse<OptimizedTask | OptimizedTask[]> {

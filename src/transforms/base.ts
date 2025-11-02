@@ -46,7 +46,7 @@ export interface FieldDefinition {
   /** Minimum verbosity level required for this field to be included */
   minVerbosity: Verbosity;
   /** Optional transformer function for custom field processing */
-  transformer?: (value: any, source: any) => any;
+  transformer?: (value: unknown, source: Record<string, unknown>) => unknown;
   /** Whether this field should always be included regardless of verbosity */
   alwaysInclude?: boolean;
   /** Whether this field contains potentially sensitive data */
@@ -56,7 +56,7 @@ export interface FieldDefinition {
 /**
  * Transformation result with size metrics
  */
-export interface TransformationResult<T = any> {
+export interface TransformationResult<T = unknown> {
   /** The transformed/optimized data */
   data: T;
   /** Size metrics for this transformation */
@@ -91,7 +91,7 @@ export interface TransformationResult<T = any> {
  * Base interface for optimized responses
  * Extends StandardResponse pattern with optimization metadata
  */
-export interface OptimizedResponse<T = any> {
+export interface OptimizedResponse<T = unknown> {
   /** Standard response fields */
   success: boolean;
   operation: string;
@@ -150,17 +150,17 @@ export interface TransformerConfig {
     exclude?: string[];
   };
   /** Custom transformers for specific fields */
-  customTransformers?: Record<string, (value: any, source: any) => any>;
+  customTransformers?: Record<string, (value: unknown, source: Record<string, unknown>) => unknown>;
 }
 
 /**
  * Size estimation utilities
  */
-export class SizeEstimator {
+export const SizeEstimator = {
   /**
    * Estimate the size of a value in bytes
    */
-  static estimateSize(value: any): number {
+  estimateSize(value: unknown): number {
     if (value === null || value === undefined) {
       return 0;
     }
@@ -179,30 +179,34 @@ export class SizeEstimator {
 
     if (typeof value === 'object') {
       if (Array.isArray(value)) {
-        return value.reduce((total, item) => total + this.estimateSize(item), 0) + 2; // Array overhead
+        let total = 2; // Array overhead
+        for (const item of value) {
+          total += SizeEstimator.estimateSize(item as unknown);
+        }
+        return total;
       }
 
       // Object
       let size = 2; // Object overhead
       for (const [key, val] of Object.entries(value)) {
         size += key.length * 2; // Key size
-        size += this.estimateSize(val); // Value size
+        size += SizeEstimator.estimateSize(val as unknown); // Value size
         size += 2; // Colon and comma/comma overhead
       }
       return size;
     }
 
     return 0;
-  }
+  },
 
   /**
    * Calculate size reduction percentage
    */
-  static calculateReduction(originalSize: number, optimizedSize: number): number {
+  calculateReduction(originalSize: number, optimizedSize: number): number {
     if (originalSize === 0) return 0;
     return Math.round(((originalSize - optimizedSize) / originalSize) * 100);
   }
-}
+};
 
 /**
  * Field categorization mapping for common Vikunja fields

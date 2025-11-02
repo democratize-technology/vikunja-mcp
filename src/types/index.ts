@@ -35,6 +35,10 @@ export {
   type ResponseMetadata,
   type StandardResponse,
   type StandardErrorResponse,
+  type TaskResponseData,
+  type TaskResponseMetadata,
+  type QualityIndicatorData,
+  type QualityIndicatorFunction,
   createStandardResponse,
   createErrorResponse,
 } from './responses';

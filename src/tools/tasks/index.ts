@@ -8,12 +8,12 @@ import { z } from 'zod';
 import type { Task } from 'node-vikunja';
 import type { AuthManager } from '../../auth/AuthManager';
 import type { VikunjaClientFactory } from '../../client/VikunjaClientFactory';
-import { MCPError, ErrorCode, createStandardResponse } from '../../types/index';
+import { MCPError, ErrorCode, createStandardResponse, type TaskResponseData, type TaskResponseMetadata, type QualityIndicatorFunction } from '../../types/index';
 import { getClientFromContext, setGlobalClientFactory } from '../../client';
 import { logger } from '../../utils/logger';
 import { createAorpEnabledFactory } from '../../utils/response-factory';
-import { Verbosity } from '../../transforms/index';
-import type { AorpBuilderConfig } from '../../aorp/types';
+import type { Verbosity } from '../../transforms/index';
+import type { AorpBuilderConfig, AorpTransformationContext } from '../../aorp/types';
 import { storageManager } from '../../storage/FilterStorage';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
 import { parseFilterString } from '../../utils/filters';
@@ -21,6 +21,22 @@ import type { FilterExpression, SavedFilter } from '../../types/filters';
 import type { GetTasksParams } from 'node-vikunja';
 import { validateTaskCountLimit, logMemoryUsage, createTaskLimitExceededMessage } from '../../utils/memory';
 import { FilteringContext, type FilteringArgs } from '../../utils/filtering';
+
+/**
+ * Zod schema for AorpBuilderConfig
+ * Replaces z.any() with proper type validation
+ */
+const AorpBuilderConfigSchema = z.object({
+  confidenceMethod: z.enum(['adaptive', 'weighted', 'simple']).optional(),
+  enableNextSteps: z.boolean().optional(),
+  enableQualityIndicators: z.boolean().optional(),
+  confidenceWeights: z.object({
+    success: z.number(),
+    dataSize: z.number(),
+    responseTime: z.number(),
+    completeness: z.number(),
+  }).optional(),
+}).optional();
 
 // Import all operation handlers
 import { createTask, getTask, updateTask, deleteTask } from './crud';
@@ -36,14 +52,16 @@ import { applyLabels, removeLabels, listTaskLabels } from './labels';
 function createTaskResponse(
   operation: string,
   message: string,
-  data: any,
-  metadata: any = {},
+  data: TaskResponseData,
+  metadata: TaskResponseMetadata = {
+    timestamp: new Date().toISOString()
+  },
   verbosity?: string,
   useOptimizedFormat?: boolean,
   useAorp?: boolean,
   aorpConfig?: AorpBuilderConfig,
   sessionId?: string
-) {
+): unknown {
   // Default to standard verbosity if not specified
   const selectedVerbosity = verbosity || 'standard';
 
@@ -129,16 +147,18 @@ function createTaskResponse(
           completenessWeight: 0.6,
           reliabilityWeight: 0.4,
           customIndicators: {
-            taskPriority: (data: any) => {
+            taskPriority: ((data: unknown, _context: AorpTransformationContext) => {
               // Higher completeness for high-priority tasks
-              if (!data?.task) return 0.7;
-              const priority = data.task.priority || 0;
+              const taskData = data as { task?: Task };
+              if (!taskData?.task) return 0.7;
+              const priority = taskData.task.priority || 0;
               return Math.min(1.0, 0.5 + (priority / 5) * 0.5);
-            },
-            taskCompleteness: (data: any) => {
+            }) as QualityIndicatorFunction,
+            taskCompleteness: ((data: unknown, _context: AorpTransformationContext) => {
               // Based on task fields completeness
-              if (!data?.task) return 0.5;
-              const task = data.task;
+              const taskData = data as { task?: Task };
+              if (!taskData?.task) return 0.5;
+              const task = taskData.task;
               let score = 0.3; // Base score for having a task
               if (task.title) score += 0.2;
               if (task.description) score += 0.2;
@@ -147,7 +167,7 @@ function createTaskResponse(
               if (task.labels && task.labels.length > 0) score += 0.05;
               if (task.assignees && task.assignees.length > 0) score += 0.05;
               return Math.min(1.0, score);
-            }
+            }) as QualityIndicatorFunction
           }
         },
         ...(sessionId && { sessionId })
@@ -506,7 +526,7 @@ export function registerTasksTool(
       verbosity: z.enum(['minimal', 'standard', 'detailed', 'complete']).optional(),
       useOptimizedFormat: z.boolean().optional(),
       useAorp: z.boolean().optional(),
-      aorpConfig: z.any().optional(), // AorpBuilderConfig - using any for Zod compatibility
+      aorpConfig: AorpBuilderConfigSchema, // AorpBuilderConfig with proper Zod schema
       sessionId: z.string().optional(),
     },
     async (args) => {

@@ -155,10 +155,10 @@ export class SizeCalculator {
 
     if (Array.isArray(data)) {
       data.forEach(item => {
-        this.analyzeObjectBreakdown(item, breakdown);
+        this.analyzeObjectBreakdown(item as Record<string, unknown>, breakdown);
       });
     } else {
-      this.analyzeObjectBreakdown(data, breakdown);
+      this.analyzeObjectBreakdown(data as Record<string, unknown>, breakdown);
     }
 
     return breakdown;
@@ -178,10 +178,10 @@ export class SizeCalculator {
 
     if (Array.isArray(data)) {
       data.forEach(item => {
-        this.analyzeObjectBreakdown(item, breakdown);
+        this.analyzeObjectBreakdown(item as Record<string, unknown>, breakdown);
       });
     } else {
-      this.analyzeObjectBreakdown(data, breakdown);
+      this.analyzeObjectBreakdown(data as Record<string, unknown>, breakdown);
     }
 
     return breakdown;
@@ -190,7 +190,7 @@ export class SizeCalculator {
   /**
    * Analyze individual object breakdown
    */
-  private analyzeObjectBreakdown(obj: any, breakdown: SizeCalculationResult['breakdown']): void {
+  private analyzeObjectBreakdown(obj: Record<string, unknown>, breakdown: SizeCalculationResult['breakdown']): void {
     if (!obj || typeof obj !== 'object') return;
 
     Object.entries(obj).forEach(([key, value]) => {
@@ -216,7 +216,7 @@ export class SizeCalculator {
   /**
    * Get type name for value
    */
-  private getValueType(value: any): string {
+  private getValueType(value: unknown): string {
     if (value === null) return 'null';
     if (Array.isArray(value)) return 'array';
     if (typeof value === 'object') return 'object';
@@ -341,7 +341,7 @@ export function calculateResponseMetrics(response: OptimizedResponse): SizeCalcu
 /**
  * Quick size estimation
  */
-export function estimateSize(value: any): number {
+export function estimateSize(value: unknown): number {
   return SizeEstimator.estimateSize(value);
 }
 

@@ -3,6 +3,68 @@
  * Ensures consistency across all operations
  */
 
+import type { Task } from 'node-vikunja';
+import type { AorpTransformationContext } from '../aorp/types';
+
+/**
+ * Task-specific response data structure
+ * Provides type safety for task operation responses
+ */
+export interface TaskResponseData {
+  /** Single task object (for create, get, update operations) */
+  task?: Task;
+  /** Array of tasks (for list operations) */
+  tasks?: Task[];
+  /** Deleted task ID (for delete operations when task not found) */
+  deletedTaskId?: number;
+  /** Additional operation-specific data */
+  [key: string]: unknown;
+}
+
+/**
+ * Task-specific response metadata
+ * Extends standard metadata with task-specific fields
+ */
+export interface TaskResponseMetadata {
+  /** ISO timestamp of when the operation was performed */
+  timestamp: string;
+  /** Number of items affected/returned */
+  count?: number;
+  /** Project ID for task operations */
+  projectId?: number;
+  /** Task ID for single task operations */
+  taskId?: number;
+  /** Fields that were modified (for update operations) */
+  affectedFields?: string[];
+  /** Previous state before update (for update operations) */
+  previousState?: Partial<Task>;
+  /** Whether labels were successfully added */
+  labelsAdded?: boolean;
+  /** Whether assignees were successfully added */
+  assigneesAdded?: boolean;
+  /** Task title for reference */
+  taskTitle?: string;
+  /** Additional context-specific metadata */
+  [key: string]: unknown;
+}
+
+/**
+ * Quality indicator data structure
+ * Used by AORP quality assessment functions
+ */
+export interface QualityIndicatorData {
+  /** Task object for quality assessment */
+  task?: Task;
+  /** Additional data for quality calculations */
+  [key: string]: unknown;
+}
+
+/**
+ * Quality indicator function type
+ * Functions that calculate quality scores from task data
+ */
+export type QualityIndicatorFunction = (data: unknown, context: AorpTransformationContext) => number;
+
 /**
  * Standard metadata included in all responses
  */

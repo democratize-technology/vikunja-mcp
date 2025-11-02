@@ -60,21 +60,21 @@ export class FieldSelector {
 
   selectFields(config: TransformerConfig, availableFields: string[]): FieldSelectionResult {
     const verbosityFields = DEFAULT_VERBOSITY_FIELDS[config.verbosity] || [];
-    let selectedFields = new Set(verbosityFields);
+    const selectedFields = new Set<string>([...verbosityFields]);
 
     if (config.fieldOverrides?.include) {
-      config.fieldOverrides.include.forEach(field => selectedFields.add(field as any));
+      config.fieldOverrides.include.forEach(field => selectedFields.add(field));
     }
 
     if (config.fieldOverrides?.exclude) {
-      config.fieldOverrides.exclude.forEach(field => selectedFields.delete(field as any));
+      config.fieldOverrides.exclude.forEach(field => selectedFields.delete(field));
     }
 
     const finalSelectedFields = Array.from(selectedFields).filter(field =>
       availableFields.includes(field)
     );
 
-    const excludedFields = availableFields.filter(field => !(finalSelectedFields as string[]).includes(field));
+    const excludedFields = availableFields.filter(field => !finalSelectedFields.includes(field));
 
     const fieldDefinitions: FieldDefinition[] = finalSelectedFields.map(fieldName => {
       const existingDef = this.fieldDefinitions.get(fieldName);

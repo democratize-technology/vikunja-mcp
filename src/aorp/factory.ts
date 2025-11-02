@@ -146,7 +146,7 @@ export class AorpResponseFactory {
     } else if (typeof error === 'object' && error && 'message' in error) {
       errorMessage = String((error as { message: unknown }).message);
     } else {
-      errorMessage = String(error);
+      errorMessage = typeof error === 'string' ? error : JSON.stringify(error);
     }
 
     // Create mock optimized response for error

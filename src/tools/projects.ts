@@ -10,8 +10,8 @@ import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import type { ResponseMetadata } from '../types/responses';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getClientFromContext } from '../client';
+import type { Verbosity } from '../transforms/index';
 import { createOptimizedResponse, createAorpEnabledFactory } from '../utils/response-factory';
-import { Verbosity } from '../transforms/index';
 import type { Project, ProjectListParams, LinkSharing, LinkShareAuth } from 'node-vikunja';
 import {
   handleStatusCodeError,

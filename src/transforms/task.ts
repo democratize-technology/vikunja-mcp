@@ -30,7 +30,7 @@ export interface Task {
   parent_task_id?: number;
   repeat_after?: number;
   // Add other task fields as needed
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -48,7 +48,7 @@ export interface OptimizedTask {
   updated_at?: string;
   project_id?: number;
   // Other fields based on verbosity level
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -139,17 +139,17 @@ export class TaskTransformer {
    * Apply field transformations to a task
    */
   private applyTransformations(task: Task, fieldDefinitions: FieldDefinition[]): OptimizedTask {
-    const optimizedTask: Partial<OptimizedTask> = {};
+    const optimizedTask: Record<string, unknown> = {};
 
     fieldDefinitions.forEach(fieldDef => {
       const sourceValue = task[fieldDef.fieldName];
 
       if (sourceValue !== undefined && sourceValue !== null) {
         // Apply field transformation if available
-        let transformedValue = sourceValue;
+        let transformedValue: unknown = sourceValue;
 
         if (fieldDef.transformer) {
-          transformedValue = fieldDef.transformer(sourceValue, task);
+          transformedValue = fieldDef.transformer(sourceValue, task as Record<string, unknown>);
         } else {
           // Apply default transformations based on field type
           transformedValue = this.applyDefaultTransformation(fieldDef.fieldName, sourceValue);
@@ -171,7 +171,7 @@ export class TaskTransformer {
   /**
    * Apply default transformations for common fields
    */
-  private applyDefaultTransformation(fieldName: string, value: any): any {
+  private applyDefaultTransformation(fieldName: string, value: unknown): unknown {
     switch (fieldName) {
       case 'done':
         return value;
@@ -183,13 +183,13 @@ export class TaskTransformer {
       case 'start_date':
       case 'end_date':
         if (!value) return undefined;
-        return new Date(value).toISOString();
+        return new Date(value as string | number | Date).toISOString();
 
       case 'created_at':
       case 'updated_at':
       case 'completed_at':
         if (!value) return undefined;
-        return new Date(value).toISOString();
+        return new Date(value as string | number | Date).toISOString();
 
       case 'description':
         return value;
@@ -202,7 +202,7 @@ export class TaskTransformer {
 
       case 'position':
       case 'index':
-        return typeof value === 'number' ? value : parseInt(value, 10);
+        return typeof value === 'number' ? value : parseInt(String(value), 10);
 
       default:
         return value;
@@ -289,7 +289,7 @@ export class TaskTransformer {
     // Normalize date fields
     ['due_date', 'start_date', 'end_date', 'created_at', 'updated_at', 'completed_at'].forEach(dateField => {
       if (completeTask[dateField]) {
-        completeTask[dateField] = new Date(completeTask[dateField]).toISOString();
+        completeTask[dateField] = new Date(completeTask[dateField] as string | number | Date).toISOString();
       }
     });
 
