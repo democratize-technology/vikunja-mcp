@@ -55,7 +55,7 @@ describe('Comment operations', () => {
       expect(mockClient.tasks.getTaskComments).toHaveBeenCalledWith(123);
       expect(JSON.parse(result.content[0].text)).toMatchObject({
         success: true,
-        operation: 'comment',
+        operation: 'list',
         message: 'Found 1 comments',
         comments: mockComments,
       });
@@ -110,7 +110,7 @@ describe('Comment operations', () => {
       expect(mockClient.tasks.getTaskComments).toHaveBeenCalledWith(123);
       expect(JSON.parse(result.content[0].text)).toMatchObject({
         success: true,
-        operation: 'comment',
+        operation: 'list',
         message: 'Found 0 comments',
         comments: [],
       });
@@ -138,7 +138,7 @@ describe('Comment operations', () => {
       expect(mockClient.tasks.getTaskComments).toHaveBeenCalledWith(123);
       expect(JSON.parse(result.content[0].text)).toMatchObject({
         success: true,
-        operation: 'comment',
+        operation: 'list',
         message: 'Found 2 comments',
         comments: mockComments,
       });
@@ -163,7 +163,7 @@ describe('Comment operations', () => {
 
       expect(JSON.parse(result.content[0].text)).toMatchObject({
         success: true,
-        operation: 'comment',
+        operation: 'list',
         message: 'Found 0 comments',
         comments: [],
       });

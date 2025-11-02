@@ -242,7 +242,7 @@ describe('Assignee operations', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response).toMatchObject({
         success: true,
-        operation: 'list',
+        operation: 'get',
         message: 'Task has 2 assignee(s)',
         task: {
           id: 123,

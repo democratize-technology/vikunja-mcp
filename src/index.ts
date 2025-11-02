@@ -45,6 +45,29 @@ async function initializeFactory(): Promise<void> {
   }
 }
 
+// Initialize factory during module load for both production and test environments
+// This ensures the factory is available for tests
+export const factoryInitializationPromise = initializeFactory()
+  .then(() => {
+    // Register tools after factory initialization completes
+    try {
+      if (clientFactory) {
+        registerTools(server, authManager, clientFactory);
+      } else {
+        registerTools(server, authManager, undefined);
+      }
+    } catch (error) {
+      logger.error('Failed to initialize:', error);
+      // Fall back to legacy registration for backwards compatibility
+      registerTools(server, authManager, undefined);
+    }
+  })
+  .catch((error) => {
+    logger.warn('Failed to initialize client factory during module load:', error);
+    // Register tools without factory on failure
+    registerTools(server, authManager, undefined);
+  });
+
 // Auto-authenticate using environment variables if available
 if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
   const connectionMessage = createSecureConnectionMessage(
@@ -59,19 +82,9 @@ if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
 
 // Start the server
 async function main(): Promise<void> {
-  // Initialize factory and register tools BEFORE connecting to transport
-  try {
-    await initializeFactory();
-    if (clientFactory) {
-      registerTools(server, authManager, clientFactory);
-    } else {
-      registerTools(server, authManager, undefined);
-    }
-  } catch (error) {
-    logger.error('Failed to initialize:', error);
-    // Fall back to legacy registration for backwards compatibility
-    registerTools(server, authManager, undefined);
-  }
+  // Tools are already registered during module initialization
+  // Wait for factory initialization to complete before starting server
+  await factoryInitializationPromise;
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

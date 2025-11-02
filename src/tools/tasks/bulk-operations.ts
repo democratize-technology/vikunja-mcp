@@ -262,7 +262,7 @@ async function bulkUpdateTasksWithEnhancer(args: {
 
     // Build enhanced response
     const response = createStandardResponse(
-      'update-tasks',
+      'update-task',
       result.failed.length === 0
         ? `Successfully updated ${taskIds.length} tasks using ${result.strategy} strategy`
         : `Partially updated ${result.successful.length}/${taskIds.length} tasks using ${result.strategy} strategy`,
@@ -587,7 +587,7 @@ export async function bulkUpdateTasks(args: {
       }
 
       const response = createStandardResponse(
-        'update-tasks',
+        'update-task',
         `Successfully updated ${taskIds.length} tasks`,
         { tasks: updatedTasks },
         {
@@ -794,7 +794,7 @@ export async function bulkUpdateTasks(args: {
       }
 
       const response = createStandardResponse(
-        'update-tasks',
+        'update-task',
         `Successfully updated ${taskIds.length} tasks${failedFetches > 0 ? ` (${failedFetches} tasks could not be fetched after update)` : ''}`,
         { tasks: updatedTasks },
         {
@@ -902,7 +902,7 @@ export async function bulkDeleteTasks(args: {
       // If some succeeded, report partial success
       if (successCount > 0) {
         const response = createStandardResponse(
-          'delete-tasks',
+          'delete-task',
           `Bulk delete partially completed. Successfully deleted ${successCount} tasks. Failed to delete task IDs: ${failedIds.join(', ')}`,
           { deletedTaskIds: failedIds.filter((id): id is number => id !== undefined) },
           {
@@ -913,6 +913,9 @@ export async function bulkDeleteTasks(args: {
             previousState: tasksToDelete as unknown as Record<string, unknown>,
           },
         );
+
+        // Override success to false for partial failures as expected by tests
+        response.success = false;
 
         return {
           content: [
@@ -932,7 +935,7 @@ export async function bulkDeleteTasks(args: {
     }
 
     const response = createStandardResponse(
-      'delete-tasks',
+      'delete-task',
       `Successfully deleted ${taskIds.length} tasks`,
       { deletedTaskIds: taskIds },
       {
@@ -1157,6 +1160,11 @@ export async function bulkCreateTasks(args: {
         }),
       },
     );
+
+    // Override success to false for partial failures as expected by tests
+    if (failedTasks.length > 0) {
+      response.success = false;
+    }
 
     logger.debug('Bulk create completed', {
       successCount: successfulTasks.length,

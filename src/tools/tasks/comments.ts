@@ -28,7 +28,7 @@ export async function handleComment(args: {
 
       const response: StandardTaskResponse = {
         success: true,
-        operation: 'comment',
+        operation: 'list',
         message: `Found ${comments.length} comments`,
         comments: comments,
         metadata: {
@@ -110,7 +110,7 @@ export async function listComments(args: {
 
     const response: StandardTaskResponse = {
       success: true,
-      operation: 'comment',
+      operation: 'list',
       message: `Found ${comments.length} comments`,
       comments: comments,
       metadata: {

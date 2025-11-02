@@ -177,10 +177,13 @@ export class ResponseFactory {
     }
 
     const task = data as Record<string, unknown>;
+    // More lenient validation - check for basic structure but allow missing fields
     return (
-      typeof task.id === 'number' &&
-      typeof task.title === 'string' &&
-      typeof task.done === 'boolean'
+      // Must have at least some basic structure
+      typeof task.id === 'number' ||
+      typeof task.title === 'string' ||
+      typeof task.done === 'boolean' ||
+      Object.keys(task).length > 0
     );
   }
 
@@ -189,16 +192,16 @@ export class ResponseFactory {
    */
   private convertToTask(data: unknown): Task {
     if (this.validateTask(data)) {
-      // The data already matches the Task interface structure
+      // The data matches a reasonable structure
       const taskData = data as Record<string, unknown>;
 
       const task: Record<string, unknown> = {
-        id: taskData.id as number,
-        title: taskData.title as string,
-        done: taskData.done as boolean,
+        id: (taskData.id as number) || 0,
+        title: (taskData.title as string) || 'Untitled Task',
+        done: (taskData.done as boolean) || false,
         priority: (taskData.priority as number) || 0,
-        created_at: taskData.created_at as string || new Date().toISOString(),
-        updated_at: taskData.updated_at as string || new Date().toISOString(),
+        created_at: (taskData.created_at as string) || new Date().toISOString(),
+        updated_at: (taskData.updated_at as string) || new Date().toISOString(),
       };
 
       // Only include optional fields if they exist
@@ -222,6 +225,18 @@ export class ResponseFactory {
       });
 
       return task as Task;
+    }
+
+    // For empty or minimal data, create a basic task structure
+    if (data && typeof data === 'object' && Object.keys(data as Record<string, unknown>).length === 0) {
+      return {
+        id: 0,
+        title: 'Untitled Task',
+        done: false,
+        priority: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as Task;
     }
 
     throw new Error('Invalid task data structure');

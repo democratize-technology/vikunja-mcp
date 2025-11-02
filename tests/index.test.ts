@@ -213,12 +213,12 @@ describe('Main Server Entry Point (index.ts)', () => {
     it('should successfully initialize client factory and set global', async () => {
       const mockClientFactory = { test: 'factory' };
       mockCreateVikunjaClientFactory.mockResolvedValue(mockClientFactory);
-      
-      require('../src/index');
-      
-      // Wait for async initialization
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
+
+      const indexModule = require('../src/index');
+
+      // Wait for factory initialization
+      await indexModule.factoryInitializationPromise;
+
       expect(mockCreateVikunjaClientFactory).toHaveBeenCalledWith(mockAuthManager);
       expect(mockSetGlobalClientFactory).toHaveBeenCalledWith(mockClientFactory);
       expect(mockRegisterTools).toHaveBeenCalledWith(
@@ -231,12 +231,12 @@ describe('Main Server Entry Point (index.ts)', () => {
     it('should handle factory initialization failure gracefully', async () => {
       const initError = new Error('Factory initialization failed');
       mockCreateVikunjaClientFactory.mockRejectedValue(initError);
-      
-      require('../src/index');
-      
-      // Wait for async initialization
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
+
+      const indexModule = require('../src/index');
+
+      // Wait for factory initialization
+      await indexModule.factoryInitializationPromise;
+
       expect(mockLogger.warn).toHaveBeenCalledWith(
         'Failed to initialize client factory during startup:',
         initError
@@ -251,12 +251,12 @@ describe('Main Server Entry Point (index.ts)', () => {
 
     it('should handle null factory result gracefully', async () => {
       mockCreateVikunjaClientFactory.mockResolvedValue(null);
-      
-      require('../src/index');
-      
-      // Wait for async initialization
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
+
+      const indexModule = require('../src/index');
+
+      // Wait for factory initialization
+      await indexModule.factoryInitializationPromise;
+
       expect(mockSetGlobalClientFactory).not.toHaveBeenCalled();
       expect(mockRegisterTools).toHaveBeenCalledWith(
         mockMcpServer,
@@ -267,12 +267,12 @@ describe('Main Server Entry Point (index.ts)', () => {
 
     it('should handle undefined factory result gracefully', async () => {
       mockCreateVikunjaClientFactory.mockResolvedValue(undefined);
-      
-      require('../src/index');
-      
-      // Wait for async initialization
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
+
+      const indexModule = require('../src/index');
+
+      // Wait for factory initialization
+      await indexModule.factoryInitializationPromise;
+
       expect(mockSetGlobalClientFactory).not.toHaveBeenCalled();
       expect(mockRegisterTools).toHaveBeenCalledWith(
         mockMcpServer,
@@ -284,12 +284,12 @@ describe('Main Server Entry Point (index.ts)', () => {
     it('should handle factory creation errors gracefully', async () => {
       const initError = new Error('Factory creation failed');
       mockCreateVikunjaClientFactory.mockRejectedValue(initError);
-      
-      require('../src/index');
-      
-      // Wait for async initialization
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
+
+      const indexModule = require('../src/index');
+
+      // Wait for factory initialization
+      await indexModule.factoryInitializationPromise;
+
       expect(mockLogger.warn).toHaveBeenCalledWith(
         'Failed to initialize client factory during startup:',
         initError
@@ -309,7 +309,7 @@ describe('Main Server Entry Point (index.ts)', () => {
       // Make registerTools throw in the then() block to trigger the catch()
       const mockClientFactory = { test: 'factory' };
       mockCreateVikunjaClientFactory.mockResolvedValue(mockClientFactory);
-      
+
       let callCount = 0;
       mockRegisterTools.mockImplementation(() => {
         callCount++;
@@ -318,12 +318,12 @@ describe('Main Server Entry Point (index.ts)', () => {
         }
         // Second call succeeds (in catch block)
       });
-      
-      require('../src/index');
-      
-      // Wait for async initialization
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
+
+      const indexModule = require('../src/index');
+
+      // Wait for factory initialization
+      await indexModule.factoryInitializationPromise;
+
       expect(mockLogger.error).toHaveBeenCalledWith('Failed to initialize:', expect.any(Error));
       expect(mockRegisterTools).toHaveBeenCalledTimes(2); // Once in then(), once in catch()
       expect(mockRegisterTools).toHaveBeenLastCalledWith(

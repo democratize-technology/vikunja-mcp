@@ -198,7 +198,7 @@ export async function listAssignees(args: {
 
     const response: StandardTaskResponse = {
       success: true,
-      operation: 'list',
+      operation: 'get',
       message: `Task has ${assignees.length} assignee(s)`,
       task: minimalTask,
       metadata: {
