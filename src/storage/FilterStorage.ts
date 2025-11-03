@@ -9,37 +9,10 @@
  */
 
 import { logger } from '../utils/logger';
+import { AsyncMutex } from '../utils/AsyncMutex';
 
 import type { FilterStorage, SavedFilter } from '../types/filters';
 import { v4 as uuidv4 } from 'uuid';
-
-/**
- * Simple mutex implementation for synchronizing access
- */
-class AsyncMutex {
-  private locked = false;
-  private queue: Array<() => void> = [];
-
-  async acquire(): Promise<() => void> {
-    return new Promise((resolve) => {
-      const release = (): void => {
-        this.locked = false;
-        const next = this.queue.shift();
-        if (next) {
-          this.locked = true;
-          setImmediate(next);
-        }
-      };
-
-      if (this.locked) {
-        this.queue.push(() => resolve(release));
-      } else {
-        this.locked = true;
-        resolve(release);
-      }
-    });
-  }
-}
 
 /**
  * Session information for storage isolation

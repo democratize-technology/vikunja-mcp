@@ -5,24 +5,33 @@
 
 import type { VikunjaClient } from 'node-vikunja';
 import type { AuthManager } from './auth/AuthManager';
-import type { 
-  VikunjaModule 
+import type {
+  VikunjaModule
 } from './types/node-vikunja-extended';
 import { isVikunjaClientConstructor } from './types/node-vikunja-extended';
 import { VikunjaClientFactory } from './client/VikunjaClientFactory';
+import { AsyncMutex } from './utils/AsyncMutex';
 
 export { VikunjaClientFactory } from './client/VikunjaClientFactory';
 
-
 /**
- * Client context for dependency injection
+ * Client context for dependency injection with thread safety
+ *
+ * NOTE: The synchronous getInstance() method has potential race conditions
+ * in highly concurrent scenarios. For thread safety, use getInstanceAsync().
  */
 class ClientContext {
   private static instance: ClientContext | null = null;
+  private static instanceMutex = new AsyncMutex();
   private clientFactory: VikunjaClientFactory | null = null;
+  private factoryMutex = new AsyncMutex();
 
   private constructor() {}
 
+  /**
+   * Backward compatible synchronous getInstance
+   * @deprecated Use getInstanceAsync() for thread safety. This method has race conditions in concurrent scenarios.
+   */
   static getInstance(): ClientContext {
     if (!ClientContext.instance) {
       ClientContext.instance = new ClientContext();
@@ -31,21 +40,94 @@ class ClientContext {
   }
 
   /**
-   * Set the client factory for dependency injection
+   * Thread-safe async getInstance for new code
+   */
+  static async getInstanceAsync(): Promise<ClientContext> {
+    const release = await ClientContext.instanceMutex.acquire();
+    try {
+      if (!ClientContext.instance) {
+        ClientContext.instance = new ClientContext();
+      }
+      return ClientContext.instance;
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Set the client factory for dependency injection (thread-safe)
+   */
+  async setClientFactory(factory: VikunjaClientFactory): Promise<void> {
+    const release = await this.factoryMutex.acquire();
+    try {
+      this.clientFactory = factory;
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Clear the client factory (for testing, thread-safe)
+   */
+  async clearClientFactory(): Promise<void> {
+    const release = await this.factoryMutex.acquire();
+    try {
+      this.clientFactory = null;
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Get a client instance using the factory (thread-safe)
+   */
+  async getClient(): Promise<VikunjaClient> {
+    const release = await this.factoryMutex.acquire();
+    try {
+      if (this.clientFactory) {
+        return this.clientFactory.getClient();
+      }
+      throw new Error('No client factory available. Please authenticate first.');
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Check if factory is available (thread-safe)
+   */
+  async hasFactory(): Promise<boolean> {
+    const release = await this.factoryMutex.acquire();
+    try {
+      return this.clientFactory !== null;
+    } finally {
+      release();
+    }
+  }
+
+  // Backward compatible synchronous versions (NOT THREAD-SAFE)
+  /**
+   * Set the client factory for dependency injection (synchronous, NOT thread-safe)
+   * WARNING: This method can cause race conditions in concurrent scenarios.
+   * The async version of this method (same name) provides thread safety.
    */
   setClientFactory(factory: VikunjaClientFactory): void {
     this.clientFactory = factory;
   }
 
   /**
-   * Clear the client factory (for testing)
+   * Clear the client factory (for testing, synchronous, NOT thread-safe)
+   * WARNING: This method can cause race conditions in concurrent scenarios.
+   * The async version of this method (same name) provides thread safety.
    */
   clearClientFactory(): void {
     this.clientFactory = null;
   }
 
   /**
-   * Get a client instance using the factory
+   * Get a client instance using the factory (synchronous, NOT thread-safe)
+   * WARNING: This method can cause race conditions in concurrent scenarios.
+   * The async version of this method (same name) provides thread safety.
    */
   async getClient(): Promise<VikunjaClient> {
     if (this.clientFactory) {
@@ -55,7 +137,9 @@ class ClientContext {
   }
 
   /**
-   * Check if factory is available
+   * Check if factory is available (synchronous, NOT thread-safe)
+   * WARNING: This method can cause race conditions in concurrent scenarios.
+   * The async version of this method (same name) provides thread safety.
    */
   hasFactory(): boolean {
     return this.clientFactory !== null;
@@ -63,24 +147,49 @@ class ClientContext {
 }
 
 /**
- * Convenience function to get client from context
+ * Convenience function to get client from context (backward compatible)
  */
 export async function getClientFromContext(): Promise<VikunjaClient> {
   return ClientContext.getInstance().getClient();
 }
 
 /**
- * Set the global client factory for all tools
+ * Set the global client factory for all tools (backward compatible)
  */
 export function setGlobalClientFactory(factory: VikunjaClientFactory): void {
   ClientContext.getInstance().setClientFactory(factory);
 }
 
 /**
- * Clear the global client factory (for testing)
+ * Clear the global client factory (for testing, backward compatible)
  */
 export function clearGlobalClientFactory(): void {
   ClientContext.getInstance().clearClientFactory();
+}
+
+// Thread-safe versions for new code
+/**
+ * Convenience function to get client from context (thread-safe)
+ */
+export async function getClientFromContextAsync(): Promise<VikunjaClient> {
+  const context = await ClientContext.getInstanceAsync();
+  return context.getClient();
+}
+
+/**
+ * Set the global client factory for all tools (thread-safe)
+ */
+export async function setGlobalClientFactoryAsync(factory: VikunjaClientFactory): Promise<void> {
+  const context = await ClientContext.getInstanceAsync();
+  await context.setClientFactory(factory);
+}
+
+/**
+ * Clear the global client factory (for testing, thread-safe)
+ */
+export async function clearGlobalClientFactoryAsync(): Promise<void> {
+  const context = await ClientContext.getInstanceAsync();
+  await context.clearClientFactory();
 }
 
 export { ClientContext };
