@@ -1,6 +1,5 @@
 /**
  * Bulk operations for tasks with performance optimizations
- * Enhanced with intelligent batching, caching, and monitoring
  */
 
 import { MCPError, ErrorCode, createStandardResponse } from '../../types/index';
@@ -10,16 +9,13 @@ import { logger } from '../../utils/logger';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { BatchProcessor, type BatchResult } from '../../utils/performance/batch-processor';
-import { performanceMonitor } from '../../utils/performance/performance-monitor';
 import {
   AUTH_ERROR_MESSAGES,
   MAX_BULK_OPERATION_TASKS,
 } from './constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from './validation';
 
-// Legacy batch processors for backward compatibility only
-
-// Legacy batch processors for backward compatibility
+// Batch processors for bulk operations
 const updateBatchProcessor = new BatchProcessor({
   maxConcurrency: 5,
   batchSize: 10,
@@ -39,73 +35,28 @@ const createBatchProcessor = new BatchProcessor({
   batchDelay: 0,
 });
 
-// No response cache - using direct API calls only
 
 
 /**
- * Simplified batch processor with performance monitoring
+ * Process tasks in batches with appropriate batch processor
  */
-async function processTasksOptimized<T>(
-  taskIds: number[],
-  processor: (taskId: number, index: number) => Promise<T>,
+async function processTasksInBatches<T>(
+  items: number[],
+  processor: (item: number, index: number) => Promise<T>,
   operationType: string
 ): Promise<BatchResult<T>> {
-  const operationId = `${operationType}-${Date.now()}`;
+  const batchProcessor = operationType.includes('delete')
+    ? deleteBatchProcessor
+    : operationType.includes('create')
+    ? createBatchProcessor
+    : updateBatchProcessor;
 
-  performanceMonitor.startOperation(
-    operationId,
-    operationType,
-    taskIds.length,
-    5 // Default concurrency level
-  );
-
-  try {
-    const batchProcessor = operationType.includes('delete')
-      ? deleteBatchProcessor
-      : operationType.includes('create')
-      ? createBatchProcessor
-      : updateBatchProcessor;
-
-    // Simplified processor with monitoring only
-    const enhancedProcessor = async (taskId: number, index: number): Promise<T> => {
-      performanceMonitor.recordApiCall(operationId);
-
-      try {
-        const result = await processor(taskId, index);
-        performanceMonitor.updateOperation(operationId, { successCount: 1 });
-        return result;
-      } catch (error) {
-        performanceMonitor.updateOperation(operationId, { failureCount: 1 });
-        throw error;
-      }
-    };
-
-    const result = await batchProcessor.processBatches(taskIds, enhancedProcessor);
-
-    performanceMonitor.completeOperation(operationId);
-    return result;
-  } catch (error) {
-    performanceMonitor.updateOperation(operationId, { failureCount: taskIds.length });
-    performanceMonitor.completeOperation(operationId);
-    throw error;
-  }
+  return await batchProcessor.processBatches(items, processor);
 }
 
-/**
- * Bulk update tasks (simplified implementation without enhanced optimizations)
- */
-export async function bulkUpdateTasksEnhanced(args: {
-  taskIds?: number[];
-  field?: string;
-  value?: unknown;
-  useEnhancedOptimizations?: boolean;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  // Enhanced optimizations no longer available - use standard bulk update
-  return await bulkUpdateTasks(args);
-}
 
 /**
- * Legacy bulk update tasks (backward compatibility)
+ * Bulk update tasks
  */
 export async function bulkUpdateTasks(args: {
   taskIds?: number[];
@@ -128,7 +79,6 @@ export async function bulkUpdateTasks(args: {
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'value is required for bulk update operation');
     }
 
-    // Check max tasks limit
     if (args.taskIds.length > MAX_BULK_OPERATION_TASKS) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
@@ -136,14 +86,11 @@ export async function bulkUpdateTasks(args: {
       );
     }
 
-    // Validate all task IDs
     args.taskIds.forEach((id) => validateId(id, 'task ID'));
 
-    // Store taskIds in const after validation for TypeScript
     const taskIds = args.taskIds;
 
-    // Preprocess value to handle common type coercion issues
-    // MCP might pass boolean values as strings
+    // Preprocess value to handle type coercion from MCP
     if (args.field === 'done' && typeof args.value === 'string') {
       const originalValue = args.value;
       if (args.value === 'true') {
@@ -157,13 +104,8 @@ export async function bulkUpdateTasks(args: {
       });
     }
 
-    // Handle numeric fields that might come as strings
-    if (
-      (args.field === 'priority' ||
-        args.field === 'project_id' ||
-        args.field === 'repeat_after') &&
-      typeof args.value === 'string'
-    ) {
+    // Handle numeric fields that come as strings
+    if (['priority', 'project_id', 'repeat_after'].includes(args.field) && typeof args.value === 'string') {
       const originalValue = args.value;
       const numValue = Number(args.value);
       if (!isNaN(numValue)) {
@@ -175,7 +117,6 @@ export async function bulkUpdateTasks(args: {
       }
     }
 
-    // Validate the field and value based on allowed fields
     const allowedFields = [
       'done',
       'priority',
@@ -193,7 +134,7 @@ export async function bulkUpdateTasks(args: {
       );
     }
 
-    // Additional validation based on field type
+    // Field-specific validation
     if (args.field === 'priority' && typeof args.value === 'number') {
       if (args.value < 0 || args.value > 5) {
         throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Priority must be between 0 and 5');
@@ -208,8 +149,7 @@ export async function bulkUpdateTasks(args: {
       validateId(args.value, 'project_id');
     }
 
-    // Type validation for array fields
-    if (args.field === 'assignees' || args.field === 'labels') {
+    if (['assignees', 'labels'].includes(args.field)) {
       if (!Array.isArray(args.value)) {
         throw new MCPError(ErrorCode.VALIDATION_ERROR, `${args.field} must be an array of numbers`);
       }
@@ -217,14 +157,8 @@ export async function bulkUpdateTasks(args: {
       valueArray.forEach((id) => validateId(id, `${args.field} ID`));
     }
 
-    // Type validation for boolean field
     if (args.field === 'done') {
-      logger.debug('Bulk update done field validation', {
-        value: args.value,
-        typeOfValue: typeof args.value,
-        isBoolean: typeof args.value === 'boolean',
-      });
-      if (typeof args.value !== 'boolean') {
+        if (typeof args.value !== 'boolean') {
         throw new MCPError(
           ErrorCode.VALIDATION_ERROR,
           'done field must be a boolean value (true or false)',
@@ -232,14 +166,9 @@ export async function bulkUpdateTasks(args: {
       }
     }
 
-    // Validation for recurring fields
-    if (args.field === 'repeat_after' && typeof args.value === 'number') {
-      if (args.value < 0) {
-        throw new MCPError(
-          ErrorCode.VALIDATION_ERROR,
-          'repeat_after must be a non-negative number',
-        );
-      }
+    // Recurring field validation
+    if (args.field === 'repeat_after' && typeof args.value === 'number' && args.value < 0) {
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'repeat_after must be a non-negative number');
     }
 
     if (args.field === 'repeat_mode' && typeof args.value === 'string') {
@@ -263,7 +192,6 @@ export async function bulkUpdateTasks(args: {
         value: args.value,
       };
 
-      // Special handling for repeat_mode conversion
       if (args.field === 'repeat_mode' && typeof args.value === 'string') {
         const modeMap: Record<string, number> = {
           default: 0,
@@ -283,55 +211,23 @@ export async function bulkUpdateTasks(args: {
       let bulkUpdateSuccessful = false;
 
       if (Array.isArray(bulkUpdateResult)) {
-        // API returned Task[] array - verify the updates were actually applied
         if (bulkUpdateResult.length > 0) {
           bulkUpdateSuccessful = true;
 
-          // Check if the returned tasks have the expected values
+          // Verify the returned tasks have the expected values
           for (const task of bulkUpdateResult) {
-            switch (args.field) {
-              case 'priority':
-                if (task.priority !== args.value) {
-                  logger.warn('Bulk update API returned task with unchanged priority', {
-                    taskId: task.id,
-                    expectedPriority: args.value,
-                    actualPriority: task.priority,
-                  });
-                  bulkUpdateSuccessful = false;
-                }
-                break;
-              case 'done':
-                if (task.done !== args.value) {
-                  logger.warn('Bulk update API returned task with unchanged done status', {
-                    taskId: task.id,
-                    expectedDone: args.value,
-                    actualDone: task.done,
-                  });
-                  bulkUpdateSuccessful = false;
-                }
-                break;
-              case 'due_date':
-                if (task.due_date !== args.value) {
-                  logger.warn('Bulk update API returned task with unchanged due date', {
-                    taskId: task.id,
-                    expectedDueDate: args.value,
-                    actualDueDate: task.due_date,
-                  });
-                  bulkUpdateSuccessful = false;
-                }
-                break;
-              case 'project_id':
-                if (task.project_id !== args.value) {
-                  logger.warn('Bulk update API returned task with unchanged project ID', {
-                    taskId: task.id,
-                    expectedProjectId: args.value,
-                    actualProjectId: task.project_id,
-                  });
-                  bulkUpdateSuccessful = false;
-                }
-                break;
+            if ((args.field === 'priority' && task.priority !== args.value) ||
+                (args.field === 'done' && task.done !== args.value) ||
+                (args.field === 'due_date' && task.due_date !== args.value) ||
+                (args.field === 'project_id' && task.project_id !== args.value)) {
+              logger.warn(`Bulk update API returned task with unchanged ${args.field}`, {
+                taskId: task.id,
+                expected: args.value,
+                actual: task[args.field as keyof Task],
+              });
+              bulkUpdateSuccessful = false;
+              break;
             }
-            if (!bulkUpdateSuccessful) break;
           }
 
           if (bulkUpdateSuccessful) {
@@ -343,9 +239,7 @@ export async function bulkUpdateTasks(args: {
         typeof bulkUpdateResult === 'object' &&
         'message' in bulkUpdateResult
       ) {
-        // API returned Message object - treat as success but need to fetch updated tasks
-        logger.debug('Bulk update API returned message object', { result: bulkUpdateResult });
-        bulkUpdateSuccessful = true;
+            bulkUpdateSuccessful = true;
       }
 
       if (!bulkUpdateSuccessful) {
@@ -353,9 +247,9 @@ export async function bulkUpdateTasks(args: {
         throw new Error('Bulk update API reported success but did not update task values');
       }
 
-      // If we don't have the updated tasks yet (Message response), fetch them using optimized processing
+      // If we don't have the updated tasks yet (Message response), fetch them
       if (updatedTasks.length === 0) {
-        const fetchResult = await processTasksOptimized(
+        const fetchResult = await processTasksInBatches(
           taskIds,
           async (taskId: number) => {
             return await client.tasks.getTask(taskId);
@@ -397,13 +291,10 @@ export async function bulkUpdateTasks(args: {
       logger.warn('Bulk update API failed, falling back to individual updates', {
         error: bulkError instanceof Error ? bulkError.message : String(bulkError),
         field: args.field,
-        value: args.value,
-        valueType: typeof args.value,
-        taskIds: taskIds,
       });
 
-      // Perform bulk update using individual task updates as fallback with optimization
-      const updateResult = await processTasksOptimized(
+      // Perform bulk update using individual task updates as fallback
+      const updateResult = await processTasksInBatches(
         taskIds,
         async (taskId: number) => {
           // Fetch current task to preserve required fields
@@ -549,7 +440,6 @@ export async function bulkUpdateTasks(args: {
             successCount,
             failedCount: failures.length,
             failedIds,
-            performanceMetrics: updateResult.metrics,
           });
         } else {
           // All failed
@@ -564,9 +454,9 @@ export async function bulkUpdateTasks(args: {
       let updatedTasks = updateResult.successful;
       let failedFetches = 0;
 
-      // If we need fresh task data for display, fetch with optimization
+      // If we need fresh task data for display, fetch it
       if (updatedTasks.length < successCount) {
-        const fetchResult = await processTasksOptimized(
+        const fetchResult = await processTasksInBatches(
           taskIds,
           async (taskId: number) => {
             return await client.tasks.getTask(taskId);
@@ -591,17 +481,13 @@ export async function bulkUpdateTasks(args: {
             totalDuration: updateResult.metrics.totalDuration,
             operationsPerSecond: updateResult.metrics.operationsPerSecond,
             apiCallsUsed: updateResult.metrics.successfulOperations + updateResult.metrics.failedOperations,
-            concurrencyLevel: updateResult.metrics.totalBatches > 0 ? 'optimized' : 'standard',
-            cacheEfficiency: 0, // No cache available
           },
         },
       );
 
-      logger.info('Bulk update completed with performance optimization', {
+      logger.info('Bulk update completed', {
         taskCount: taskIds.length,
         field: args.field,
-        fetchErrors: failedFetches,
-        performance: response.metadata?.performanceMetrics,
       });
 
       return {
@@ -654,8 +540,8 @@ export async function bulkDeleteTasks(args: {
 
     const client = await getClientFromContext();
 
-    // Fetch tasks before deletion for response metadata using optimized processing
-    const fetchResult = await processTasksOptimized(
+    // Fetch tasks before deletion for response metadata
+    const fetchResult = await processTasksInBatches(
       taskIds,
       async (taskId: number) => {
         return await client.tasks.getTask(taskId);
@@ -665,8 +551,8 @@ export async function bulkDeleteTasks(args: {
 
     const tasksToDelete = fetchResult.successful;
 
-    // Delete tasks using optimized processing
-    const deletionResult = await processTasksOptimized(
+    // Delete tasks using batch processing
+    const deletionResult = await processTasksInBatches(
       taskIds,
       async (taskId: number) => {
         await client.tasks.deleteTask(taskId);
@@ -728,10 +614,7 @@ export async function bulkDeleteTasks(args: {
       },
     );
 
-    logger.debug('Bulk delete completed', {
-      taskCount: taskIds.length,
-    });
-
+  
     return {
       content: [
         {
@@ -816,7 +699,7 @@ export async function bulkCreateTasks(args: {
 
     const client = await getClientFromContext();
 
-    // Create tasks using optimized batch processor
+    // Create tasks using batch processor
     const projectId = args.projectId; // TypeScript knows this is defined due to earlier check
     const creationResult = await createBatchProcessor.processBatches(
       args.tasks.map((_, index) => index), // Use indices as items
@@ -913,7 +796,7 @@ export async function bulkCreateTasks(args: {
       }
     );
 
-    // Process results with modern batch processor format
+    // Process results
     const successfulTasks = creationResult.successful;
     const failedTasks = creationResult.failed.map((f) => ({
       index: f.originalItem,
@@ -949,11 +832,7 @@ export async function bulkCreateTasks(args: {
       response.success = false;
     }
 
-    logger.debug('Bulk create completed', {
-      successCount: successfulTasks.length,
-      failedCount: failedTasks.length,
-    });
-
+  
     return {
       content: [
         {
