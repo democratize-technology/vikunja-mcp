@@ -1,6 +1,6 @@
 {
-  "timestamp": "2025-11-02T22:47:18.117Z",
-  "overallScore": 85,
+  "timestamp": "2025-11-03T14:38:54.277Z",
+  "overallScore": 84,
   "targetAchieved": false,
   "categories": [
     {
@@ -11,7 +11,7 @@
           {
             "test": "server_connection",
             "status": "success",
-            "responseTime": 1086.9706247415663
+            "responseTime": 1094.7529285589999
           }
         ]
       }
@@ -19,21 +19,21 @@
     {
       "name": "Performance",
       "data": {
-        "score": 128,
+        "score": 123,
         "timings": [
           {
             "operation": "task_list",
-            "responseTime": 633,
+            "responseTime": 1180,
             "success": true
           },
           {
             "operation": "task_create",
-            "responseTime": 613,
+            "responseTime": 1112,
             "success": true
           },
           {
             "operation": "task_get",
-            "responseTime": 1345,
+            "responseTime": 906,
             "success": true
           }
         ]
@@ -56,16 +56,16 @@
     {
       "name": "User Journey",
       "data": {
-        "score": 96,
+        "score": 97,
         "steps": [
           {
             "step": "List Tasks",
-            "time": 1347,
+            "time": 817,
             "success": true
           },
           {
             "step": "Create Task",
-            "time": 1228,
+            "time": 803,
             "success": true
           }
         ]
