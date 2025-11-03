@@ -10,49 +10,14 @@ import { logger } from '../../utils/logger';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { BatchProcessor, type BatchResult } from '../../utils/performance/batch-processor';
-import { ResponseCache } from '../../utils/performance/response-cache';
 import { performanceMonitor } from '../../utils/performance/performance-monitor';
-import {
-  createBulkOperationEnhancer,
-  type EnhancedBatchResult
-} from '../../utils/performance/bulk-operation-enhancer';
 import {
   AUTH_ERROR_MESSAGES,
   MAX_BULK_OPERATION_TASKS,
 } from './constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from './validation';
 
-// Enhanced bulk operation processors with adaptive optimization
-const bulkUpdateEnhancer = createBulkOperationEnhancer('bulk-update', {
-  useProgressiveEnhancement: true,
-  useAdaptiveBatching: true,
-  useCircuitBreaker: true,
-  useCache: true,
-  maxBulkSize: MAX_BULK_OPERATION_TASKS,
-  enableStreaming: true,
-  streamingChunkSize: 50,
-});
-
-// Additional enhancers for delete and create operations (currently unused but ready for future use)
-// const bulkDeleteEnhancer = createBulkOperationEnhancer('bulk-delete', {
-//   useProgressiveEnhancement: false, // No bulk delete API in Vikunja
-//   useAdaptiveBatching: true,
-//   useCircuitBreaker: true,
-//   useCache: false, // Don't cache delete operations
-//   maxBulkSize: MAX_BULK_OPERATION_TASKS,
-//   enableStreaming: true,
-//   streamingChunkSize: 20,
-// });
-
-// const bulkCreateEnhancer = createBulkOperationEnhancer('bulk-create', {
-//   useProgressiveEnhancement: false, // No bulk create API in Vikunja
-//   useAdaptiveBatching: true,
-//   useCircuitBreaker: true,
-//   useCache: false, // Don't cache create operations
-//   maxBulkSize: MAX_BULK_OPERATION_TASKS,
-//   enableStreaming: true,
-//   streamingChunkSize: 30,
-// });
+// Legacy batch processors for backward compatibility only
 
 // Legacy batch processors for backward compatibility
 const updateBatchProcessor = new BatchProcessor({
@@ -74,25 +39,19 @@ const createBatchProcessor = new BatchProcessor({
   batchDelay: 0,
 });
 
-// Response cache for task operations
-const taskOperationCache = new ResponseCache<Task>({
-  ttl: 30000, // 30 seconds for task data
-  maxSize: 500,
-  enableMetrics: true,
-});
+// No response cache - using direct API calls only
 
 
 /**
- * Enhanced batch processor with performance optimizations
+ * Simplified batch processor with performance monitoring
  */
 async function processTasksOptimized<T>(
   taskIds: number[],
   processor: (taskId: number, index: number) => Promise<T>,
-  operationType: string,
-  useCache: boolean = true
+  operationType: string
 ): Promise<BatchResult<T>> {
   const operationId = `${operationType}-${Date.now()}`;
-  
+
   performanceMonitor.startOperation(
     operationId,
     operationType,
@@ -101,37 +60,18 @@ async function processTasksOptimized<T>(
   );
 
   try {
-    const batchProcessor = operationType.includes('delete') 
-      ? deleteBatchProcessor 
+    const batchProcessor = operationType.includes('delete')
+      ? deleteBatchProcessor
       : operationType.includes('create')
       ? createBatchProcessor
       : updateBatchProcessor;
 
-    // Enhanced processor with caching and monitoring
+    // Simplified processor with monitoring only
     const enhancedProcessor = async (taskId: number, index: number): Promise<T> => {
-      const cacheKey = useCache ? `${operationType}:${taskId}` : null;
-      
-      if (useCache && cacheKey && taskOperationCache.has(cacheKey)) {
-        performanceMonitor.recordCacheHit(operationId);
-        const cachedResult = taskOperationCache.get(cacheKey);
-        if (cachedResult) {
-          return cachedResult as T;
-        }
-      }
-      
-      if (useCache && cacheKey) {
-        performanceMonitor.recordCacheMiss(operationId);
-      }
-      
       performanceMonitor.recordApiCall(operationId);
-      
+
       try {
         const result = await processor(taskId, index);
-        
-        if (useCache && cacheKey) {
-          taskOperationCache.set(cacheKey, result as unknown as Task);
-        }
-        
         performanceMonitor.updateOperation(operationId, { successCount: 1 });
         return result;
       } catch (error) {
@@ -141,7 +81,7 @@ async function processTasksOptimized<T>(
     };
 
     const result = await batchProcessor.processBatches(taskIds, enhancedProcessor);
-    
+
     performanceMonitor.completeOperation(operationId);
     return result;
   } catch (error) {
@@ -152,7 +92,7 @@ async function processTasksOptimized<T>(
 }
 
 /**
- * Enhanced bulk update tasks with next-generation performance optimizations
+ * Bulk update tasks (simplified implementation without enhanced optimizations)
  */
 export async function bulkUpdateTasksEnhanced(args: {
   taskIds?: number[];
@@ -160,160 +100,8 @@ export async function bulkUpdateTasksEnhanced(args: {
   value?: unknown;
   useEnhancedOptimizations?: boolean;
 }): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const useEnhanced = args.useEnhancedOptimizations !== false; // Default to true
-  
-  if (useEnhanced) {
-    return await bulkUpdateTasksWithEnhancer(args);
-  } else {
-    return await bulkUpdateTasks(args);
-  }
-}
-
-/**
- * Enhanced bulk update implementation using BulkOperationEnhancer
- */
-async function bulkUpdateTasksWithEnhancer(args: {
-  taskIds?: number[];
-  field?: string;
-  value?: unknown;
-}): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  try {
-    // Validation (reusing existing validation logic)
-    if (!args.taskIds || args.taskIds.length === 0) {
-      throw new MCPError(
-        ErrorCode.VALIDATION_ERROR,
-        'taskIds array is required for bulk update operation',
-      );
-    }
-
-    if (!args.field || args.value === undefined) {
-      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'field and value are required for bulk update operation');
-    }
-
-    const taskIds = args.taskIds;
-    args.taskIds.forEach((id) => validateId(id, 'task ID'));
-
-    // Preprocess value (reusing existing preprocessing logic)
-    if (args.field === 'done' && typeof args.value === 'string') {
-      args.value = args.value === 'true';
-    }
-
-    const client = await getClientFromContext();
-
-    // Define bulk API operation (tries the official bulk API first)
-    const bulkApiOperation = async (ids: number[]): Promise<Task[]> => {
-      if (!args.field) {
-        throw new Error('Field is required for bulk operation');
-      }
-      const bulkOperation = {
-        task_ids: ids,
-        field: args.field,
-        value: args.value,
-      };
-
-      logger.debug('Attempting enhanced bulk API operation', { bulkOperation });
-      const result = await client.tasks.bulkUpdateTasks(bulkOperation);
-      
-      // Handle API response format variations
-      if (Array.isArray(result)) {
-        return result;
-      } else {
-        // If API returns message, fetch updated tasks
-        const fetchedTasks: Task[] = [];
-        for (const taskId of ids) {
-          const task = await client.tasks.getTask(taskId);
-          fetchedTasks.push(task);
-        }
-        return fetchedTasks;
-      }
-    };
-
-    // Define individual operation fallback
-    const individualOperation = async (taskId: number): Promise<Task> => {
-      const currentTask = await client.tasks.getTask(taskId);
-      const updateData: Task = { ...currentTask };
-
-      // Apply field update based on args.field
-      switch (args.field) {
-        case 'done':
-          updateData.done = args.value as boolean;
-          break;
-        case 'priority':
-          updateData.priority = args.value as number;
-          break;
-        case 'due_date':
-          updateData.due_date = args.value as string;
-          break;
-        case 'project_id':
-          updateData.project_id = args.value as number;
-          break;
-        // Add other field cases as needed
-      }
-
-      return await client.tasks.updateTask(taskId, updateData);
-    };
-
-    // Execute enhanced bulk operation
-    const result: EnhancedBatchResult<Task> = await bulkUpdateEnhancer.execute(
-      taskIds,
-      bulkApiOperation,
-      individualOperation
-    );
-
-    // Build enhanced response
-    const response = createStandardResponse(
-      'update-task',
-      result.failed.length === 0
-        ? `Successfully updated ${taskIds.length} tasks using ${result.strategy} strategy`
-        : `Partially updated ${result.successful.length}/${taskIds.length} tasks using ${result.strategy} strategy`,
-      { tasks: result.successful },
-      {
-        timestamp: new Date().toISOString(),
-        count: taskIds.length,
-        affectedFields: [args.field],
-        performance: {
-          strategy: result.strategy,
-          totalDuration: result.metrics.totalDuration,
-          operationsPerSecond: result.metrics.operationsPerSecond,
-          efficiency: result.efficiency,
-          optimizations: result.optimizations,
-        },
-        ...(result.recommendations && { recommendations: result.recommendations }),
-        ...(result.failed.length > 0 && {
-          failures: result.failed.map(f => ({
-            taskId: f.originalItem,
-            error: f.error instanceof Error ? f.error.message : String(f.error),
-          })),
-        }),
-      },
-    );
-
-    logger.info('Enhanced bulk update completed', {
-      strategy: result.strategy,
-      taskCount: taskIds.length,
-      successCount: result.successful.length,
-      failureCount: result.failed.length,
-      performance: response.metadata.performance,
-    });
-
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
-        },
-      ],
-    };
-
-  } catch (error) {
-    if (error instanceof MCPError) {
-      throw error;
-    }
-    throw new MCPError(
-      ErrorCode.API_ERROR,
-      `Failed to execute enhanced bulk update: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
+  // Enhanced optimizations no longer available - use standard bulk update
+  return await bulkUpdateTasks(args);
 }
 
 /**
@@ -572,8 +360,7 @@ export async function bulkUpdateTasks(args: {
           async (taskId: number) => {
             return await client.tasks.getTask(taskId);
           },
-          'bulk_update_fetch',
-          true // Enable caching for task fetches
+          'bulk_update_fetch'
         );
 
         updatedTasks = fetchResult.successful;
@@ -726,8 +513,7 @@ export async function bulkUpdateTasks(args: {
 
           return updatedTask;
         },
-        'bulk_update_individual_fallback',
-        false // Disable caching for individual updates to avoid stale data
+        'bulk_update_individual_fallback'
       );
 
       // Check for any failures with optimized result format
@@ -785,8 +571,7 @@ export async function bulkUpdateTasks(args: {
           async (taskId: number) => {
             return await client.tasks.getTask(taskId);
           },
-          'bulk_update_final_fetch',
-          true // Enable caching for final fetch
+          'bulk_update_final_fetch'
         );
 
         updatedTasks = fetchResult.successful;
@@ -807,7 +592,7 @@ export async function bulkUpdateTasks(args: {
             operationsPerSecond: updateResult.metrics.operationsPerSecond,
             apiCallsUsed: updateResult.metrics.successfulOperations + updateResult.metrics.failedOperations,
             concurrencyLevel: updateResult.metrics.totalBatches > 0 ? 'optimized' : 'standard',
-            cacheEfficiency: taskOperationCache.getMetrics().hitRatio,
+            cacheEfficiency: 0, // No cache available
           },
         },
       );
@@ -875,8 +660,7 @@ export async function bulkDeleteTasks(args: {
       async (taskId: number) => {
         return await client.tasks.getTask(taskId);
       },
-      'bulk_delete_fetch',
-      true // Enable caching for task fetches
+      'bulk_delete_fetch'
     );
 
     const tasksToDelete = fetchResult.successful;
@@ -888,8 +672,7 @@ export async function bulkDeleteTasks(args: {
         await client.tasks.deleteTask(taskId);
         return { taskId, deleted: true }; // Return result for tracking
       },
-      'bulk_delete_execution',
-      false // Disable caching for delete operations
+      'bulk_delete_execution'
     );
 
     // Check for any failures

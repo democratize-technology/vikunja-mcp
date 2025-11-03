@@ -10,22 +10,13 @@ import {
   HIGH_THROUGHPUT_CONFIG,
   RATE_LIMITED_CONFIG,
   MEMORY_OPTIMIZED_CONFIG,
-  
-  // ResponseCache exports
-  ResponseCache,
-  createTaskCache,
-  taskCache,
-  projectCache,
-  operationCache,
-  AGGRESSIVE_CACHE_CONFIG,
-  CONSERVATIVE_CACHE_CONFIG,
-  
+
   // PerformanceMonitor exports
   PerformanceMonitor,
   performanceMonitor,
   monitorBulkOperation,
   recordPerformanceMetrics,
-  
+
   // Configuration exports
   BULK_OPERATION_CONFIGS,
   OptimizedBulkConfig,
@@ -76,47 +67,7 @@ describe('Performance Module Index', () => {
     });
   });
 
-  describe('ResponseCache Exports', () => {
-    it('should export ResponseCache class', () => {
-      expect(ResponseCache).toBeDefined();
-      expect(typeof ResponseCache).toBe('function');
-    });
-
-    it('should export createTaskCache function', () => {
-      expect(createTaskCache).toBeDefined();
-      expect(typeof createTaskCache).toBe('function');
-    });
-
-    it('should create ResponseCache instance with createTaskCache', () => {
-      const cache = createTaskCache();
-      expect(cache).toBeInstanceOf(ResponseCache);
-    });
-
-    it('should export pre-configured cache instances', () => {
-      expect(taskCache).toBeInstanceOf(ResponseCache);
-      expect(projectCache).toBeInstanceOf(ResponseCache);
-      expect(operationCache).toBeInstanceOf(ResponseCache);
-    });
-
-    it('should export AGGRESSIVE_CACHE_CONFIG with correct values', () => {
-      expect(AGGRESSIVE_CACHE_CONFIG).toEqual({
-        ttl: 60000,
-        maxSize: 2000,
-        enableMetrics: true,
-        cleanupInterval: 30000,
-      });
-    });
-
-    it('should export CONSERVATIVE_CACHE_CONFIG with correct values', () => {
-      expect(CONSERVATIVE_CACHE_CONFIG).toEqual({
-        ttl: 15000,
-        maxSize: 500,
-        enableMetrics: true,
-        cleanupInterval: 60000,
-      });
-    });
-  });
-
+  
   describe('PerformanceMonitor Exports', () => {
     it('should export PerformanceMonitor class', () => {
       expect(PerformanceMonitor).toBeDefined();
@@ -152,12 +103,6 @@ describe('Performance Module Index', () => {
           enableMetrics: true,
           batchDelay: 0,
         },
-        cacheOptions: {
-          ttl: 60000,
-          maxSize: 2000,
-          enableMetrics: true,
-          cleanupInterval: 30000,
-        },
         enableMonitoring: true,
       });
     });
@@ -169,12 +114,6 @@ describe('Performance Module Index', () => {
           batchSize: 5,
           enableMetrics: true,
           batchDelay: 100,
-        },
-        cacheOptions: {
-          ttl: 15000,
-          maxSize: 500,
-          enableMetrics: true,
-          cleanupInterval: 60000,
         },
         enableMonitoring: true,
       });
@@ -188,11 +127,6 @@ describe('Performance Module Index', () => {
           enableMetrics: true,
           batchDelay: 0,
         },
-        cacheOptions: {
-          ttl: 30000,
-          maxSize: 500,
-          enableMetrics: true,
-        },
         enableMonitoring: true,
       });
     });
@@ -202,7 +136,6 @@ describe('Performance Module Index', () => {
       configs.forEach(configName => {
         const config = BULK_OPERATION_CONFIGS[configName as keyof typeof BULK_OPERATION_CONFIGS];
         expect(config).toHaveProperty('batchOptions');
-        expect(config).toHaveProperty('cacheOptions');
         expect(config).toHaveProperty('enableMonitoring');
       });
     });
@@ -223,21 +156,6 @@ describe('Performance Module Index', () => {
         expect(config.batchOptions.batchDelay).toBeGreaterThanOrEqual(0);
       });
     });
-
-    it('should have valid cache options in all configurations', () => {
-      const configs = ['HIGH_THROUGHPUT', 'RATE_LIMITED', 'DEFAULT'] as const;
-      configs.forEach(configName => {
-        const config = BULK_OPERATION_CONFIGS[configName];
-        expect(config.cacheOptions).toHaveProperty('ttl');
-        expect(config.cacheOptions).toHaveProperty('maxSize');
-        expect(config.cacheOptions).toHaveProperty('enableMetrics');
-        
-        // Validate reasonable values
-        expect(config.cacheOptions.ttl).toBeGreaterThan(0);
-        expect(config.cacheOptions.maxSize).toBeGreaterThan(0);
-        expect(typeof config.cacheOptions.enableMetrics).toBe('boolean');
-      });
-    });
   });
 
   describe('Type Exports', () => {
@@ -245,14 +163,12 @@ describe('Performance Module Index', () => {
       // Test that we can create an object matching the interface
       const config: OptimizedBulkConfig = {
         batchOptions: { maxConcurrency: 5 },
-        cacheOptions: { ttl: 30000 },
         enableMonitoring: true,
         operationType: 'test',
       };
-      
+
       expect(config).toBeDefined();
       expect(config.batchOptions).toEqual({ maxConcurrency: 5 });
-      expect(config.cacheOptions).toEqual({ ttl: 30000 });
       expect(config.enableMonitoring).toBe(true);
       expect(config.operationType).toBe('test');
     });
@@ -273,31 +189,22 @@ describe('Performance Module Index', () => {
       // Test creating batch processor with exported config
       const processor = createOptimizedBatchProcessor(HIGH_THROUGHPUT_CONFIG);
       expect(processor).toBeInstanceOf(BatchProcessor);
-      
-      // Test creating cache with exported config
-      const cache = createTaskCache(AGGRESSIVE_CACHE_CONFIG);
-      expect(cache).toBeInstanceOf(ResponseCache);
     });
 
     it('should be able to combine configurations for optimized bulk operations', () => {
       const config: OptimizedBulkConfig = {
         batchOptions: BULK_OPERATION_CONFIGS.HIGH_THROUGHPUT.batchOptions,
-        cacheOptions: BULK_OPERATION_CONFIGS.HIGH_THROUGHPUT.cacheOptions,
         enableMonitoring: BULK_OPERATION_CONFIGS.HIGH_THROUGHPUT.enableMonitoring,
         operationType: 'test-operation',
       };
-      
+
       expect(config.batchOptions?.maxConcurrency).toBe(8);
-      expect(config.cacheOptions?.ttl).toBe(60000);
       expect(config.enableMonitoring).toBe(true);
     });
 
     it('should ensure configuration consistency across exports', () => {
       // HIGH_THROUGHPUT_CONFIG should match BULK_OPERATION_CONFIGS.HIGH_THROUGHPUT.batchOptions
       expect(HIGH_THROUGHPUT_CONFIG).toEqual(BULK_OPERATION_CONFIGS.HIGH_THROUGHPUT.batchOptions);
-      
-      // AGGRESSIVE_CACHE_CONFIG should match BULK_OPERATION_CONFIGS.HIGH_THROUGHPUT.cacheOptions
-      expect(AGGRESSIVE_CACHE_CONFIG).toEqual(BULK_OPERATION_CONFIGS.HIGH_THROUGHPUT.cacheOptions);
     });
   });
 });

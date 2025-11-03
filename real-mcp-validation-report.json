@@ -1,0 +1,78 @@
+{
+  "timestamp": "2025-11-02T22:47:18.117Z",
+  "overallScore": 85,
+  "targetAchieved": false,
+  "categories": [
+    {
+      "name": "Authentication",
+      "data": {
+        "score": 100,
+        "details": [
+          {
+            "test": "server_connection",
+            "status": "success",
+            "responseTime": 1086.9706247415663
+          }
+        ]
+      }
+    },
+    {
+      "name": "Performance",
+      "data": {
+        "score": 128,
+        "timings": [
+          {
+            "operation": "task_list",
+            "responseTime": 633,
+            "success": true
+          },
+          {
+            "operation": "task_create",
+            "responseTime": 613,
+            "success": true
+          },
+          {
+            "operation": "task_get",
+            "responseTime": 1345,
+            "success": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "Error Handling",
+      "data": {
+        "score": 0,
+        "scenarios": 2
+      }
+    },
+    {
+      "name": "AORP Intelligence",
+      "data": {
+        "score": 100,
+        "accuracy": 100
+      }
+    },
+    {
+      "name": "User Journey",
+      "data": {
+        "score": 96,
+        "steps": [
+          {
+            "step": "List Tasks",
+            "time": 1347,
+            "success": true
+          },
+          {
+            "step": "Create Task",
+            "time": 1228,
+            "success": true
+          }
+        ]
+      }
+    }
+  ],
+  "recommendations": [
+    "Enhance error messages with more actionable guidance"
+  ]
+}

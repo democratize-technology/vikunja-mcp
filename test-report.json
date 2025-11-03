@@ -1,0 +1,14 @@
+{
+  "connectivity": {
+    "status": "failed",
+    "error": "Server connectivity test timed out",
+    "duration": 10013
+  },
+  "operations": {},
+  "errors": [],
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  }
+}

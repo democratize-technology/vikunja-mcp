@@ -97,7 +97,8 @@ export class BatchProcessor {
       maxConcurrency: opts.maxConcurrency,
     });
 
-    for (const [batchIndex, batch] of batches.entries()) {
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
       const batchStartTime = Date.now();
       
       // Process batch with controlled concurrency

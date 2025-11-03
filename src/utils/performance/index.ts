@@ -1,7 +1,6 @@
 /**
  * Performance optimization utilities for bulk operations
- * Next-generation performance optimization tools for vikunja-mcp
- * Includes intelligent batching, caching, monitoring, circuit breakers, and adaptive optimization
+ * Core performance monitoring and batch processing capabilities
  */
 
 export {
@@ -16,18 +15,6 @@ export {
 } from './batch-processor';
 
 export {
-  ResponseCache,
-  createTaskCache,
-  taskCache,
-  projectCache,
-  operationCache,
-  AGGRESSIVE_CACHE_CONFIG,
-  CONSERVATIVE_CACHE_CONFIG,
-  type CacheOptions,
-  type CacheMetrics,
-} from './response-cache';
-
-export {
   PerformanceMonitor,
   performanceMonitor,
   monitorBulkOperation,
@@ -37,44 +24,11 @@ export {
   type PerformanceAlert,
 } from './performance-monitor';
 
-export {
-  CircuitBreaker,
-  CircuitBreakerManager,
-  circuitBreakerManager,
-  bulkOperationBreaker,
-  individualOperationBreaker,
-  apiHealthBreaker,
-  CircuitOpenError,
-  CircuitState,
-  type CircuitBreakerOptions,
-  type CircuitMetrics,
-} from './circuit-breaker';
-
-export {
-  AdaptiveBatchOptimizer,
-  AdaptiveBatchOptimizerManager,
-  adaptiveBatchManager,
-  type AdaptiveBatchConfig,
-  type PerformanceWindow,
-  type OperationSample,
-  type OptimizationRecommendation,
-} from './adaptive-batch-optimizer';
-
-export {
-  BulkOperationEnhancer,
-  createBulkOperationEnhancer,
-  executeEnhancedBulkOperation,
-  type BulkOperationOptions,
-  type EnhancedBatchResult,
-} from './bulk-operation-enhancer';
-
 // Convenience function to create optimized bulk operation handler
 import type { BatchOptions } from './batch-processor';
-import type { CacheOptions } from './response-cache';
 
 export interface OptimizedBulkConfig {
   batchOptions?: Partial<BatchOptions>;
-  cacheOptions?: Partial<CacheOptions>;
   enableMonitoring?: boolean;
   operationType?: string;
 }
@@ -88,12 +42,6 @@ export const BULK_OPERATION_CONFIGS = {
       enableMetrics: true,
       batchDelay: 0,
     },
-    cacheOptions: {
-      ttl: 60000,
-      maxSize: 2000,
-      enableMetrics: true,
-      cleanupInterval: 30000,
-    },
     enableMonitoring: true,
   },
   RATE_LIMITED: {
@@ -103,12 +51,6 @@ export const BULK_OPERATION_CONFIGS = {
       enableMetrics: true,
       batchDelay: 100,
     },
-    cacheOptions: {
-      ttl: 15000,
-      maxSize: 500,
-      enableMetrics: true,
-      cleanupInterval: 60000,
-    },
     enableMonitoring: true,
   },
   DEFAULT: {
@@ -117,11 +59,6 @@ export const BULK_OPERATION_CONFIGS = {
       batchSize: 10,
       enableMetrics: true,
       batchDelay: 0,
-    },
-    cacheOptions: {
-      ttl: 30000,
-      maxSize: 500,
-      enableMetrics: true,
     },
     enableMonitoring: true,
   },
