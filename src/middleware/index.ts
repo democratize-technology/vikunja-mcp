@@ -1,6 +1,6 @@
 /**
  * Middleware Exports
- * Centralized exports for all middleware components
+ * Simplified middleware exports without wrapper-on-wrapper patterns
  */
 
 export {
@@ -13,12 +13,7 @@ export {
 } from './rate-limiting';
 
 export {
-  registerToolWithRateLimit,
-  createRateLimitedTool,
-} from './tool-wrapper';
-
-export {
-  withPermissions,
-  createPermissionTool,
-  PermissionStatus,
-} from './permission-wrapper';
+  applyRateLimiting,
+  applyPermissions,
+  applyBothMiddleware,
+} from './direct-middleware';

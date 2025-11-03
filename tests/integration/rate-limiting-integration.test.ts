@@ -6,7 +6,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { RateLimitingMiddleware } from '../../src/middleware/rate-limiting';
-import { registerToolWithRateLimit } from '../../src/middleware/tool-wrapper';
+import { applyRateLimiting } from '../../src/middleware/direct-middleware';
 import { MCPError, ErrorCode } from '../../src/types/errors';
 
 // Mock the logger to reduce test noise
@@ -57,14 +57,13 @@ describe('Rate Limiting Integration', () => {
     it('should register tools with rate limiting successfully', () => {
       const mockHandler = jest.fn().mockResolvedValue({ success: true });
 
-      registerToolWithRateLimit(
-        server,
+      server.tool(
         'test_tool',
         {
           action: z.enum(['test']),
           data: z.string().optional(),
         },
-        mockHandler
+        applyRateLimiting('test_tool', mockHandler)
       );
 
       // Tool should be registered (we can't easily test private properties)

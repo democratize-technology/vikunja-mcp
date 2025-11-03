@@ -13,11 +13,9 @@ jest.mock('../../src/client', () => ({
   clearGlobalClientFactory: jest.fn(),
 }));
 
-// Mock the tool wrapper to bypass middleware
-jest.mock('../../src/middleware/tool-wrapper', () => ({
-  registerToolWithRateLimit: jest.fn((server, toolName, schema, handler) => {
-    server.tool(toolName, schema, handler);
-  }),
+// Mock the direct middleware to bypass middleware
+jest.mock('../../src/middleware/direct-middleware', () => ({
+  applyRateLimiting: jest.fn((toolName, handler) => handler),
 }));
 
 // Mock security utils

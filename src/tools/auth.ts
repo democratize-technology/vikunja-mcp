@@ -10,7 +10,7 @@ import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { clearGlobalClientFactory } from '../client';
 import { logger } from '../utils/logger';
-import { registerToolWithRateLimit } from '../middleware/tool-wrapper';
+import { applyRateLimiting } from '../middleware/direct-middleware';
 import { createSecureConnectionMessage } from '../utils/security';
 
 interface AuthArgs {
@@ -20,15 +20,14 @@ interface AuthArgs {
 }
 
 export function registerAuthTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
-  registerToolWithRateLimit(
-    server,
+  server.tool(
     'vikunja_auth',
     {
       subcommand: z.enum(['connect', 'status', 'refresh', 'disconnect']),
       apiUrl: z.string().url().optional(),
       apiToken: z.string().optional(),
     },
-    async (args: AuthArgs) => {
+    applyRateLimiting('vikunja_auth', async (args: AuthArgs) => {
       try {
         switch (args.subcommand) {
           case 'connect': {
@@ -153,6 +152,6 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager, _c
           `Authentication error: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
-    }
+    })
   );
 }
