@@ -16,7 +16,7 @@ import { createSecureConnectionMessage, createSecureLogConfig } from './utils/se
 import { createVikunjaClientFactory, setGlobalClientFactory, type VikunjaClientFactory } from './client';
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Initialize server
 const server = new McpServer({
