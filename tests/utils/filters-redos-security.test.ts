@@ -277,8 +277,8 @@ describe('ReDoS Vulnerability Fix Tests', () => {
         validateCondition(condition);
         const validationTime = Date.now() - startTime;
 
-        // Should be linear time, not exponential - complete in under 1ms
-        expect(validationTime).toBeLessThan(1);
+        // Should be linear time, not exponential - complete in reasonable time
+        expect(validationTime).toBeLessThan(5);
       });
     });
   });

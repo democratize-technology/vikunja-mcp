@@ -149,6 +149,24 @@ describe('ConfigurationManager', () => {
       expect(config.featureFlags.enableServerSideFiltering).toBe(true);
       expect(config.featureFlags.enableAdvancedMetrics).toBe(true);
     });
+
+    it('should cache configuration and return same instance on subsequent calls', async () => {
+      process.env.NODE_ENV = 'development';
+
+      // Get a fresh instance
+      const manager = ConfigurationManager.getInstance();
+
+      // First call should populate cache
+      const config1 = await manager.getConfiguration();
+      expect(config1).toBeDefined();
+
+      // Second call should return cached instance (hit line 171)
+      const config2 = await manager.getConfiguration();
+
+      // Should return the exact same cached instance
+      expect(config1).toBe(config2);
+      expect(config1).toEqual(config2);
+    });
   });
 
   describe('Configuration Override Priority', () => {
