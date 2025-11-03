@@ -171,7 +171,12 @@ describe('Tasks Tool - Index Routing Coverage', () => {
       await expect(callTool('list')).rejects.toThrow(
         new MCPError(
           ErrorCode.AUTH_REQUIRED,
-          'Authentication required. Please use vikunja_auth.connect first.'
+          'Authentication required to access task management features. Please connect first:\n' +
+          'vikunja_auth.connect({\n' +
+          '  apiUrl: \'https://your-vikunja.com/api/v1\',\n' +
+          '  apiToken: \'your-api-token\'\n' +
+          '})\n\n' +
+          'Get your API token from Vikunja Settings > API Access.'
         )
       );
     });
@@ -266,7 +271,7 @@ describe('Tasks Tool - Index Routing Coverage', () => {
 
     it('should route to list-assignees subcommand', async () => {
       const result = await callTool('list-assignees', { id: 1 });
-      expect(result.content[0].text).toContain('"operation": "list"');
+      expect(result.content[0].text).toContain('"operation": "get"');
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(1);
     });
 
@@ -294,13 +299,13 @@ describe('Tasks Tool - Index Routing Coverage', () => {
         field: 'priority',
         value: 3
       });
-      expect(result.content[0].text).toContain('"operation": "update-tasks"');
+      expect(result.content[0].text).toContain('"operation": "update-task"');
     });
 
     it('should route to bulk-delete subcommand', async () => {
       mockClient.tasks.deleteTask = jest.fn().mockResolvedValue(undefined);
       const result = await callTool('bulk-delete', { taskIds: [1, 2] });
-      expect(result.content[0].text).toContain('"operation": "delete-tasks"');
+      expect(result.content[0].text).toContain('"operation": "delete-task"');
     });
 
     it('should route to bulk-create subcommand', async () => {

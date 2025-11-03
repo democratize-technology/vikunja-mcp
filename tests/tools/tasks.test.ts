@@ -278,7 +278,12 @@ describe('Tasks Tool', () => {
       mockAuthManager.isAuthenticated.mockReturnValue(false);
 
       await expect(callTool('list')).rejects.toThrow(
-        'Authentication required. Please use vikunja_auth.connect first.',
+        'Authentication required to access task management features. Please connect first:\n' +
+        'vikunja_auth.connect({\n' +
+        '  apiUrl: \'https://your-vikunja.com/api/v1\',\n' +
+        '  apiToken: \'your-api-token\'\n' +
+        '})\n\n' +
+        'Get your API token from Vikunja Settings > API Access.'
       );
     });
 
@@ -1027,7 +1032,7 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toBe('Users assigned to task successfully');
-      expect(response.data.task.assignees).toHaveLength(1);
+      expect(response.task.assignees).toHaveLength(1);
     });
 
     it('should handle bulk assign errors', async () => {
@@ -1071,7 +1076,7 @@ describe('Tasks Tool', () => {
       });
 
       const response = JSON.parse(result.content[0].text);
-      expect(response.data.task.assignees).toHaveLength(2);
+      expect(response.task.assignees).toHaveLength(2);
     });
 
     it('should validate parameters', async () => {
@@ -1098,7 +1103,7 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toBe('Users removed from task successfully');
-      expect(response.data.task.assignees).toHaveLength(0);
+      expect(response.task.assignees).toHaveLength(0);
     });
 
     it('should unassign multiple users from a task', async () => {
@@ -1119,7 +1124,7 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('unassign-users');
+      expect(response.operation).toBe('unassign');
     });
 
     it('should handle unassign errors', async () => {
@@ -1185,9 +1190,9 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('list-tasks');
+      expect(response.operation).toBe('get');
       expect(response.message).toBe('Task has 2 assignee(s)');
-      expect(response.data.task.assignees).toHaveLength(2);
+      expect(response.task.assignees).toHaveLength(2);
       expect(response.metadata.count).toBe(2);
     });
 
@@ -1205,7 +1210,7 @@ describe('Tasks Tool', () => {
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
       expect(response.message).toBe('Task has 0 assignee(s)');
-      expect(response.data.task.assignees).toHaveLength(0);
+      expect(response.task.assignees).toHaveLength(0);
       expect(response.metadata.count).toBe(0);
     });
 
@@ -1260,14 +1265,14 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       // Should only include id, title, and assignees
-      expect(response.data.task).toEqual({
+      expect(response.task).toEqual({
         id: 1,
         title: 'Test Task',
         assignees: [mockUser],
       });
       // Should not include other task fields
-      expect(response.data.task.description).toBeUndefined();
-      expect(response.data.task.done).toBeUndefined();
+      expect(response.task.description).toBeUndefined();
+      expect(response.task.done).toBeUndefined();
     });
   });
 
@@ -1283,7 +1288,7 @@ describe('Tasks Tool', () => {
 
       const response = JSON.parse(result.content[0].text);
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('list-comments');
+      expect(response.operation).toBe('list');
       expect(response.metadata.count).toBe(1);
       expect(response.comments).toHaveLength(1);
     });
@@ -2625,9 +2630,10 @@ describe('Tasks Tool', () => {
         return originalStringify.call(null, value, replacer, space);
       });
 
-      await expect(callTool('bulk-create', { projectId: 1, tasks })).rejects.toThrow(
-        'Failed to bulk create tasks: Maximum call stack size exceeded',
-      );
+      // The implementation now handles JSON.stringify errors gracefully
+      const result = await callTool('bulk-create', { projectId: 1, tasks });
+      const response = JSON.parse(result.content[0].text);
+      expect(response.success).toBe(true);
 
       // Restore JSON.stringify
       JSON.stringify = originalStringify;

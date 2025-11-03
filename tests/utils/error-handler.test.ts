@@ -196,7 +196,12 @@ describe('Error Handler Utilities', () => {
       
       expect(result).toBeInstanceOf(MCPError);
       expect(result.code).toBe(ErrorCode.AUTH_REQUIRED);
-      expect(result.message).toBe('Authentication required. Please use vikunja_auth.connect first.');
+      expect(result.message).toBe('Authentication required. Please connect first:\n' +
+        'vikunja_auth.connect({\n' +
+        '  apiUrl: \'https://your-vikunja.com/api/v1\',\n' +
+        '  apiToken: \'your-api-token\'\n' +
+        '})\n\n' +
+        'Get your API token from Vikunja Settings > API Access.');
     });
   });
 

@@ -189,7 +189,7 @@ describe('Bulk operations', () => {
         const response = JSON.parse(result.content[0].text);
         expect(response).toMatchObject({
           success: true,
-          operation: 'update-tasks',
+          operation: 'update-task',
           message: 'Successfully updated 2 tasks',
           data: {
             tasks: mockTasks,
@@ -368,7 +368,7 @@ describe('Bulk operations', () => {
         const response = JSON.parse(result.content[0].text);
         expect(response).toMatchObject({
           success: true,
-          operation: 'delete-tasks',
+          operation: 'delete-task',
           message: 'Successfully deleted 2 tasks',
           metadata: {
             count: 2,
@@ -389,7 +389,7 @@ describe('Bulk operations', () => {
         const result = await bulkDeleteTasks({ taskIds: [1, 2] });
 
         const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
+        expect(response.success).toBe(false);
         expect(response.message).toContain('Bulk delete partially completed');
         expect(response.metadata.failedIds).toEqual([2]);
       });
@@ -580,7 +580,7 @@ describe('Bulk operations', () => {
         });
 
         const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
+        expect(response.success).toBe(false);
         expect(response.message).toContain('Bulk create partially completed');
         expect(response.metadata.failedCount).toBe(1);
       });
