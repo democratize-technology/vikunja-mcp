@@ -11,7 +11,7 @@ import type { ResponseMetadata } from '../types/responses';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getClientFromContext } from '../client';
 import type { Verbosity } from '../transforms/index';
-import { createOptimizedResponse, createAorpEnabledFactory } from '../utils/response-factory';
+import { createOptimizedResponse } from '../utils/response-factory';
 import type { Project, ProjectListParams, LinkSharing, LinkShareAuth } from 'node-vikunja';
 import {
   handleStatusCodeError,
@@ -64,80 +64,6 @@ function createProjectResponse(
 
   // Use optimized format if requested or if verbosity is not standard
   const shouldOptimize = useOptimizedFormat || selectedVerbosity !== 'standard';
-
-  // Use AORP if explicitly requested
-  if (useAorp) {
-    const aorpFactory = createAorpEnabledFactory();
-    return aorpFactory.createResponse(operation, message, data, metadata, {
-      verbosity: selectedVerbosity as Verbosity,
-      useOptimization: shouldOptimize,
-      useAorp: true,
-      aorpOptions: {
-        builderConfig: {
-          confidenceMethod: 'adaptive',
-          enableNextSteps: true,
-          enableQualityIndicators: true
-        },
-        nextStepsConfig: {
-          maxSteps: 5,
-          enableContextual: true,
-          templates: {
-            [`${operation}`]: [
-              "Verify the project data appears correctly in listings",
-              "Check related tasks and subprojects",
-              "Test any automated workflows or notifications"
-            ],
-            'list-projects': [
-              "Review the returned projects for completeness",
-              "Apply filters or pagination if needed",
-              "Consider sorting by priority or due date"
-            ],
-            'get-project': [
-              "Verify all required project fields are present",
-              "Check project hierarchy and relationships",
-              "Review project permissions and sharing settings"
-            ],
-            'create-project': [
-              "Verify the created project appears in listings",
-              "Set up project permissions and sharing",
-              "Consider creating initial tasks or milestones"
-            ],
-            'update-project': [
-              "Confirm changes are reflected in the UI",
-              "Check related data for consistency",
-              "Notify team members of important changes"
-            ],
-            'delete-project': [
-              "Verify project no longer appears in searches",
-              "Check for any orphaned tasks or subprojects",
-              "Update documentation and references"
-            ]
-          }
-        },
-        qualityConfig: {
-          completenessWeight: 0.6,
-          reliabilityWeight: 0.4,
-          customIndicators: {
-            projectHierarchyDepth: (data: unknown) => {
-              // Simple indicator based on project depth
-              const dataObj = data as { project?: { parent_project_id?: number } };
-              if (dataObj?.project?.parent_project_id) return 0.8;
-              return 0.9; // Root projects are slightly "more complete"
-            },
-            taskCountEstimate: (data: unknown) => {
-              // Estimate based on project complexity
-              const dataObj = data as { project?: { description?: string } };
-              if (!dataObj?.project) return 0.5;
-              const desc = dataObj.project.description || '';
-              if (desc.length > 200) return 0.8;
-              if (desc.length > 50) return 0.6;
-              return 0.4;
-            }
-          }
-        }
-      }
-    });
-  }
 
   if (shouldOptimize) {
     return createOptimizedResponse(

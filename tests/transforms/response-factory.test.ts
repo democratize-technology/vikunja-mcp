@@ -1,24 +1,17 @@
 /**
- * Tests for response factory functionality
- * Ensures comprehensive coverage of optimized response creation with performance tracking
+ * Tests for simple response creation utilities
+ * Ensures comprehensive coverage of response creation functionality
  */
 
-import { ResponseFactory, createOptimizedResponse, createTaskResponse, createMinimalResponse } from '../../src/utils/response-factory';
+import { createStandardResponse, createOptimizedResponse, createTaskResponse, createMinimalResponse } from '../../src/utils/response-factory';
 import { Verbosity } from '../../src/transforms/base';
 import type { Task } from '../../src/transforms/task';
 
-describe('Response Factory', () => {
-  let responseFactory: ResponseFactory;
+describe('Response Factory Utilities', () => {
   let sampleData: any;
   let sampleTask: Task;
 
   beforeEach(() => {
-    responseFactory = new ResponseFactory({
-      defaultVerbosity: Verbosity.STANDARD,
-      enableOptimization: true,
-      trackPerformance: true
-    });
-
     sampleData = {
       id: 1,
       name: 'Test Item',
@@ -38,47 +31,9 @@ describe('Response Factory', () => {
     } as Task;
   });
 
-  describe('Constructor and Configuration', () => {
-    it('should initialize with default configuration', () => {
-      const factory = new ResponseFactory();
-
-      const config = factory.getConfig();
-      expect(config.defaultVerbosity).toBe(Verbosity.STANDARD);
-      expect(config.enableOptimization).toBe(true);
-      expect(config.trackPerformance).toBe(true);
-    });
-
-    it('should accept custom configuration', () => {
-      const customConfig = {
-        defaultVerbosity: Verbosity.MINIMAL,
-        enableOptimization: false,
-        trackPerformance: false
-      };
-
-      const factory = new ResponseFactory(customConfig);
-      const config = factory.getConfig();
-
-      expect(config.defaultVerbosity).toBe(Verbosity.MINIMAL);
-      expect(config.enableOptimization).toBe(false);
-      expect(config.trackPerformance).toBe(false);
-    });
-
-    it('should update configuration', () => {
-      responseFactory.updateConfig({
-        defaultVerbosity: Verbosity.DETAILED,
-        enableOptimization: false
-      });
-
-      const config = responseFactory.getConfig();
-      expect(config.defaultVerbosity).toBe(Verbosity.DETAILED);
-      expect(config.enableOptimization).toBe(false);
-      expect(config.trackPerformance).toBe(true); // Should preserve existing setting
-    });
-  });
-
   describe('createStandardResponse', () => {
     it('should create optimized response when optimization is enabled', () => {
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
         sampleData
@@ -92,11 +47,12 @@ describe('Response Factory', () => {
     });
 
     it('should create standard response when optimization is disabled', () => {
-      const factory = new ResponseFactory({ enableOptimization: false });
-      const response = factory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
-        sampleData
+        sampleData,
+        {},
+        { useOptimization: false }
       );
 
       expect(response.success).toBe(true);
@@ -106,21 +62,8 @@ describe('Response Factory', () => {
       expect(response.metadata.optimization).toBeUndefined();
     });
 
-    it('should respect useOptimization option', () => {
-      // Factory has optimization enabled by default
-      const response = responseFactory.createStandardResponse(
-        'test_operation',
-        'Test message',
-        sampleData,
-        {},
-        { useOptimization: false }
-      );
-
-      expect(response.metadata.optimization).toBeUndefined();
-    });
-
     it('should use custom verbosity', () => {
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
         sampleTask,
@@ -137,7 +80,7 @@ describe('Response Factory', () => {
     });
 
     it('should apply field transforms when specified', () => {
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
         sampleTask,
@@ -157,7 +100,7 @@ describe('Response Factory', () => {
         additional: 'info'
       };
 
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
         sampleData,
@@ -172,7 +115,7 @@ describe('Response Factory', () => {
 
     it('should handle array data correctly', () => {
       const arrayData = [sampleData, { ...sampleData, id: 2 }];
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'list_operation',
         'Items retrieved',
         arrayData
@@ -184,7 +127,7 @@ describe('Response Factory', () => {
     });
 
     it('should handle null/undefined data', () => {
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
         null
@@ -193,21 +136,11 @@ describe('Response Factory', () => {
       expect(response.data).toBeNull();
       expect(response.metadata.count).toBe(1); // Count is always set to 1 for non-array data
     });
-
-    it('should track performance when enabled', () => {
-      const factory = new ResponseFactory({ trackPerformance: true });
-      factory.createStandardResponse('test', 'message', sampleData);
-
-      const stats = factory.getPerformanceStats();
-      expect(stats.totalOperations).toBe(1);
-      expect(stats.averageTransformationTime).toBeGreaterThanOrEqual(0);
-      expect(stats.averageTotalTime).toBeGreaterThanOrEqual(0);
-    });
   });
 
   describe('createTaskResponse', () => {
     it('should create optimized task response', () => {
-      const response = responseFactory.createTaskResponse(
+      const response = createTaskResponse(
         'get_task',
         'Task retrieved',
         sampleTask
@@ -221,7 +154,7 @@ describe('Response Factory', () => {
     });
 
     it('should handle single task', () => {
-      const response = responseFactory.createTaskResponse(
+      const response = createTaskResponse(
         'get_task',
         'Task retrieved',
         sampleTask,
@@ -241,7 +174,7 @@ describe('Response Factory', () => {
 
     it('should handle task array', () => {
       const tasks = [sampleTask, { ...sampleTask, id: 2, title: 'Task 2' }];
-      const response = responseFactory.createTaskResponse(
+      const response = createTaskResponse(
         'list_tasks',
         'Tasks retrieved',
         tasks,
@@ -259,7 +192,7 @@ describe('Response Factory', () => {
     });
 
     it('should use custom verbosity for tasks', () => {
-      const response = responseFactory.createTaskResponse(
+      const response = createTaskResponse(
         'get_task',
         'Task retrieved',
         sampleTask,
@@ -272,7 +205,7 @@ describe('Response Factory', () => {
     });
 
     it('should include task-specific metadata', () => {
-      const response = responseFactory.createTaskResponse(
+      const response = createTaskResponse(
         'get_task',
         'Task retrieved',
         sampleTask,
@@ -284,7 +217,7 @@ describe('Response Factory', () => {
     });
 
     it('should calculate correct size metrics for tasks', () => {
-      const response = responseFactory.createTaskResponse(
+      const response = createTaskResponse(
         'get_task',
         'Task retrieved',
         sampleTask
@@ -297,7 +230,7 @@ describe('Response Factory', () => {
     });
 
     it('should track task transformation performance', () => {
-      const response = responseFactory.createTaskResponse(
+      const response = createTaskResponse(
         'get_task',
         'Task retrieved',
         sampleTask
@@ -309,98 +242,9 @@ describe('Response Factory', () => {
     });
   });
 
-  describe('Performance Tracking', () => {
-    beforeEach(() => {
-      // Clear any existing performance history
-      responseFactory.clearPerformanceHistory();
-    });
-
-    it('should track performance statistics', () => {
-      // Create multiple responses to generate statistics
-      for (let i = 0; i < 5; i++) {
-        responseFactory.createStandardResponse(`op_${i}`, `Message ${i}`, sampleData);
-      }
-
-      const stats = responseFactory.getPerformanceStats();
-
-      expect(stats.totalOperations).toBe(5);
-      expect(stats.averageTransformationTime).toBeGreaterThanOrEqual(0);
-      expect(stats.averageTotalTime).toBeGreaterThanOrEqual(0);
-      expect(stats.averageSizeReduction).toBeGreaterThanOrEqual(0);
-      expect(stats.recentOperations).toHaveLength(5);
-    });
-
-    it('should track recent operations', () => {
-      // Create responses with different operations
-      responseFactory.createStandardResponse('op1', 'Message 1', sampleData);
-      responseFactory.createTaskResponse('op2', 'Message 2', sampleTask);
-      responseFactory.createStandardResponse('op3', 'Message 3', sampleData);
-
-      const stats = responseFactory.getPerformanceStats();
-      const recentOps = stats.recentOperations;
-
-      expect(recentOps).toHaveLength(3);
-      expect(recentOps.some(op => op.operation === 'op1')).toBe(true);
-      expect(recentOps.some(op => op.operation === 'op2')).toBe(true);
-      expect(recentOps.some(op => op.operation === 'op3')).toBe(true);
-
-      recentOps.forEach(op => {
-        expect(op.transformationTime).toBeGreaterThanOrEqual(0);
-        expect(op.totalTime).toBeGreaterThanOrEqual(0);
-        expect(op.sizeReduction).toBeGreaterThanOrEqual(0);
-        expect(op.timestamp).toBeDefined();
-      });
-    });
-
-    it('should limit recent operations to last 10', () => {
-      // Create more than 10 operations
-      for (let i = 0; i < 15; i++) {
-        responseFactory.createStandardResponse(`op_${i}`, `Message ${i}`, sampleData);
-      }
-
-      const stats = responseFactory.getPerformanceStats();
-      expect(stats.recentOperations).toHaveLength(10);
-      expect(stats.totalOperations).toBe(15);
-    });
-
-    it('should handle empty performance history', () => {
-      const stats = responseFactory.getPerformanceStats();
-
-      expect(stats.totalOperations).toBe(0);
-      expect(stats.averageTransformationTime).toBe(0);
-      expect(stats.averageTotalTime).toBe(0);
-      expect(stats.averageSizeReduction).toBe(0);
-      expect(stats.recentOperations).toHaveLength(0);
-    });
-
-    it('should clear performance history', () => {
-      // Add some operations
-      for (let i = 0; i < 3; i++) {
-        responseFactory.createStandardResponse(`op_${i}`, `Message ${i}`, sampleData);
-      }
-
-      expect(responseFactory.getPerformanceStats().totalOperations).toBe(3);
-
-      responseFactory.clearPerformanceHistory();
-
-      const stats = responseFactory.getPerformanceStats();
-      expect(stats.totalOperations).toBe(0);
-      expect(stats.recentOperations).toHaveLength(0);
-    });
-
-    it('should not track performance when disabled', () => {
-      const factory = new ResponseFactory({ trackPerformance: false });
-
-      factory.createStandardResponse('test', 'message', sampleData);
-
-      const stats = factory.getPerformanceStats();
-      expect(stats.totalOperations).toBe(0);
-    });
-  });
-
   describe('Optimization Metadata', () => {
     it('should include comprehensive optimization metadata', () => {
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
         sampleTask,
@@ -430,7 +274,7 @@ describe('Response Factory', () => {
     });
 
     it('should handle non-task data correctly', () => {
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
         sampleData
@@ -447,7 +291,7 @@ describe('Response Factory', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty string data', () => {
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
         ''
@@ -458,7 +302,7 @@ describe('Response Factory', () => {
     });
 
     it('should handle number data', () => {
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
         42
@@ -469,7 +313,7 @@ describe('Response Factory', () => {
     });
 
     it('should handle boolean data', () => {
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'test_operation',
         'Test message',
         true
@@ -477,16 +321,6 @@ describe('Response Factory', () => {
 
       expect(response.data).toBe(true);
       expect(response.metadata.optimization).toBeDefined();
-    });
-
-    it('should handle circular references gracefully', () => {
-      const circularData: any = { id: 1 };
-      circularData.self = circularData;
-
-      // This will throw due to JSON.stringify in transformData
-      expect(() => {
-        responseFactory.createStandardResponse('test', 'message', circularData);
-      }).toThrow();
     });
 
     it('should handle very large data sets', () => {
@@ -498,7 +332,7 @@ describe('Response Factory', () => {
       }));
 
       const startTime = Date.now();
-      const response = responseFactory.createStandardResponse(
+      const response = createStandardResponse(
         'large_operation',
         'Large data retrieved',
         largeData

@@ -8,7 +8,6 @@ import type { Task } from 'node-vikunja';
 import { logger } from '../../utils/logger';
 import { createAorpEnabledFactory } from '../../utils/response-factory';
 import type { Verbosity } from '../../transforms/index';
-import type { AorpBuilderConfig, AorpTransformationContext } from '../../aorp/types';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { AUTH_ERROR_MESSAGES } from './constants';
