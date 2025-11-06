@@ -13,7 +13,7 @@ import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 
 import { registerAuthTool } from './auth';
 import { registerTasksTool } from './tasks';
-import { registerProjectsTool } from './projects';
+import { registerProjectTools } from './projects/index';
 import { registerLabelsTool } from './labels';
 import { registerTeamsTool } from './teams';
 import { registerUsersTool } from './users';
@@ -33,7 +33,7 @@ export function registerTools(
   
   registerAuthTool(server, authManager);
   registerTasksTool(server, authManager, clientFactory);
-  registerProjectsTool(server, authManager, clientFactory);
+  registerProjectTools(server, authManager, clientFactory);
   registerLabelsTool(server, authManager, clientFactory);
   registerTeamsTool(server, authManager, clientFactory);
 
