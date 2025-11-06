@@ -24,7 +24,9 @@
     "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true,
     "allowSyntheticDefaultImports": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]
