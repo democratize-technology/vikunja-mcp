@@ -128,7 +128,7 @@ export async function getProjectTree(
     // Get all projects
     const allProjects = await client.projects.getProjects({ per_page: 1000 });
 
-    let rootProjects = allProjects.filter((p: any) => !p.parent_project_id);
+    const rootProjects = allProjects.filter((p: any) => !p.parent_project_id);
 
     // If specific ID is provided, find that project and its subtree
     let rootNode: ProjectTreeNode | undefined;

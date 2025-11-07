@@ -10,6 +10,16 @@ import { transformApiError } from '../../utils/error-handler';
 import { validateId, validateProjectData, calculateProjectDepth } from './validation';
 import { createProjectResponse, createProjectListResponse } from './response-formatter';
 
+// Type for API responses that may have data and total properties
+interface ApiProjectResponse {
+  data?: Project[];
+  total?: number;
+}
+
+interface ProjectUpdateRequest {
+  is_archived: boolean;
+}
+
 /**
  * Arguments for listing projects
  */
@@ -110,8 +120,9 @@ export async function listProjects(
 
     const response = await client.projects.getProjects(params);
 
-    const responseArray = (response as any).data || (Array.isArray(response) ? response : [response]);
-    const total = (response as any).total || responseArray.length;
+    const apiResponse = response as ApiProjectResponse;
+    const responseArray = apiResponse.data || (Array.isArray(response) ? response : [response]);
+    const total = apiResponse.total || responseArray.length;
 
     // Build options object, only including defined properties to satisfy exactOptionalPropertyTypes
     const options: { verbosity?: string; useOptimizedFormat?: boolean; useAorp?: boolean } = {};
@@ -236,7 +247,8 @@ export async function createProject(
     if (parentProjectId) {
       try {
         const allProjectsResponse = await client.projects.getProjects({ per_page: 1000 });
-        allProjects = (allProjectsResponse as any).data || (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
+        const allProjectsApiData = allProjectsResponse as ApiProjectResponse;
+        allProjects = allProjectsApiData.data || (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
       } catch (error) {
         // Continue with validation if we can't get all projects
       }
@@ -336,7 +348,8 @@ export async function updateProject(
     if (parentProjectId !== undefined || currentProject.parentProjectId) {
       try {
         const allProjectsResponse = await client.projects.getProjects({ per_page: 1000 });
-        allProjects = (allProjectsResponse as any).data || (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
+        const allProjectsApiData = allProjectsResponse as ApiProjectResponse;
+        allProjects = allProjectsApiData.data || (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
       } catch (error) {
         // Continue if we can't get all projects
       }

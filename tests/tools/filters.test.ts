@@ -19,7 +19,7 @@ describe('vikunja_filters tool', () => {
   let mockAuthManager: AuthManager;
 
   // Utility to get the session storage used by the tool
-  async function getTestStorage() {
+  async function getTestStorage(): Promise<ReturnType<typeof storageManager.getStorage>> {
     const session = mockAuthManager.getSession();
     const sessionId = `${session.apiUrl}:${session.apiToken?.substring(0, 8)}`;
     return storageManager.getStorage(sessionId, session.userId, session.apiUrl);

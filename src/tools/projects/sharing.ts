@@ -233,7 +233,7 @@ export async function getProjectShare(
     }
 
     const client = await getClientFromContext();
-    const share = await client.projects.getLinkShare(projectId!, shareId as any);
+    const share = await client.projects.getLinkShare(projectId, shareId as any);
 
     const result = createProjectResponse(
       'get_project_share',
@@ -281,9 +281,9 @@ export async function deleteProjectShare(
     const client = await getClientFromContext();
 
     // Get share details before deletion
-    const share = await client.projects.getLinkShare(projectId!, shareId as any);
+    const share = await client.projects.getLinkShare(projectId, shareId as any);
 
-    await client.projects.deleteLinkShare(projectId!, shareId as any);
+    await client.projects.deleteLinkShare(projectId, shareId as any);
 
     const result = createProjectResponse(
       'delete_project_share',

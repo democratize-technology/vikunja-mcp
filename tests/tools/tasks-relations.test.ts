@@ -85,7 +85,7 @@ const mockClient = {
 };
 
 // Helper to create a mock server
-function createMockServer() {
+function createMockServer(): McpServer & { executeTool: (name: string, args: unknown) => Promise<unknown> } {
   const handlers = new Map<string, Function>();
   return {
     tool: jest.fn((name: string, schema: unknown, handler: Function) => {

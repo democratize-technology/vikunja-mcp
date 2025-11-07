@@ -108,7 +108,14 @@ export class CircuitBreaker {
     }
   }
 
-  async getStats() {
+  async getStats(): Promise<{
+    state: CircuitState;
+    failureCount: number;
+    successCount: number;
+    lastFailureTime: number;
+    failureThreshold: number;
+    recoveryTimeout: number;
+  }> {
     const release = await this.stateMutex.acquire();
     try {
       return {
@@ -155,7 +162,14 @@ export class CircuitBreaker {
     return this.state;
   }
 
-  getStatsSync() {
+  getStatsSync(): {
+    state: CircuitState;
+    failureCount: number;
+    successCount: number;
+    lastFailureTime: number;
+    failureThreshold: number;
+    recoveryTimeout: number;
+  } {
     return {
       state: this.state,
       failureCount: this.failureCount,
@@ -209,8 +223,22 @@ class CircuitBreakerRegistry {
     return this.circuitBreakers.get(name)!;
   }
 
-  async getAllStats() {
-    const stats: Record<string, any> = {};
+  async getAllStats(): Promise<Record<string, {
+    state: CircuitState;
+    failureCount: number;
+    successCount: number;
+    lastFailureTime: number;
+    failureThreshold: number;
+    recoveryTimeout: number;
+  }>> {
+    const stats: Record<string, {
+      state: CircuitState;
+      failureCount: number;
+      successCount: number;
+      lastFailureTime: number;
+      failureThreshold: number;
+      recoveryTimeout: number;
+    }> = {};
     const promises: Promise<void>[] = [];
 
     this.circuitBreakers.forEach((breaker, name) => {
@@ -236,8 +264,22 @@ class CircuitBreakerRegistry {
   }
 
   // Synchronous versions for backward compatibility
-  getAllStatsSync() {
-    const stats: Record<string, any> = {};
+  getAllStatsSync(): Record<string, {
+    state: CircuitState;
+    failureCount: number;
+    successCount: number;
+    lastFailureTime: number;
+    failureThreshold: number;
+    recoveryTimeout: number;
+  }> {
+    const stats: Record<string, {
+      state: CircuitState;
+      failureCount: number;
+      successCount: number;
+      lastFailureTime: number;
+      failureThreshold: number;
+      recoveryTimeout: number;
+    }> = {};
     this.circuitBreakers.forEach((breaker, name) => {
       stats[name] = breaker.getStatsSync();
     });

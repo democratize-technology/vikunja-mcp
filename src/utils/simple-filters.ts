@@ -44,7 +44,12 @@ export function parseSimpleFilter(filterStr: string): SimpleFilter | null {
   const [, field, operator, rawValue] = match;
 
   // Validate field name against allowlist
-  if (!ALLOWED_FIELDS.has(field)) {
+  if (!field || !ALLOWED_FIELDS.has(field)) {
+    return null;
+  }
+
+  // Guard against undefined rawValue (shouldn't happen with regex match but TypeScript complains)
+  if (!rawValue) {
     return null;
   }
 
@@ -102,7 +107,7 @@ export function parseSimpleFilter(filterStr: string): SimpleFilter | null {
   }
 
   return {
-    field,
+    field: field,
     operator: operator as SimpleFilter['operator'],
     value
   };
@@ -129,17 +134,17 @@ export function applyClientSideFilter(tasks: Task[], filter: SimpleFilter | null
 function getTaskFieldValue(task: Task, field: string): unknown {
   // Handle direct properties
   if (field in task) {
-    const value = (task as any)[field];
+    const value = task[field as keyof Task];
 
     // Convert date strings to Date objects
     if (field === 'due_date' && value) {
-      return new Date(value);
+      return typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
     }
     if (field === 'created' && value) {
-      return new Date(value);
+      return typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
     }
     if (field === 'updated' && value) {
-      return new Date(value);
+      return typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
     }
 
     return value;
@@ -235,8 +240,8 @@ function evaluateComparison(
   }
 
   // Convert to appropriate types for comparison
-  let left = taskValue;
-  let right = filterValue;
+  const left = taskValue;
+  const right = filterValue;
 
   // Handle dates
   if (left instanceof Date && right instanceof Date) {
@@ -266,8 +271,8 @@ function evaluateComparison(
   }
 
   // Handle string comparison
-  const leftStr = String(left || '');
-  const rightStr = String(right || '');
+  const leftStr = String(left ?? '');
+  const rightStr = String(right ?? '');
 
   switch (operator) {
     case '=': return leftStr === rightStr;

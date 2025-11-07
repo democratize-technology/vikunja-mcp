@@ -32,7 +32,7 @@ import {
 describe('Client Context and Factory Management', () => {
   let mockAuthManager: jest.Mocked<AuthManager>;
   let mockVikunjaClient: jest.Mocked<VikunjaClient>;
-  let mockVikunjaClientFactory: any;
+  let mockVikunjaClientFactory: jest.Mocked<typeof import('../src/client/VikunjaClientFactory').VikunjaClientFactory>;
   let mockVikunjaClientConstructor: jest.MockedFunction<VikunjaClientConstructor>;
 
   beforeEach(() => {
@@ -46,7 +46,7 @@ describe('Client Context and Factory Management', () => {
       isAuthenticated: jest.fn(),
       disconnect: jest.fn(),
       getAuthType: jest.fn(),
-    } as any;
+    } as jest.Mocked<AuthManager>;
 
     // Mock VikunjaClient
     mockVikunjaClient = {
@@ -55,7 +55,7 @@ describe('Client Context and Factory Management', () => {
       tasks: {},
       projects: {},
       users: {},
-    } as any;
+    } as jest.Mocked<AuthManager>;
 
     // Mock VikunjaClientConstructor
     mockVikunjaClientConstructor = jest.fn().mockReturnValue(mockVikunjaClient);

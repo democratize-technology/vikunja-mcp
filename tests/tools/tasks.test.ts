@@ -25,7 +25,7 @@ describe('Tasks Tool', () => {
   let toolHandler: (args: any) => Promise<any>;
 
   // Helper function to call a tool
-  async function callTool(subcommand: string, args: Record<string, any> = {}) {
+  async function callTool(subcommand: string, args: Record<string, any> = {}): Promise<any> {
     return toolHandler({
       subcommand,
       ...args,
