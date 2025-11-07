@@ -94,6 +94,15 @@ describe('Projects Tool - Nested Project Features', () => {
     // Setup mock client
     mockClient = {
       getToken: jest.fn().mockReturnValue('test-token'),
+      getProjects: jest.fn(),
+      createProject: jest.fn(),
+      getProject: jest.fn(),
+      updateProject: jest.fn(),
+      deleteProject: jest.fn(),
+      createLinkShare: jest.fn(),
+      getLinkShares: jest.fn(),
+      getLinkShare: jest.fn(),
+      deleteLinkShare: jest.fn(),
       tasks: {} as any,
       projects: {
         getProjects: jest.fn(),
@@ -138,6 +147,17 @@ describe('Projects Tool - Nested Project Features', () => {
 
     // Mock getClientFromContext
     (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
+
+    // Mirror the project methods to the top level for backward compatibility with new implementation
+    mockClient.getProjects = mockClient.projects.getProjects;
+    mockClient.getProject = mockClient.projects.getProject;
+    mockClient.createProject = mockClient.projects.createProject;
+    mockClient.updateProject = mockClient.projects.updateProject;
+    mockClient.deleteProject = mockClient.projects.deleteProject;
+    mockClient.createLinkShare = mockClient.projects.createLinkShare;
+    mockClient.getLinkShares = mockClient.projects.getLinkShares;
+    mockClient.getLinkShare = mockClient.projects.getLinkShare;
+    mockClient.deleteLinkShare = mockClient.projects.deleteLinkShare;
   });
 
   describe('get-children', () => {
