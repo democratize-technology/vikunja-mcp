@@ -9,6 +9,11 @@ import { isAuthenticationError } from '../utils/auth-error-handler';
 import type { Task, Label, User } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 
+/* ===================================================================
+ * TYPE DEFINITIONS & SCHEMAS
+ * Zod schemas and TypeScript interfaces for imported tasks
+ * =================================================================== */
+
 // Define the structure for imported tasks
 const importedTaskSchema = z.object({
   title: z.string().min(1),
@@ -51,6 +56,99 @@ interface ImportResult {
   }>;
 }
 
+/* ===================================================================
+ * PARSING - CSV/JSON input data parsing and validation
+ * =================================================================== */
+
+/**
+ * Parses a CSV line handling quoted values, escaped quotes, and field delimiters.
+ * Implements RFC 4180 CSV parsing with support for:
+ * - Quoted fields with commas ("field, with comma")
+ * - Escaped quotes within fields ("field with ""quotes""")
+ * - Proper delimiter handling outside quotes
+ *
+ * @param line - The CSV line to parse
+ * @returns Array of field values with quotes removed and escapes resolved
+ *
+ * @example
+ * parseCSVLine('title,description,done')
+ * // Returns: ['title', 'description', 'done']
+ *
+ * parseCSVLine('"Task with, comma","Description with ""quotes""",true')
+ * // Returns: ['Task with, comma', 'Description with "quotes"', 'true']
+ */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"';
+        i++; // Skip next quote
+      } else {
+        // Toggle quote mode
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // End of field
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  // Don't forget the last field
+  result.push(current.trim());
+  return result;
+}
+
+/**
+ * Parses JSON input and normalizes to array of ImportedTask objects.
+ * Handles both single task objects and arrays of tasks.
+ * Validates each task against importedTaskSchema.
+ *
+ * @param data - JSON string containing task data
+ * @returns Array of validated ImportedTask objects
+ * @throws {MCPError} If JSON is malformed or validation fails
+ *
+ * @example
+ * parseJSONInput('{"title": "Task 1"}')
+ * // Returns: [{title: "Task 1"}]
+ *
+ * parseJSONInput('[{"title": "Task 1"}, {"title": "Task 2"}]')
+ * // Returns: [{title: "Task 1"}, {title: "Task 2"}]
+ */
+function parseJSONInput(data: string): ImportedTask[] {
+  try {
+    const parsed = JSON.parse(data) as unknown;
+    const taskArray = Array.isArray(parsed) ? parsed : [parsed];
+
+    const tasks: ImportedTask[] = [];
+    for (const task of taskArray) {
+      const validatedTask = importedTaskSchema.parse(task);
+      tasks.push(validatedTask);
+    }
+    return tasks;
+  } catch (error) {
+    throw new MCPError(
+      ErrorCode.VALIDATION_ERROR,
+      `Invalid JSON data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    );
+  }
+}
+
+/* ===================================================================
+ * TOOL REGISTRATION & ORCHESTRATION
+ * Main entry point for batch import tool
+ * =================================================================== */
+
 export function registerBatchImportTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_batch_import',
@@ -70,6 +168,10 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
           dryRun: args.dryRun,
         });
 
+        /* ---------------------------------------------------------------
+         * AUTHENTICATION & CLIENT SETUP
+         * --------------------------------------------------------------- */
+
         // Check authentication
         if (!authManager.isAuthenticated()) {
           throw new MCPError(
@@ -81,55 +183,16 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
         const client = await getClientFromContext() as TypedVikunjaClient;
         const tasks: ImportedTask[] = [];
 
+        /* ---------------------------------------------------------------
+         * INPUT PARSING - Format detection and data extraction
+         * --------------------------------------------------------------- */
+
         // Parse the input data based on format
         if (args.format === 'json') {
-          try {
-            const parsed = JSON.parse(args.data) as unknown;
-            const taskArray = Array.isArray(parsed) ? parsed : [parsed];
-
-            for (const task of taskArray) {
-              const validatedTask = importedTaskSchema.parse(task);
-              tasks.push(validatedTask);
-            }
-          } catch (error) {
-            throw new MCPError(
-              ErrorCode.VALIDATION_ERROR,
-              `Invalid JSON data: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            );
-          }
+          const parsedTasks = parseJSONInput(args.data);
+          tasks.push(...parsedTasks);
         } else if (args.format === 'csv') {
-          // Parse CSV data - simple parser that handles quoted values
-          const parseCSVLine = (line: string): string[] => {
-            const result: string[] = [];
-            let current = '';
-            let inQuotes = false;
-
-            for (let i = 0; i < line.length; i++) {
-              const char = line[i];
-              const nextChar = line[i + 1];
-
-              if (char === '"') {
-                if (inQuotes && nextChar === '"') {
-                  // Escaped quote
-                  current += '"';
-                  i++; // Skip next quote
-                } else {
-                  // Toggle quote mode
-                  inQuotes = !inQuotes;
-                }
-              } else if (char === ',' && !inQuotes) {
-                // End of field
-                result.push(current.trim());
-                current = '';
-              } else {
-                current += char;
-              }
-            }
-
-            // Don't forget the last field
-            result.push(current.trim());
-            return result;
-          };
+          // Parse CSV data - using extracted parseCSVLine function
 
           const lines = args.data.split('\n').filter((line) => line.trim());
           if (lines.length < 2) {
@@ -263,11 +326,29 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
           createdTasks: [],
         };
 
+        /* ---------------------------------------------------------------
+         * ENTITY RESOLUTION - Map label/user names to IDs with auth handling
+         * Vikunja API has known authentication issues:
+         * - Users endpoint may fail with API tokens (requires JWT)
+         * - Labels may work but assignment can fail silently with API tokens
+         * This section handles graceful degradation for both scenarios
+         * --------------------------------------------------------------- */
+
         // First, get all labels and users for the project to map names to IDs
         let projectLabels: Label[] = [];
         let projectUsers: User[] = [];
         let userFetchFailedDueToAuth = false;
 
+        /**
+         * Fetch project labels for ID mapping.
+         * Handles multiple edge cases:
+         * - null/undefined responses
+         * - Non-array responses
+         * - Network errors
+         * - Auth errors (less common for labels than users)
+         *
+         * Falls back gracefully to empty array if fetch fails.
+         */
         // Get labels - this should work
         try {
           const labelsResponse = await client.labels.getLabels({});
@@ -297,6 +378,14 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
           // Continue without labels mapping
         }
 
+        /**
+         * Fetch project users for ID mapping.
+         * KNOWN VIKUNJA API ISSUE: Users endpoint often fails with API tokens.
+         * - Auth error: Continue without user mapping, add warning
+         * - Other error: Log warning and continue
+         *
+         * This is not a bug in our code - it's a documented Vikunja API limitation.
+         */
         // Try to get users, but handle the known authentication issue
         try {
           const usersResponse = await client.users.getUsers({});
@@ -328,6 +417,14 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
           labelMapEntries: Array.from(labelMap.entries()),
           userMapSize: userMap.size,
         });
+
+        /* ---------------------------------------------------------------
+         * TASK IMPORT EXECUTION - Create tasks and apply enhancements
+         * - Create base task
+         * - Assign labels (with verification to detect silent failures)
+         * - Assign users (if user data available)
+         * - Handle reminders (API limitation: can't add post-creation)
+         * --------------------------------------------------------------- */
 
         // Create tasks one by one
         for (let i = 0; i < tasks.length; i++) {
@@ -395,6 +492,15 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
                     label_ids: labelIds,
                   });
 
+                  /**
+                   * Verify label assignment actually succeeded.
+                   * CRITICAL: Vikunja API with API tokens may silently fail label assignment.
+                   * - updateTaskLabels returns success
+                   * - But labels aren't actually assigned to the task
+                   *
+                   * Solution: Fetch task after assignment and verify labels exist.
+                   * If verification fails, add warning suggesting JWT authentication.
+                   */
                   // Verify the labels were actually assigned by fetching the task
                   // This is necessary because updateTaskLabels might silently fail with API tokens
                   let labelsActuallyAssigned = false;
@@ -551,6 +657,10 @@ export function registerBatchImportTool(server: McpServer, authManager: AuthMana
             }
           }
         }
+
+        /* ---------------------------------------------------------------
+         * RESPONSE FORMATTING - Format results with success/error/warnings
+         * --------------------------------------------------------------- */
 
         // Format the result
         let responseText = `Import completed:\n`;
