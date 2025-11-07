@@ -3,7 +3,7 @@
  */
 
 import type { Task } from 'node-vikunja';
-import type { FilterCondition, FilterGroup, FilterExpression } from '../../types/filters';
+import type { FilterCondition, FilterGroup, FilterExpression } from '../../../types/filters';
 
 /**
  * Evaluates a filter condition against a task

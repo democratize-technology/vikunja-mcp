@@ -8,19 +8,14 @@ import { z } from 'zod';
 import type { Task } from 'node-vikunja';
 import type { AuthManager } from '../../auth/AuthManager';
 import type { VikunjaClientFactory } from '../../client/VikunjaClientFactory';
-import { MCPError, ErrorCode, createStandardResponse, type TaskResponseData, type TaskResponseMetadata, type QualityIndicatorFunction } from '../../types/index';
+import { MCPError, ErrorCode, type TaskResponseData, type TaskResponseMetadata } from '../../types/index';
 import { getClientFromContext, setGlobalClientFactory } from '../../client';
 import { logger } from '../../utils/logger';
-import { createAorpEnabledFactory } from '../../utils/response-factory';
-import type { Verbosity } from '../../transforms/index';
-import type { AorpBuilderConfig, AorpTransformationContext } from '../../aorp/types';
+import type { AorpBuilderConfig } from '../../aorp/types';
 import { storageManager } from '../../storage/FilterStorage';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
-import { parseFilterString } from '../../utils/filters';
-import type { FilterExpression, SavedFilter } from '../../types/filters';
-import type { GetTasksParams } from 'node-vikunja';
-import { validateTaskCountLimit, logMemoryUsage, createTaskLimitExceededMessage } from '../../utils/memory';
-import { FilteringContext, type FilteringArgs } from '../../utils/filtering';
+import { TaskFilteringOrchestrator } from './filtering';
+import type { TaskListingArgs } from './types/filters';
 import { createAuthRequiredError, handleFetchError } from '../../utils/error-handler';
 
 /**
@@ -40,207 +35,13 @@ const AorpBuilderConfigSchema = z.object({
 }).optional();
 
 // Import all operation handlers
-import { createTask, getTask, updateTask, deleteTask } from './crud';
+import { createTask, getTask, updateTask, deleteTask, createTaskResponse } from './crud';
 import { bulkCreateTasks, bulkUpdateTasks, bulkDeleteTasks } from './bulk-operations';
 import { assignUsers, unassignUsers, listAssignees } from './assignees';
 import { handleComment } from './comments';
 import { addReminder, removeReminder, listReminders } from './reminders';
 import { applyLabels, removeLabels, listTaskLabels } from './labels';
 
-/**
- * Intelligent AORP activation logic
- * Automatically determines when AORP would provide the most value
- */
-function shouldIntelligentlyActivateAorp(
-  operation: string,
-  data: TaskResponseData,
-  verbosity: string
-): boolean {
-  // Always enable AORP for complex operations that benefit from next steps
-  const complexOperations = [
-    'create-task',
-    'update-task',
-    'delete-task',
-    'bulk-create-tasks',
-    'bulk-update-tasks',
-    'bulk-delete-tasks',
-    'relate',
-    'unrelate'
-  ];
-
-  // Always enable for list operations with large datasets
-  const taskCount = Array.isArray(data.tasks) ? data.tasks.length : 1;
-
-  // Enable AORP based on operation complexity and data size
-  if (complexOperations.includes(operation)) {
-    return true; // Complex operations always benefit from guidance
-  }
-
-  if (operation === 'list-tasks' && taskCount > 5) {
-    return true; // Lists with more than 5 tasks benefit from summaries
-  }
-
-  // Enable for non-standard verbosity levels (user wants optimization)
-  if (verbosity !== 'standard') {
-    return true;
-  }
-
-  // Enable for get-task operations when task has rich data
-  if (operation === 'get-task' && Array.isArray(data.tasks) && data.tasks.length > 0) {
-    const task = data.tasks[0];
-    if (task) {
-      const hasRichContent = task.description ||
-                           (task.labels && task.labels.length > 0) ||
-                           (task.assignees && task.assignees.length > 0) ||
-                           task.due_date;
-      if (hasRichContent) {
-        return true;
-      }
-    }
-  }
-
-  return false; // Default to standard responses for simple cases
-}
-
-/**
- * Helper function to create response with optional optimization and intelligent AORP support
- */
-function createTaskResponse(
-  operation: string,
-  message: string,
-  data: TaskResponseData,
-  metadata: TaskResponseMetadata = {
-    timestamp: new Date().toISOString()
-  },
-  verbosity?: string,
-  useOptimizedFormat?: boolean,
-  useAorp?: boolean,
-  aorpConfig?: AorpBuilderConfig,
-  sessionId?: string
-): unknown {
-  // Default to standard verbosity if not specified
-  const selectedVerbosity = verbosity || 'standard';
-
-  // Use optimized format if requested or if verbosity is not standard
-  const shouldOptimize = useOptimizedFormat || selectedVerbosity !== 'standard';
-
-  // Intelligent AORP activation - auto-detect when beneficial
-  const shouldUseAorp = useAorp || shouldIntelligentlyActivateAorp(operation, data, selectedVerbosity);
-
-  // Use AORP if explicitly requested or intelligently detected
-  if (shouldUseAorp) {
-    const aorpFactory = createAorpEnabledFactory();
-    return aorpFactory.createResponse(operation, message, data, metadata, {
-      verbosity: selectedVerbosity as Verbosity,
-      useOptimization: shouldOptimize,
-      useAorp: true,
-      aorpOptions: {
-        builderConfig: {
-          confidenceMethod: 'adaptive',
-          enableNextSteps: true,
-          enableQualityIndicators: true,
-          ...aorpConfig
-        },
-        nextStepsConfig: {
-          maxSteps: 5,
-          enableContextual: true,
-          templates: {
-            [`${operation}`]: [
-              "Verify the task data appears correctly in listings",
-              "Check related tasks and dependencies",
-              "Test any automated workflows or notifications"
-            ],
-            'list-tasks': [
-              "Review the returned tasks for completeness",
-              "Apply filters or pagination if needed",
-              "Consider sorting by priority or due date"
-            ],
-            'get-task': [
-              "Verify all required task fields are present",
-              "Check task relationships and dependencies",
-              "Review task assignees and labels"
-            ],
-            'create-task': [
-              "Verify the created task appears in listings",
-              "Set up task dependencies and reminders",
-              "Notify relevant team members"
-            ],
-            'update-task': [
-              "Confirm changes are reflected in the UI",
-              "Check related data for consistency",
-              "Notify team members of important changes"
-            ],
-            'delete-task': [
-              "Verify task no longer appears in searches",
-              "Check for any orphaned subtasks or dependencies",
-              "Update project timelines and milestones"
-            ],
-            'assign-task': [
-              "Verify assignee received notification",
-              "Update task status and priority if needed",
-              "Check assignee availability and workload"
-            ],
-            'unassign-task': [
-              "Verify task is properly unassigned",
-              "Consider reassigning to another team member",
-              "Update task status and deadlines"
-            ],
-            'bulk-create-tasks': [
-              "Verify all tasks were created successfully",
-              "Check for duplicate tasks or conflicts",
-              "Set up task relationships and dependencies"
-            ],
-            'bulk-update-tasks': [
-              "Verify all updates were applied correctly",
-              "Check for data consistency across tasks",
-              "Review project timeline impacts"
-            ],
-            'bulk-delete-tasks': [
-              "Verify all tasks were deleted",
-              "Check for orphaned dependencies",
-              "Update project metrics and reports"
-            ]
-          }
-        },
-        qualityConfig: {
-          completenessWeight: 0.6,
-          reliabilityWeight: 0.4,
-          customIndicators: {
-            taskPriority: ((data: unknown, _context: AorpTransformationContext) => {
-              // Higher completeness for high-priority tasks
-              const taskData = data as { task?: Task };
-              if (!taskData?.task) return 0.7;
-              const priority = taskData.task.priority || 0;
-              return Math.min(1.0, 0.5 + (priority / 5) * 0.5);
-            }) as QualityIndicatorFunction,
-            taskCompleteness: ((data: unknown, _context: AorpTransformationContext) => {
-              // Based on task fields completeness
-              const taskData = data as { task?: Task };
-              if (!taskData?.task) return 0.5;
-              const task = taskData.task;
-              let score = 0.3; // Base score for having a task
-              if (task.title) score += 0.2;
-              if (task.description) score += 0.2;
-              if (task.due_date) score += 0.1;
-              if (task.priority !== undefined) score += 0.1;
-              if (task.labels && task.labels.length > 0) score += 0.05;
-              if (task.assignees && task.assignees.length > 0) score += 0.05;
-              return Math.min(1.0, score);
-            }) as QualityIndicatorFunction
-          }
-        },
-        ...(sessionId && { sessionId })
-      }
-    });
-  }
-
-  if (shouldOptimize) {
-    // For tasks, we'll use the standard response with optimization
-    return createStandardResponse(operation, message, data, metadata);
-  }
-
-  return createStandardResponse(operation, message, data, metadata);
-}
 
 /**
  * Get session-scoped storage instance
@@ -255,202 +56,33 @@ async function getSessionStorage(authManager: AuthManager): ReturnType<typeof st
  * List tasks with optional filtering
  */
 async function listTasks(
-  args: {
-    projectId?: number;
-    page?: number;
-    perPage?: number;
-    search?: string;
-    sort?: string;
-    filter?: string;
-    filterId?: string;
-    allProjects?: boolean;
-    done?: boolean;
-    verbosity?: string;
-    useOptimizedFormat?: boolean;
-    useAorp?: boolean;
-    aorpConfig?: AorpBuilderConfig;
-    sessionId?: string;
-  },
+  args: TaskListingArgs,
   storage: Awaited<ReturnType<typeof storageManager.getStorage>>,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const params: GetTasksParams = {};
-
   try {
-    let tasks: Task[] = [];
-    let filterExpression: FilterExpression | null = null;
-    let filterString: string | undefined;
+    // Execute the complete filtering workflow using the orchestrator
+    const filteringResult = await TaskFilteringOrchestrator.executeTaskFiltering(args, storage);
 
-    // Build query parameters
-    if (args.page !== undefined) params.page = args.page;
-    if (args.perPage !== undefined) params.per_page = args.perPage;
-    if (args.search !== undefined) params.s = args.search;
-    if (args.sort !== undefined) params.sort_by = args.sort;
-
-    // Handle filter - either direct filter string or saved filter ID
-    if (args.filterId) {
-      const savedFilter: SavedFilter | null = await storage.get(args.filterId);
-      if (!savedFilter) {
-        throw new MCPError(ErrorCode.VALIDATION_ERROR, `Filter with id ${args.filterId} not found`);
-      }
-      filterString = savedFilter.filter;
-    } else if (args.filter !== undefined) {
-      filterString = args.filter;
-    }
-
-    // Parse the filter string for client-side filtering
-    if (filterString) {
-      const parseResult = parseFilterString(filterString);
-      if (parseResult.error) {
-        throw new MCPError(
-          ErrorCode.VALIDATION_ERROR,
-          `Invalid filter syntax: ${parseResult.error.message}${parseResult.error.context ? `\n${parseResult.error.context}` : ''}`,
-        );
-      }
-      filterExpression = parseResult.expression;
-
-      // Log that we're preparing to attempt hybrid filtering
-      logger.info('Preparing hybrid filtering (server-side attempt + client-side fallback)', {
-        filter: filterString,
-      });
-    }
-
-    // Memory protection: Check if we should implement pagination limits
-    // Note: Vikunja API doesn't provide task count endpoints, so we use conservative defaults
-    // and rely on user-provided pagination parameters
-    if (!params.per_page) {
-      // Set default pagination to prevent unbounded loading
-      params.per_page = 1000; // Conservative default
-      if (!params.page) {
-        params.page = 1;
-      }
-      logger.info('Applied default pagination for memory protection', {
-        per_page: params.per_page,
-        page: params.page
-      });
-    }
-
-    // Validate pagination limits for memory protection
-    const requestedPageSize = params.per_page || 1000;
-    const taskCountValidation = validateTaskCountLimit(requestedPageSize);
-    
-    if (!taskCountValidation.allowed) {
-      throw new MCPError(
-        ErrorCode.VALIDATION_ERROR,
-        createTaskLimitExceededMessage(
-          'list tasks',
-          requestedPageSize,
-          [
-            `Reduce the perPage parameter (current: ${requestedPageSize}, max allowed: ${taskCountValidation.maxAllowed})`,
-            'Use pagination with smaller page sizes',
-            'Apply more specific filters before listing'
-          ]
-        )
-      );
-    }
-
-    // Execute filtering using strategy pattern
-    const filteringContext = new FilteringContext({
-      enableServerSide: Boolean(filterString)
-    });
-    
-    const filteringParams = {
-      args: args as FilteringArgs,
-      filterExpression,
-      filterString,
-      params
-    };
-    
-    const filteringResult = await filteringContext.execute(filteringParams);
-    tasks = filteringResult.tasks;
-    
-    // Extract metadata for response formatting
-    const {
-      serverSideFilteringUsed,
-      serverSideFilteringAttempted,
-    } = filteringResult.metadata;
-
-    // Additional memory protection: validate actual loaded task count
-    const actualTaskCount = tasks.length;
-    const finalTaskCountValidation = validateTaskCountLimit(actualTaskCount);
-    
-    if (!finalTaskCountValidation.allowed) {
-      // Log warning but don't fail since tasks are already loaded
-      logger.warn('Loaded task count exceeds recommended limits', {
-        actualCount: actualTaskCount,
-        maxRecommended: finalTaskCountValidation.maxAllowed,
-        estimatedMemoryMB: finalTaskCountValidation.estimatedMemoryMB
-      });
-      
-      // For extremely large datasets, still enforce hard limits
-      if (actualTaskCount > finalTaskCountValidation.maxAllowed * 1.5) {
-        throw new MCPError(
-          ErrorCode.INTERNAL_ERROR,
-          createTaskLimitExceededMessage(
-            'process loaded tasks',
-            actualTaskCount,
-            [
-              'The API returned more tasks than expected',
-              'Use stricter pagination or filtering',
-              'Contact administrator about data size'
-            ]
-          )
-        );
-      }
-    }
-
-    // Log memory usage for monitoring
-    logMemoryUsage('task listing', actualTaskCount, tasks);
-
-    // Note: Client-side filtering is now handled within the strategy implementations
-
-    // Filter by done status if specified (this is a simpler filter that works)
-    if (args.done !== undefined) {
-      tasks = tasks.filter((task) => task.done === args.done);
-    }
-
-    // Determine filtering method message and metadata from strategy result
+    // Determine filtering method message
     let filteringMessage = '';
-    let filteringMetadata = {};
-    
-    if (filterString) {
-      if (serverSideFilteringUsed) {
+    if (args.filter) {
+      if (filteringResult.metadata.serverSideFilteringUsed) {
         filteringMessage = ' (filtered server-side)';
-        filteringMetadata = {
-          filter: filterString,
-          serverSideFilteringUsed: true,
-          serverSideFilteringAttempted: true,
-          clientSideFiltering: false,
-          filteringNote: filteringResult.metadata.filteringNote,
-        };
-      } else if (serverSideFilteringAttempted) {
+      } else if (filteringResult.metadata.serverSideFilteringAttempted) {
         filteringMessage = ' (filtered client-side - server-side fallback)';
-        filteringMetadata = {
-          filter: filterString,
-          serverSideFilteringUsed: false,
-          serverSideFilteringAttempted: true,
-          clientSideFiltering: true,
-          filteringNote: filteringResult.metadata.filteringNote,
-        };
       } else {
         filteringMessage = ' (filtered client-side)';
-        filteringMetadata = {
-          filter: filterString,
-          serverSideFilteringUsed: false,
-          serverSideFilteringAttempted: false,
-          clientSideFiltering: true,
-          filteringNote: filteringResult.metadata.filteringNote,
-        };
       }
     }
 
     const response = createTaskResponse(
       'list-tasks',
-      `Found ${tasks.length} tasks${filteringMessage}`,
-      { tasks },
+      `Found ${filteringResult.tasks.length} tasks${filteringMessage}`,
+      { tasks: filteringResult.tasks },
       {
         timestamp: new Date().toISOString(),
-        count: tasks.length,
-        ...filteringMetadata,
+        count: filteringResult.tasks.length,
+        ...filteringResult.metadata,
       },
       args.verbosity,
       args.useOptimizedFormat,
@@ -459,7 +91,7 @@ async function listTasks(
       args.sessionId
     );
 
-    logger.debug('Tasks tool response', { subcommand: 'list', itemCount: tasks.length });
+    logger.debug('Tasks tool response', { subcommand: 'list', itemCount: filteringResult.tasks.length });
 
     return {
       content: [
@@ -477,7 +109,6 @@ async function listTasks(
     // Log the full error for debugging filter issues
     logger.error('Task list error:', {
       error: error instanceof Error ? error.message : String(error),
-      params: params,
       filter: args.filter,
       filterId: args.filterId,
     });

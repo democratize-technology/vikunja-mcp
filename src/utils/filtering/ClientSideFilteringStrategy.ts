@@ -10,7 +10,7 @@ import type { TaskFilteringStrategy } from './TaskFilteringStrategy';
 import type { FilteringParams, FilteringResult } from './types';
 import { getClientFromContext } from '../../client';
 import { validateId } from '../../tools/tasks/validation';
-import { applyFilter } from '../../tools/tasks/filters';
+import { applyFilter } from '../../tools/tasks/filtering';
 import { logger } from '../logger';
 
 export class ClientSideFilteringStrategy implements TaskFilteringStrategy {
