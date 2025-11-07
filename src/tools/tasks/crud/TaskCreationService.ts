@@ -5,7 +5,7 @@
 
 import { MCPError, ErrorCode } from '../../../types/index';
 import { getClientFromContext } from '../../../client';
-import type { Task } from 'node-vikunja';
+import type { Task, VikunjaClient } from 'node-vikunja';
 import { logger } from '../../../utils/logger';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
@@ -164,7 +164,7 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
 /**
  * Adds labels to a task with retry logic for authentication errors
  */
-async function addLabelsToTask(client: any, taskId: number, labelIds: number[]): Promise<void> {
+async function addLabelsToTask(client: VikunjaClient, taskId: number, labelIds: number[]): Promise<void> {
   try {
     await withRetry(
       () => client.tasks.updateTaskLabels(taskId, {
@@ -190,7 +190,7 @@ async function addLabelsToTask(client: any, taskId: number, labelIds: number[]):
 /**
  * Adds assignees to a task with retry logic for authentication errors
  */
-async function addAssigneesToTask(client: any, taskId: number, assigneeIds: number[]): Promise<void> {
+async function addAssigneesToTask(client: VikunjaClient, taskId: number, assigneeIds: number[]): Promise<void> {
   try {
     await withRetry(
       () => client.tasks.bulkAssignUsersToTask(taskId, {
@@ -217,7 +217,7 @@ async function addAssigneesToTask(client: any, taskId: number, assigneeIds: numb
  * Attempts to roll back a partially created task and throws enhanced error context
  */
 async function rollbackTaskCreation(
-  client: any,
+  client: VikunjaClient,
   creationState: CreationState,
   originalError: unknown
 ): Promise<never> {

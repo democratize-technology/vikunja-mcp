@@ -5,7 +5,7 @@
 
 import { MCPError, ErrorCode } from '../../../types/index';
 import { getClientFromContext } from '../../../client';
-import type { Task } from 'node-vikunja';
+import type { Task, VikunjaClient } from 'node-vikunja';
 import { validateDateString, validateId, convertRepeatConfiguration } from '../validation';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
@@ -36,7 +36,7 @@ export interface UpdateTaskArgs {
  */
 interface UpdateState {
   currentTask: Task;
-  previousState: Partial<Task>;
+  previousState: Record<string, unknown>;
   affectedFields: string[];
 }
 
@@ -116,18 +116,17 @@ export async function updateTask(args: UpdateTaskArgs): Promise<{ content: Array
 /**
  * Analyzes the current task state and determines which fields are being updated
  */
-async function analyzeUpdateState(client: any, taskId: number, args: UpdateTaskArgs): Promise<UpdateState> {
+async function analyzeUpdateState(client: VikunjaClient, taskId: number, args: UpdateTaskArgs): Promise<UpdateState> {
   // Fetch the current task to preserve all fields and track changes
   const currentTask = await client.tasks.getTask(taskId);
-  const previousState = {
-    title: currentTask.title,
-    description: currentTask.description,
-    due_date: currentTask.due_date,
-    priority: currentTask.priority,
-    done: currentTask.done,
-    repeat_after: currentTask.repeat_after,
-    repeat_mode: currentTask.repeat_mode,
-  };
+  const previousState: Record<string, unknown> = {};
+  if (currentTask.title !== undefined) previousState.title = currentTask.title;
+  if (currentTask.description !== undefined) previousState.description = currentTask.description;
+  if (currentTask.due_date !== undefined) previousState.due_date = currentTask.due_date;
+  if (currentTask.priority !== undefined) previousState.priority = currentTask.priority;
+  if (currentTask.done !== undefined) previousState.done = currentTask.done;
+  if (currentTask.repeat_after !== undefined) previousState.repeat_after = currentTask.repeat_after;
+  if (currentTask.repeat_mode !== undefined) previousState.repeat_mode = currentTask.repeat_mode;
 
   // Track which fields are being updated
   const affectedFields: string[] = [];
@@ -184,7 +183,7 @@ function buildUpdateData(currentTask: Task, args: UpdateTaskArgs): Task {
 /**
  * Updates task labels with authentication error handling
  */
-async function updateTaskLabels(client: any, taskId: number, labelIds: number[]): Promise<void> {
+async function updateTaskLabels(client: VikunjaClient, taskId: number, labelIds: number[]): Promise<void> {
   try {
     await client.tasks.updateTaskLabels(taskId, {
       label_ids: labelIds,
@@ -201,11 +200,11 @@ async function updateTaskLabels(client: any, taskId: number, labelIds: number[])
 /**
  * Updates task assignees with diff calculation and authentication error handling
  */
-async function updateTaskAssignees(client: any, taskId: number, newAssigneeIds: number[]): Promise<void> {
+async function updateTaskAssignees(client: VikunjaClient, taskId: number, newAssigneeIds: number[]): Promise<void> {
   try {
     // Get current assignees to calculate diff
     const currentTask = await client.tasks.getTask(taskId);
-    const currentAssigneeIds = currentTask.assignees?.map((a: any) => a.id) || [];
+    const currentAssigneeIds = currentTask.assignees?.map((a) => a.id) || [];
 
     // Calculate which assignees to add and remove
     const toAdd = newAssigneeIds.filter((id: number) => !currentAssigneeIds.includes(id));

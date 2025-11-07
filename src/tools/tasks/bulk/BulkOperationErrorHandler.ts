@@ -4,7 +4,7 @@
 
 import { MCPError, ErrorCode, createStandardResponse } from '../../../types/index';
 import { getClientFromContext } from '../../../client';
-import type { Task } from 'node-vikunja';
+import type { Task, VikunjaClient } from 'node-vikunja';
 import { logger } from '../../../utils/logger';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
@@ -48,7 +48,7 @@ export class BulkOperationErrorHandler {
    * Update a single task as part of fallback logic
    */
   private static async updateIndividualTask(
-    client: any,
+    client: VikunjaClient,
     taskId: number,
     args: BulkUpdateArgs
   ): Promise<Task> {
@@ -98,7 +98,7 @@ export class BulkOperationErrorHandler {
    * Handle fields that require separate API calls (assignees, labels)
    */
   private static async handleSpecialFields(
-    client: any,
+    client: VikunjaClient,
     taskId: number,
     args: BulkUpdateArgs,
     updatedTask: Task
@@ -124,7 +124,7 @@ export class BulkOperationErrorHandler {
    * Handle assignee updates with proper error handling
    */
   private static async handleAssigneeUpdate(
-    client: any,
+    client: VikunjaClient,
     taskId: number,
     newAssigneeIds: number[]
   ): Promise<void> {

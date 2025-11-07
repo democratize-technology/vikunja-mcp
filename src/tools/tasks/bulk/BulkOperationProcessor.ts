@@ -4,7 +4,7 @@
 
 import { MCPError, ErrorCode, createStandardResponse } from '../../../types/index';
 import { getClientFromContext } from '../../../client';
-import type { Task } from 'node-vikunja';
+import type { Task, VikunjaClient } from 'node-vikunja';
 import { logger } from '../../../utils/logger';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
@@ -54,12 +54,13 @@ export class BulkOperationProcessor {
   private static async attemptBulkUpdateAPI(
     args: BulkUpdateArgs,
     taskIds: number[],
-    client: any
+    client: VikunjaClient
   ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     // Build the bulk update operation
+    // Note: args.field and args.value are validated to be non-undefined in BulkOperationValidator
     const bulkOperation = {
       task_ids: taskIds,
-      field: args.field,
+      field: args.field!,
       value: args.value,
     };
 
@@ -332,7 +333,7 @@ export class BulkOperationProcessor {
    * Create an individual task as part of bulk operation
    */
   private static async createIndividualTask(
-    client: any,
+    client: VikunjaClient,
     projectId: number,
     taskData: any,
     index: number
@@ -386,7 +387,7 @@ export class BulkOperationProcessor {
    * Handle post-creation operations (labels, assignees)
    */
   private static async handleTaskPostCreation(
-    client: any,
+    client: VikunjaClient,
     taskId: number,
     taskData: any
   ): Promise<void> {

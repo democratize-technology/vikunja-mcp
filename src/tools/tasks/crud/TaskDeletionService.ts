@@ -5,7 +5,7 @@
 
 import { MCPError, ErrorCode } from '../../../types/index';
 import { getClientFromContext } from '../../../client';
-import type { Task } from 'node-vikunja';
+import type { Task, VikunjaClient } from 'node-vikunja';
 import { validateId } from '../validation';
 import { createTaskResponse } from './TaskResponseFormatter';
 import type { AorpBuilderConfig } from '../../../aorp/types';
@@ -83,7 +83,7 @@ interface DeletionContext {
  * Gathers information about the task before deletion for better response messaging
  * Handles cases where the task might not exist or be accessible
  */
-async function gatherDeletionContext(client: any, taskId: number): Promise<DeletionContext> {
+async function gatherDeletionContext(client: VikunjaClient, taskId: number): Promise<DeletionContext> {
   let taskToDelete: Task | undefined;
   let retrievalSuccess = false;
 
