@@ -19,6 +19,84 @@ export interface SimpleFilter {
 }
 
 /**
+ * Validates that a JSON array string is safe to parse
+ * Implements strict security controls to prevent injection attacks
+ */
+function isValidJsonArray(jsonStr: string): boolean {
+  // Must be a string
+  if (typeof jsonStr !== 'string') {
+    return false;
+  }
+
+  // Must start with [ and end with ]
+  if (!jsonStr.startsWith('[') || !jsonStr.endsWith(']')) {
+    return false;
+  }
+
+  // Length limits to prevent DoS (200 chars max for array strings)
+  if (jsonStr.length > 200) {
+    return false;
+  }
+
+  // Must be valid JSON
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch {
+    return false;
+  }
+
+  // Must be an array
+  if (!Array.isArray(parsed)) {
+    return false;
+  }
+
+  // Size limits to prevent DoS (100 items max)
+  if (parsed.length > 100) {
+    return false;
+  }
+
+  // Validate each array item - only allow strings and numbers
+  for (const item of parsed) {
+    const itemType = typeof item;
+
+    // Only allow strings, numbers, and null
+    if (itemType !== 'string' && itemType !== 'number' && item !== null) {
+      return false;
+    }
+
+    // Additional validation for strings
+    if (itemType === 'string') {
+      // Reject potentially dangerous strings that look like code
+      const str = item as string;
+
+      // Reject strings that contain function-like patterns
+      if (str.includes('function') || str.includes('=>') || str.includes('constructor') ||
+          str.includes('__proto__') || str.includes('prototype') || str.includes('eval')) {
+        return false;
+      }
+
+      // Reject very long strings (50 chars max)
+      if (str.length > 50) {
+        return false;
+      }
+    }
+
+    // Additional validation for numbers
+    if (itemType === 'number') {
+      const num = item as number;
+
+      // Reject NaN, Infinity, and extremely large numbers (JS Number.MAX_SAFE_INTEGER)
+      if (!isFinite(num) || Math.abs(num) > Number.MAX_SAFE_INTEGER) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
  * Parses a simple filter string into a filter object
  * Supports basic field-operator-value syntax with security validation
  */
@@ -60,15 +138,15 @@ export function parseSimpleFilter(filterStr: string): SimpleFilter | null {
   if (rawValue.startsWith('"') && rawValue.endsWith('"') && rawValue.length <= 502) {
     value = rawValue.slice(1, -1);
   }
-  // Handle arrays [1, 2, 3] (max array size to prevent DoS)
+  // Handle arrays [1, 2, 3] with strict security validation
   else if (rawValue.startsWith('[') && rawValue.endsWith(']') && rawValue.length <= 200) {
+    if (!isValidJsonArray(rawValue)) {
+      return null;
+    }
+
     try {
-      const parsed = JSON.parse(rawValue);
-      if (Array.isArray(parsed) && parsed.length <= 100) {
-        value = parsed;
-      } else {
-        return null;
-      }
+      const parsed: unknown = JSON.parse(rawValue);
+      value = parsed;
     } catch {
       return null;
     }
@@ -271,8 +349,14 @@ function evaluateComparison(
   }
 
   // Handle string comparison
-  const leftStr = String(left ?? '');
-  const rightStr = String(right ?? '');
+  const leftStr = typeof left === 'string' ? left :
+                  (left === null || left === undefined ? '' :
+                   typeof left === 'number' || typeof left === 'boolean' ? String(left) :
+                   typeof left === 'object' ? JSON.stringify(left) : '');
+  const rightStr = typeof right === 'string' ? right :
+                   (right === null || right === undefined ? '' :
+                    typeof right === 'number' || typeof right === 'boolean' ? String(right) :
+                    typeof right === 'object' ? JSON.stringify(right) : '');
 
   switch (operator) {
     case '=': return leftStr === rightStr;
