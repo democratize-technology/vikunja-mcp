@@ -15,7 +15,7 @@ jest.mock('../../src/tools/tasks', () => ({
   registerTasksTool: jest.fn(),
 }));
 
-jest.mock('../../src/tools/projects', () => ({
+jest.mock('../../src/tools/projects/index', () => ({
   registerProjectsTool: jest.fn(),
 }));
 
@@ -54,7 +54,7 @@ jest.mock('../../src/tools/export', () => ({
 // Import mocked functions
 import { registerAuthTool } from '../../src/tools/auth';
 import { registerTasksTool } from '../../src/tools/tasks';
-import { registerProjectsTool } from '../../src/tools/projects';
+import { registerProjectsTool } from '../../src/tools/projects/index';
 import { registerLabelsTool } from '../../src/tools/labels';
 import { registerTeamsTool } from '../../src/tools/teams';
 import { registerUsersTool } from '../../src/tools/users';
