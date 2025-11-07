@@ -333,17 +333,65 @@ export function createOptimizedResponse<T>(
 }
 
 /**
+ * Configuration interface for AORP-enabled factory
+ */
+export interface AorpFactoryConfig {
+  /** Whether to use optimization by default */
+  useOptimization?: boolean;
+  /** Default verbosity level for responses */
+  verbosity?: Verbosity;
+  /** Default fields to include in transformation */
+  transformFields?: string[];
+  /** Whether to use AORP (legacy compatibility) */
+  useAorp?: boolean;
+  /** AORP-specific options (legacy compatibility) */
+  aorpOptions?: {
+    builderConfig?: {
+      confidenceMethod?: string;
+      enableNextSteps?: boolean;
+      enableQualityIndicators?: boolean;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
+}
+
+/**
+ * Response factory interface with AORP capabilities
+ */
+export interface AorpResponseFactory {
+  createResponse: <T>(
+    operation: string,
+    message: string,
+    data: T,
+    metadata?: Partial<ResponseMetadata>,
+    options?: Partial<AorpFactoryConfig>
+  ) => StandardResponse<T> | OptimizedResponse<T>;
+}
+
+/**
  * Stub function to replace AORP functionality
  * Returns a standard optimized response instead of AORP response
  */
-export function createAorpEnabledFactory(config: any = {}): any {
+export function createAorpEnabledFactory(config: AorpFactoryConfig = {}): AorpResponseFactory {
   return {
-    createResponse: (operation: string, message: string, data: any, metadata: any = {}, options: any = {}) => {
-      // Ignore AORP options and return standard optimized response
-      return createStandardResponse(operation, message, data, metadata, {
-        useOptimization: true,
-        verbosity: options.verbosity || TransformVerbosity.STANDARD
-      });
+    createResponse: <T>(
+      operation: string,
+      message: string,
+      data: T,
+      metadata: Partial<ResponseMetadata> = {},
+      options: Partial<AorpFactoryConfig> = {}
+    ): StandardResponse<T> | OptimizedResponse<T> => {
+      // Merge config with options, options take precedence
+      const finalOptions = {
+        ...config,
+        ...options,
+        useOptimization: options.useOptimization ?? config.useOptimization ?? true,
+        verbosity: options.verbosity ?? config.verbosity ?? TransformVerbosity.STANDARD
+      };
+
+      // Return standard optimized response
+      return createStandardResponse(operation, message, data, metadata, finalOptions);
     }
   };
 }
