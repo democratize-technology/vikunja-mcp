@@ -130,8 +130,8 @@ export function createProjectTreeResponse(
   };
 
   return createProjectSuccessResponse(
-    'get_project_tree',
-    treeData,
+    'get-project-tree',
+    { tree: treeData.length === 1 ? treeData[0] : treeData },
     {
       message: `Retrieved project tree with ${totalNodes} nodes at depth ${depth}`,
       ...options,
@@ -159,8 +159,8 @@ export function createBreadcrumbResponse(
   };
 
   return createProjectSuccessResponse(
-    'get_project_breadcrumb',
-    breadcrumb,
+    'get-project-breadcrumb',
+    { breadcrumb },
     {
       message: `Retrieved breadcrumb path with ${breadcrumb.length} items`,
       ...options,

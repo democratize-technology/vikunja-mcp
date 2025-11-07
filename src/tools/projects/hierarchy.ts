@@ -81,17 +81,17 @@ export async function getProjectChildren(
 
     // Get all projects and filter for children
     const allProjects = await client.getProjects({ per_page: 1000 });
-    let children = allProjects.filter((p) => p.parentProjectId === id);
+    let children = allProjects.filter((p) => p.parent_project_id === id);
 
     if (!includeArchived) {
-      children = children.filter((p) => !p.isArchived);
+      children = children.filter((p) => !p.is_archived);
     }
 
     const response = createProjectResponse(
       'get-project-children',
       `Found ${children.length} child projects for project ID ${id}`,
-      children,
-      { parentProjectId: id, childCount: children.length },
+      { children },
+      { parentId: id, count: children.length },
       verbosity,
       useOptimizedFormat,
       useAorp
@@ -109,7 +109,7 @@ export async function getProjectChildren(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error);
+    throw transformApiError(error, 'get project children');
   }
 }
 
@@ -128,7 +128,7 @@ export async function getProjectTree(
     // Get all projects
     const allProjects = await client.getProjects({ per_page: 1000 });
 
-    let rootProjects = allProjects.filter((p) => !p.parentProjectId);
+    let rootProjects = allProjects.filter((p) => !p.parent_project_id);
 
     // If specific ID is provided, find that project and its subtree
     let rootNode: ProjectTreeNode | undefined;
@@ -176,7 +176,7 @@ export async function getProjectTree(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error);
+    throw transformApiError(error, 'get project tree');
   }
 }
 
@@ -221,7 +221,7 @@ export async function getProjectBreadcrumb(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error);
+    throw transformApiError(error, 'get project breadcrumb');
   }
 }
 
@@ -270,7 +270,7 @@ export async function moveProject(
       `Moved project "${updatedProject.title}"${parentInfo}`,
       updatedProject,
       {
-        oldParentProjectId: currentProject.parentProjectId,
+        oldParentProjectId: currentProject.parent_project_id,
         newParentProjectId: parentProjectId,
         movedProjectId: id
       },
@@ -291,7 +291,7 @@ export async function moveProject(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error);
+    throw transformApiError(error, 'move project');
   }
 }
 
@@ -310,8 +310,8 @@ function buildProjectTree(
   }
 
   const children = allProjects
-    .filter((p) => p.parentProjectId === project.id)
-    .filter((p) => includeArchived || !p.isArchived)
+    .filter((p) => p.parent_project_id === project.id)
+    .filter((p) => includeArchived || !p.is_archived)
     .map((child) =>
       buildProjectTree(child, allProjects, currentDepth + 1, maxDepth, includeArchived)
     )
@@ -364,7 +364,7 @@ function buildBreadcrumb(targetId: number, allProjects: Project[]): Project[] {
 
     visited.add(currentId);
     breadcrumb.unshift(project);
-    currentId = project.parentProjectId;
+    currentId = project.parent_project_id;
   }
 
   return breadcrumb;
