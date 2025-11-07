@@ -54,10 +54,20 @@ class ClientContext {
     }
   }
 
+  // Backward compatible synchronous versions (NOT THREAD-SAFE)
+  /**
+   * Set the client factory for dependency injection (synchronous, NOT thread-safe)
+   * WARNING: This method can cause race conditions in concurrent scenarios.
+   * Use the async version for thread safety.
+   */
+  setClientFactory(factory: VikunjaClientFactory): void {
+    this.clientFactory = factory;
+  }
+
   /**
    * Set the client factory for dependency injection (thread-safe)
    */
-  async setClientFactory(factory: VikunjaClientFactory): Promise<void> {
+  async setClientFactoryThreadSafe(factory: VikunjaClientFactory): Promise<void> {
     const release = await this.factoryMutex.acquire();
     try {
       this.clientFactory = factory;
@@ -67,9 +77,18 @@ class ClientContext {
   }
 
   /**
+   * Clear the client factory (for testing, synchronous, NOT thread-safe)
+   * WARNING: This method can cause race conditions in concurrent scenarios.
+   * Use the async version for thread safety.
+   */
+  clearClientFactory(): void {
+    this.clientFactory = null;
+  }
+
+  /**
    * Clear the client factory (for testing, thread-safe)
    */
-  async clearClientFactory(): Promise<void> {
+  async clearClientFactoryThreadSafe(): Promise<void> {
     const release = await this.factoryMutex.acquire();
     try {
       this.clientFactory = null;
@@ -79,9 +98,21 @@ class ClientContext {
   }
 
   /**
-   * Get a client instance using the factory (thread-safe)
+   * Get a client instance using the factory (synchronous, NOT thread-safe)
+   * WARNING: This method can cause race conditions in concurrent scenarios.
+   * Use the async version for thread safety.
    */
   async getClient(): Promise<VikunjaClient> {
+    if (this.clientFactory) {
+      return Promise.resolve(this.clientFactory.getClient());
+    }
+    throw new Error('No client factory available. Please authenticate first.');
+  }
+
+  /**
+   * Get a client instance using the factory (thread-safe)
+   */
+  async getClientThreadSafe(): Promise<VikunjaClient> {
     const release = await this.factoryMutex.acquire();
     try {
       if (this.clientFactory) {
@@ -94,55 +125,24 @@ class ClientContext {
   }
 
   /**
+   * Check if factory is available (synchronous, NOT thread-safe)
+   * WARNING: This method can cause race conditions in concurrent scenarios.
+   * Use the async version for thread safety.
+   */
+  hasFactory(): boolean {
+    return this.clientFactory !== null;
+  }
+
+  /**
    * Check if factory is available (thread-safe)
    */
-  async hasFactory(): Promise<boolean> {
+  async hasFactoryThreadSafe(): Promise<boolean> {
     const release = await this.factoryMutex.acquire();
     try {
       return this.clientFactory !== null;
     } finally {
       release();
     }
-  }
-
-  // Backward compatible synchronous versions (NOT THREAD-SAFE)
-  /**
-   * Set the client factory for dependency injection (synchronous, NOT thread-safe)
-   * WARNING: This method can cause race conditions in concurrent scenarios.
-   * The async version of this method (same name) provides thread safety.
-   */
-  setClientFactory(factory: VikunjaClientFactory): void {
-    this.clientFactory = factory;
-  }
-
-  /**
-   * Clear the client factory (for testing, synchronous, NOT thread-safe)
-   * WARNING: This method can cause race conditions in concurrent scenarios.
-   * The async version of this method (same name) provides thread safety.
-   */
-  clearClientFactory(): void {
-    this.clientFactory = null;
-  }
-
-  /**
-   * Get a client instance using the factory (synchronous, NOT thread-safe)
-   * WARNING: This method can cause race conditions in concurrent scenarios.
-   * The async version of this method (same name) provides thread safety.
-   */
-  async getClient(): Promise<VikunjaClient> {
-    if (this.clientFactory) {
-      return Promise.resolve(this.clientFactory.getClient());
-    }
-    throw new Error('No client factory available. Please authenticate first.');
-  }
-
-  /**
-   * Check if factory is available (synchronous, NOT thread-safe)
-   * WARNING: This method can cause race conditions in concurrent scenarios.
-   * The async version of this method (same name) provides thread safety.
-   */
-  hasFactory(): boolean {
-    return this.clientFactory !== null;
   }
 }
 

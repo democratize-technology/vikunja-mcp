@@ -71,7 +71,6 @@ export class BulkOperationValidator {
   static preprocessFieldValue(args: BulkUpdateArgs): void {
     // Preprocess value to handle type coercion from MCP
     if (args.field === 'done' && typeof args.value === 'string') {
-      const originalValue = args.value;
       if (args.value === 'true') {
         args.value = true;
       } else if (args.value === 'false') {
@@ -80,7 +79,7 @@ export class BulkOperationValidator {
     }
 
     // Handle numeric fields that come as strings
-    if (['priority', 'project_id', 'repeat_after'].includes(args.field) && typeof args.value === 'string') {
+    if (['priority', 'project_id', 'repeat_after'].includes(args.field!) && typeof args.value === 'string') {
       const numValue = Number(args.value);
       if (!isNaN(numValue)) {
         args.value = numValue;
@@ -103,7 +102,7 @@ export class BulkOperationValidator {
       'repeat_mode',
     ];
 
-    if (!allowedFields.includes(args.field)) {
+    if (!allowedFields.includes(args.field!)) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
         `Invalid field: ${args.field}. Allowed fields: ${allowedFields.join(', ')}`,
@@ -125,7 +124,7 @@ export class BulkOperationValidator {
       validateId(args.value, 'project_id');
     }
 
-    if (['assignees', 'labels'].includes(args.field)) {
+    if (['assignees', 'labels'].includes(args.field!)) {
       if (!Array.isArray(args.value)) {
         throw new MCPError(ErrorCode.VALIDATION_ERROR, `${args.field} must be an array of numbers`);
       }

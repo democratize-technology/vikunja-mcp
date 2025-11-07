@@ -71,10 +71,10 @@ function shouldIntelligentlyActivateAorp(
  * Standardized next step templates for different operations
  */
 const STANDARD_NEXT_STEPS_TEMPLATES = {
-  [`${'create-task'}`]: [
-    "Verify the task data appears correctly in listings",
-    "Check related tasks and dependencies",
-    "Test any automated workflows or notifications"
+  'create-task': [
+    "Verify the created task appears in listings",
+    "Set up task dependencies and reminders",
+    "Notify relevant team members"
   ],
   'list-tasks': [
     "Review the returned tasks for completeness",
@@ -85,11 +85,6 @@ const STANDARD_NEXT_STEPS_TEMPLATES = {
     "Verify all required task fields are present",
     "Check task relationships and dependencies",
     "Review task assignees and labels"
-  ],
-  'create-task': [
-    "Verify the created task appears in listings",
-    "Set up task dependencies and reminders",
-    "Notify relevant team members"
   ],
   'update-task': [
     "Confirm changes are reflected in the UI",

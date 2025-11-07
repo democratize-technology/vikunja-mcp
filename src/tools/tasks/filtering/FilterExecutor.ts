@@ -61,7 +61,7 @@ export class FilterExecutor {
         });
 
         memoryInfo = {
-          actualCount,
+          actualCount: actualTaskCount,
           maxAllowed: finalTaskCountValidation.maxAllowed,
           estimatedMemoryMB: finalTaskCountValidation.estimatedMemoryMB
         };
@@ -97,11 +97,17 @@ export class FilterExecutor {
         filteringResult.metadata.filteringNote
       );
 
-      return {
+      // Build return object, only including defined properties to satisfy exactOptionalPropertyTypes
+      const result: any = {
         tasks: processedTasks,
         metadata: filteringMetadata,
-        memoryInfo
       };
+
+      if (memoryInfo !== undefined) {
+        result.memoryInfo = memoryInfo;
+      }
+
+      return result;
 
     } catch (error) {
       if (error instanceof MCPError) {

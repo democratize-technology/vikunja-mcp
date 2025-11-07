@@ -18,7 +18,7 @@ export function createProjectResponse(
   metadata: Partial<ResponseMetadata> = {},
   verbosity?: string,
   useOptimizedFormat?: boolean,
-  useAorp?: boolean
+  _useAorp?: boolean
 ): unknown {
   // Default to standard verbosity if not specified
   const selectedVerbosity = verbosity || 'standard';
@@ -129,9 +129,10 @@ export function createProjectTreeResponse(
     },
   };
 
+  const tree = treeData as any;
   return createProjectSuccessResponse(
     'get-project-tree',
-    { tree: treeData.length === 1 ? treeData[0] : treeData },
+    { tree: tree.length === 1 ? tree[0] : tree },
     {
       message: `Retrieved project tree with ${totalNodes} nodes at depth ${depth}`,
       ...options,

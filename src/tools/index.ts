@@ -30,30 +30,34 @@ export function registerTools(
 ): void {
   // Register all tool handlers with dependency injection
   // No conditional registration - all tools are available, permission checking happens at runtime
-  
+
   registerAuthTool(server, authManager);
   registerTasksTool(server, authManager, clientFactory);
-  registerProjectsTool(server, authManager, clientFactory);
-  registerLabelsTool(server, authManager, clientFactory);
-  registerTeamsTool(server, authManager, clientFactory);
 
-  // Register filters tool (needs auth manager for session-scoped storage)
-  registerFiltersTool(server, authManager, clientFactory);
+  // Only register tools that require clientFactory if it's available
+  if (clientFactory) {
+    registerProjectsTool(server, authManager, clientFactory);
+    registerLabelsTool(server, authManager, clientFactory);
+    registerTeamsTool(server, authManager, clientFactory);
 
-  // Register templates tool
-  registerTemplatesTool(server, authManager, clientFactory);
+    // Register filters tool (needs auth manager for session-scoped storage)
+    registerFiltersTool(server, authManager, clientFactory);
 
-  // Register webhooks tool
-  registerWebhooksTool(server, authManager, clientFactory);
+    // Register templates tool
+    registerTemplatesTool(server, authManager, clientFactory);
 
-  // Register batch import tool
-  registerBatchImportTool(server, authManager, clientFactory);
+    // Register webhooks tool
+    registerWebhooksTool(server, authManager, clientFactory);
 
-  // Register user and export tools conditionally (preserving backward compatibility)
-  // NOTE: The permission infrastructure is available for future migration
-  if (authManager.isAuthenticated() && authManager.getAuthType() === 'jwt') {
-    registerUsersTool(server, authManager, clientFactory);
-    registerExportTool(server, authManager, clientFactory);
+    // Register batch import tool
+    registerBatchImportTool(server, authManager, clientFactory);
+
+    // Register user and export tools conditionally (preserving backward compatibility)
+    // NOTE: The permission infrastructure is available for future migration
+    if (authManager.isAuthenticated() && authManager.getAuthType() === 'jwt') {
+      registerUsersTool(server, authManager, clientFactory);
+      registerExportTool(server, authManager, clientFactory);
+    }
   }
 }
 

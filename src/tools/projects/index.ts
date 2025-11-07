@@ -55,11 +55,12 @@ import {
  */
 export function registerProjectsTool(
   server: McpServer,
-  authManager: AuthManager,
-  clientFactory: VikunjaClientFactory
+  _authManager: AuthManager,
+  _clientFactory: VikunjaClientFactory
 ): void {
   server.tool(
     'vikunja_projects',
+    'Manage projects with CRUD operations, hierarchy, and sharing',
     {
       subcommand: z.enum([
         'list', 'get', 'create', 'update', 'delete', 'archive', 'unarchive',
@@ -92,22 +93,23 @@ export function registerProjectsTool(
       useAorp: z.boolean().optional(),
     },
     async (args, context) => {
-      switch (args.subcommand) {
-        // CRUD operations
-        case 'list':
-          return await listProjects(args as ListProjectsArgs, context);
+      const result = await (async () => {
+        switch (args.subcommand) {
+          // CRUD operations
+          case 'list':
+            return await listProjects(args as ListProjectsArgs, context);
 
-        case 'get':
-          if (!args.id) {
-            throw new Error('Project ID is required for get operation');
-          }
-          return await getProject(args as GetProjectArgs, context);
+          case 'get':
+            if (!args.id) {
+              throw new Error('Project ID is required for get operation');
+            }
+            return await getProject(args as GetProjectArgs, context);
 
-        case 'create':
-          if (!args.title) {
-            throw new Error('Project title is required for create operation');
-          }
-          return await createProject(args as CreateProjectArgs, context);
+          case 'create':
+            if (!args.title) {
+              throw new Error('Project title is required for create operation');
+            }
+            return await createProject(args as CreateProjectArgs, context);
 
         case 'update':
           if (!args.id) {
@@ -192,6 +194,9 @@ export function registerProjectsTool(
         default:
           throw new Error(`Unknown subcommand: ${args.subcommand}`);
       }
+      })();
+
+      return result as any;
     }
   );
 }
@@ -202,12 +207,13 @@ export function registerProjectsTool(
  */
 export function registerProjectTools(
   server: McpServer,
-  authManager: AuthManager,
-  clientFactory: VikunjaClientFactory
+  _authManager: AuthManager,
+  _clientFactory: VikunjaClientFactory
 ): void {
   // CRUD Operations
   server.tool(
     'vikunja_projects_crud',
+    'Project CRUD operations (list, get, create, update, delete, archive, unarchive)',
     {
       subcommand: z.enum(['list', 'get', 'create', 'update', 'delete', 'archive', 'unarchive']),
       id: z.number().optional(),
@@ -224,55 +230,60 @@ export function registerProjectTools(
       useAorp: z.boolean().optional(),
     },
     async (args, context) => {
-      switch (args.subcommand) {
-        case 'list':
-          return await listProjects(args as ListProjectsArgs, context);
+      const result = await (async () => {
+        switch (args.subcommand) {
+          case 'list':
+            return await listProjects(args as ListProjectsArgs, context);
 
-        case 'get':
-          if (!args.id) {
-            throw new Error('Project ID is required for get operation');
-          }
-          return await getProject(args as GetProjectArgs, context);
+          case 'get':
+            if (!args.id) {
+              throw new Error('Project ID is required for get operation');
+            }
+            return await getProject(args as GetProjectArgs, context);
 
-        case 'create':
-          if (!args.title) {
-            throw new Error('Project title is required for create operation');
-          }
-          return await createProject(args as CreateProjectArgs, context);
+          case 'create':
+            if (!args.title) {
+              throw new Error('Project title is required for create operation');
+            }
+            return await createProject(args as CreateProjectArgs, context);
 
-        case 'update':
-          if (!args.id) {
-            throw new Error('Project ID is required for update operation');
-          }
-          return await updateProject(args as UpdateProjectArgs, context);
+          case 'update':
+            if (!args.id) {
+              throw new Error('Project ID is required for update operation');
+            }
+            return await updateProject(args as UpdateProjectArgs, context);
 
-        case 'delete':
-          if (!args.id) {
-            throw new Error('Project ID is required for delete operation');
-          }
-          return await deleteProject(args as DeleteProjectArgs, context);
+          case 'delete':
+            if (!args.id) {
+              throw new Error('Project ID is required for delete operation');
+            }
+            return await deleteProject(args as DeleteProjectArgs, context);
 
-        case 'archive':
-          if (!args.id) {
-            throw new Error('Project ID is required for archive operation');
-          }
-          return await archiveProject(args as ArchiveProjectArgs, context);
+          case 'archive':
+            if (!args.id) {
+              throw new Error('Project ID is required for archive operation');
+            }
+            return await archiveProject(args as ArchiveProjectArgs, context);
 
-        case 'unarchive':
-          if (!args.id) {
-            throw new Error('Project ID is required for unarchive operation');
-          }
-          return await unarchiveProject(args as ArchiveProjectArgs, context);
+          case 'unarchive':
+            if (!args.id) {
+              throw new Error('Project ID is required for unarchive operation');
+            }
+            return await unarchiveProject(args as ArchiveProjectArgs, context);
 
-        default:
-          throw new Error(`Unknown CRUD subcommand: ${args.subcommand}`);
-      }
+          default:
+            throw new Error(`Unknown CRUD subcommand: ${args.subcommand}`);
+        }
+        })();
+
+      return result as any;
     }
   );
 
   // Hierarchy Operations
   server.tool(
     'vikunja_projects_hierarchy',
+    'Project hierarchy operations (children, tree, breadcrumb, move)',
     {
       subcommand: z.enum(['children', 'tree', 'breadcrumb', 'move']),
       id: z.number().optional(),
@@ -284,37 +295,42 @@ export function registerProjectTools(
       useAorp: z.boolean().optional(),
     },
     async (args, context) => {
-      switch (args.subcommand) {
-        case 'children':
-          if (!args.id) {
-            throw new Error('Project ID is required for children operation');
-          }
-          return await getProjectChildren(args as GetChildrenArgs, context);
+      const result = await (async () => {
+        switch (args.subcommand) {
+          case 'children':
+            if (!args.id) {
+              throw new Error('Project ID is required for children operation');
+            }
+            return await getProjectChildren(args as GetChildrenArgs, context);
 
-        case 'tree':
-          return await getProjectTree(args as GetTreeArgs, context);
+          case 'tree':
+            return await getProjectTree(args as GetTreeArgs, context);
 
-        case 'breadcrumb':
-          if (!args.id) {
-            throw new Error('Project ID is required for breadcrumb operation');
-          }
-          return await getProjectBreadcrumb(args as GetBreadcrumbArgs, context);
+          case 'breadcrumb':
+            if (!args.id) {
+              throw new Error('Project ID is required for breadcrumb operation');
+            }
+            return await getProjectBreadcrumb(args as GetBreadcrumbArgs, context);
 
-        case 'move':
-          if (!args.id) {
-            throw new Error('Project ID is required for move operation');
-          }
-          return await moveProject(args as MoveProjectArgs, context);
+          case 'move':
+            if (!args.id) {
+              throw new Error('Project ID is required for move operation');
+            }
+            return await moveProject(args as MoveProjectArgs, context);
 
-        default:
-          throw new Error(`Unknown hierarchy subcommand: ${args.subcommand}`);
-      }
+          default:
+            throw new Error(`Unknown hierarchy subcommand: ${args.subcommand}`);
+        }
+        })();
+
+      return result as any;
     }
   );
 
   // Link Sharing Operations
   server.tool(
     'vikunja_projects_sharing',
+    'Project sharing operations (create_share, list_shares, get_share, delete_share, auth_share)',
     {
       subcommand: z.enum(['create_share', 'list_shares', 'get_share', 'delete_share', 'auth_share']),
       projectId: z.number().optional(),
@@ -330,43 +346,47 @@ export function registerProjectTools(
       useAorp: z.boolean().optional(),
     },
     async (args, context) => {
-      switch (args.subcommand) {
-        case 'create_share':
-          if (!args.projectId) {
-            throw new Error('Project ID is required for create_share operation');
-          }
-          if (!args.right) {
-            throw new Error('Share right is required for create_share operation');
-          }
-          return await createProjectShare(args as CreateShareArgs, context);
+      const result = await (async () => {
+        switch (args.subcommand) {
+          case 'create_share':
+            if (!args.projectId) {
+              throw new Error('Project ID is required for create_share operation');
+            }
+            if (!args.right) {
+              throw new Error('Share right is required for create_share operation');
+            }
+            return await createProjectShare(args as CreateShareArgs, context);
 
-        case 'list_shares':
-          if (!args.projectId) {
-            throw new Error('Project ID is required for list_shares operation');
-          }
-          return await listProjectShares(args as ListSharesArgs, context);
+          case 'list_shares':
+            if (!args.projectId) {
+              throw new Error('Project ID is required for list_shares operation');
+            }
+            return await listProjectShares(args as ListSharesArgs, context);
 
-        case 'get_share':
-          if (!args.shareId) {
-            throw new Error('Share ID is required for get_share operation');
-          }
-          return await getProjectShare(args as GetShareArgs, context);
+          case 'get_share':
+            if (!args.shareId) {
+              throw new Error('Share ID is required for get_share operation');
+            }
+            return await getProjectShare(args as GetShareArgs, context);
 
-        case 'delete_share':
-          if (!args.shareId) {
-            throw new Error('Share ID is required for delete_share operation');
-          }
-          return await deleteProjectShare(args as DeleteShareArgs, context);
+          case 'delete_share':
+            if (!args.shareId) {
+              throw new Error('Share ID is required for delete_share operation');
+            }
+            return await deleteProjectShare(args as DeleteShareArgs, context);
 
-        case 'auth_share':
-          if (!args.shareId) {
-            throw new Error('Share ID is required for auth_share operation');
-          }
-          return await authProjectShare(args as AuthShareArgs, context);
+          case 'auth_share':
+            if (!args.shareId) {
+              throw new Error('Share ID is required for auth_share operation');
+            }
+            return await authProjectShare(args as AuthShareArgs, context);
 
-        default:
-          throw new Error(`Unknown sharing subcommand: ${args.subcommand}`);
-      }
+          default:
+            throw new Error(`Unknown sharing subcommand: ${args.subcommand}`);
+        }
+        })();
+
+      return result as any;
     }
   );
 }

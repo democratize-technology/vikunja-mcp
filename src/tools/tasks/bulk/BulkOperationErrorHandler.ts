@@ -131,7 +131,7 @@ export class BulkOperationErrorHandler {
     try {
       // Replace all assignees with the new list
       const currentTaskWithAssignees = await client.tasks.getTask(taskId);
-      const currentAssigneeIds = currentTaskWithAssignees.assignees?.map((a) => a.id) || [];
+      const currentAssigneeIds = currentTaskWithAssignees.assignees?.map((a: any) => a.id) || [];
 
       // Add new assignees first to avoid leaving task unassigned
       if (newAssigneeIds.length > 0) {
@@ -216,7 +216,7 @@ export class BulkOperationErrorHandler {
       { tasks: updatedTasks },
       {
         timestamp: new Date().toISOString(),
-        affectedFields: [args.field],
+        affectedFields: [args.field!],
         count: taskIds.length,
         ...(failedFetches > 0 && { fetchErrors: failedFetches }),
         performanceMetrics: {

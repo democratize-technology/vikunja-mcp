@@ -3,11 +3,10 @@
  * Handles basic Create, Read, Update, Delete operations for projects
  */
 
-import type { VikunjaClient } from 'node-vikunja';
 import type { Project, ProjectListParams } from 'node-vikunja';
 import { MCPError, ErrorCode } from '../../types/index';
 import { getClientFromContext } from '../../client';
-import { handleStatusCodeError, transformApiError, createAuthRequiredError } from '../../utils/error-handler';
+import { transformApiError } from '../../utils/error-handler';
 import { validateId, validateProjectData, calculateProjectDepth } from './validation';
 import { createProjectResponse, createProjectListResponse } from './response-formatter';
 
@@ -88,30 +87,53 @@ export interface ArchiveProjectArgs {
  */
 export async function listProjects(
   args: ListProjectsArgs,
-  context: any
+  __context: any
 ): Promise<unknown> {
   const { page = 1, perPage = 50, search, isArchived, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     const client = await getClientFromContext();
+
+    // Build params object, only including defined properties to satisfy exactOptionalPropertyTypes
     const params: ProjectListParams = {
       page,
       per_page: perPage,
-      s: search,
-      is_archived: isArchived,
     };
+
+    if (search !== undefined) {
+      params.s = search;
+    }
+
+    if (isArchived !== undefined) {
+      params.is_archived = isArchived;
+    }
 
     const response = await client.projects.getProjects(params);
 
     const responseArray = (response as any).data || (Array.isArray(response) ? response : [response]);
     const total = (response as any).total || responseArray.length;
 
+    // Build options object, only including defined properties to satisfy exactOptionalPropertyTypes
+    const options: { verbosity?: string; useOptimizedFormat?: boolean; useAorp?: boolean } = {};
+
+    if (verbosity !== undefined) {
+      options.verbosity = verbosity;
+    }
+
+    if (useOptimizedFormat !== undefined) {
+      options.useOptimizedFormat = useOptimizedFormat;
+    }
+
+    if (useAorp !== undefined) {
+      options.useAorp = useAorp;
+    }
+
     const result = createProjectListResponse(
       responseArray,
       page,
       Math.ceil(total / perPage),
       total,
-      { verbosity, useOptimizedFormat, useAorp }
+      options
     );
 
     return {
@@ -135,7 +157,7 @@ export async function listProjects(
  */
 export async function getProject(
   args: GetProjectArgs,
-  context: any
+  _context: any
 ): Promise<unknown> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
@@ -176,7 +198,7 @@ export async function getProject(
  */
 export async function createProject(
   args: CreateProjectArgs,
-  context: any
+  _context: any
 ): Promise<unknown> {
   const {
     title,
@@ -190,8 +212,22 @@ export async function createProject(
   } = args;
 
   try {
-    // Validate input data
-    validateProjectData({ title, hexColor, parentProjectId });
+    // Validate input data, filter out undefined values for exactOptionalPropertyTypes
+    const validationData: { title?: string; hexColor?: string; parentProjectId?: number } = {};
+
+    if (title !== undefined) {
+      validationData.title = title;
+    }
+
+    if (hexColor !== undefined) {
+      validationData.hexColor = hexColor;
+    }
+
+    if (parentProjectId !== undefined) {
+      validationData.parentProjectId = parentProjectId;
+    }
+
+    validateProjectData(validationData);
 
     const client = await getClientFromContext();
 
@@ -225,13 +261,20 @@ export async function createProject(
       normalizedColor = hexColor.toUpperCase();
     }
 
-    const projectData = {
+    // Build projectData object, only including defined properties to satisfy exactOptionalPropertyTypes
+    const projectData: any = {
       title: title.trim(),
       description: description?.trim() || '',
-      parent_project_id: parentProjectId,
       is_archived: isArchived,
-      hex_color: normalizedColor,
     };
+
+    if (parentProjectId !== undefined) {
+      projectData.parent_project_id = parentProjectId;
+    }
+
+    if (normalizedColor !== undefined) {
+      projectData.hex_color = normalizedColor;
+    }
 
     const createdProject = await client.projects.createProject(projectData);
 
@@ -266,7 +309,7 @@ export async function createProject(
  */
 export async function updateProject(
   args: UpdateProjectArgs,
-  context: any
+  _context: any
 ): Promise<unknown> {
   const {
     id,
@@ -299,15 +342,23 @@ export async function updateProject(
       }
     }
 
-    // Validate update data
-    validateProjectData(
-      {
-        title,
-        hexColor,
-        parentProjectId: (parentProjectId ?? (typeof currentProject.parentProjectId === 'number' ? currentProject.parentProjectId : undefined))
-      },
-      allProjects
-    );
+    // Validate update data, filter out undefined values for exactOptionalPropertyTypes
+    const validationUpdateData: { title?: string; hexColor?: string; parentProjectId?: number } = {};
+
+    if (title !== undefined) {
+      validationUpdateData.title = title;
+    }
+
+    if (hexColor !== undefined) {
+      validationUpdateData.hexColor = hexColor;
+    }
+
+    const resolvedParentProjectId = parentProjectId ?? (typeof currentProject.parentProjectId === 'number' ? currentProject.parentProjectId : undefined);
+    if (resolvedParentProjectId !== undefined) {
+      validationUpdateData.parentProjectId = resolvedParentProjectId;
+    }
+
+    validateProjectData(validationUpdateData, allProjects);
 
     // Prepare update data
     const updateData: any = {};
@@ -361,7 +412,7 @@ export async function updateProject(
  */
 export async function deleteProject(
   args: DeleteProjectArgs,
-  context: any
+  _context: any
 ): Promise<unknown> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
@@ -406,7 +457,7 @@ export async function deleteProject(
  */
 export async function archiveProject(
   args: ArchiveProjectArgs,
-  context: any
+  _context: any
 ): Promise<unknown> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
@@ -448,7 +499,7 @@ export async function archiveProject(
  */
 export async function unarchiveProject(
   args: ArchiveProjectArgs,
-  context: any
+  _context: any
 ): Promise<unknown> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 

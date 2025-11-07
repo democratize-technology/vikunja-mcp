@@ -94,10 +94,10 @@ export class BulkOperationProcessor {
         'bulk_update_fetch'
       );
 
-      return this.createUpdateResponse(taskIds, fetchResult.successful, args.field, fetchResult.failed.length);
+      return this.createUpdateResponse(taskIds, fetchResult.successful, args.field!, fetchResult.failed.length);
     }
 
-    return this.createUpdateResponse(taskIds, updatedTasks, args.field, 0);
+    return this.createUpdateResponse(taskIds, updatedTasks, args.field!, 0);
   }
 
   /**
@@ -116,7 +116,7 @@ export class BulkOperationProcessor {
 
         // Verify the returned tasks have the expected values
         for (const task of bulkUpdateResult) {
-          if (!this.verifyTaskFieldValue(task, args.field, args.value)) {
+          if (!this.verifyTaskFieldValue(task, args.field!, args.value)) {
             logger.warn(`Bulk update API returned task with unchanged ${args.field}`, {
               taskId: task.id,
               expected: args.value,
@@ -242,19 +242,19 @@ export class BulkOperationProcessor {
     const failures = deletionResult.failed;
 
     if (failures.length > 0) {
-      const failedIds = failures.map((f) => f.originalItem);
+      const failedIds = failures.map((f: any) => f.originalItem);
       const successCount = deletionResult.successful.length;
 
       if (successCount > 0) {
         const response = createStandardResponse(
           'delete-task',
           `Bulk delete partially completed. Successfully deleted ${successCount} tasks. Failed to delete task IDs: ${failedIds.join(', ')}`,
-          { deletedTaskIds: failedIds.filter((id): id is number => id !== undefined) },
+          { deletedTaskIds: failedIds.filter((id: unknown): id is number => id !== undefined) },
           {
             timestamp: new Date().toISOString(),
             count: successCount,
             failedCount: failures.length,
-            failedIds: failedIds.filter((id): id is number => id !== undefined),
+            failedIds: failedIds.filter((id: unknown): id is number => id !== undefined),
             previousState: tasksToDelete as unknown as Record<string, unknown>,
           },
         );

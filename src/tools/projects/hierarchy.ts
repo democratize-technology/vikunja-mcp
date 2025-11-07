@@ -7,7 +7,7 @@ import type { Project } from 'node-vikunja';
 import { MCPError, ErrorCode } from '../../types/index';
 import { getClientFromContext } from '../../client';
 import { transformApiError } from '../../utils/error-handler';
-import { validateId, validateMoveConstraints, getMaxSubtreeDepth } from './validation';
+import { validateId, validateMoveConstraints } from './validation';
 import { createProjectResponse, createProjectTreeResponse, createBreadcrumbResponse } from './response-formatter';
 
 /**
@@ -74,17 +74,17 @@ export async function getProjectChildren(
   try {
     validateId(id, 'project id');
 
-    const client = await getClientFromContext(context);
+    const client = await getClientFromContext();
 
     // Verify the project exists
-    await client.getProject(id);
+    await client.projects.getProject(id);
 
     // Get all projects and filter for children
-    const allProjects = await client.getProjects({ per_page: 1000 });
-    let children = allProjects.filter((p) => p.parent_project_id === id);
+    const allProjects = await client.projects.getProjects({ per_page: 1000 });
+    let children = allProjects.filter((p: any) => p.parent_project_id === id);
 
     if (!includeArchived) {
-      children = children.filter((p) => !p.is_archived);
+      children = children.filter((p: any) => !p.is_archived);
     }
 
     const response = createProjectResponse(
@@ -123,12 +123,12 @@ export async function getProjectTree(
   const { id, maxDepth = 10, includeArchived = false, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
-    const client = await getClientFromContext(context);
+    const client = await getClientFromContext();
 
     // Get all projects
-    const allProjects = await client.getProjects({ per_page: 1000 });
+    const allProjects = await client.projects.getProjects({ per_page: 1000 });
 
-    let rootProjects = allProjects.filter((p) => !p.parent_project_id);
+    let rootProjects = allProjects.filter((p: any) => !p.parent_project_id);
 
     // If specific ID is provided, find that project and its subtree
     let rootNode: ProjectTreeNode | undefined;
@@ -138,30 +138,45 @@ export async function getProjectTree(
 
     if (id) {
       validateId(id, 'project id');
-      const rootProject = allProjects.find((p) => p.id === id);
+      const rootProject = allProjects.find((p: any) => p.id === id);
       if (!rootProject) {
         throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${id} not found`);
       }
 
-      rootNode = buildProjectTree(rootProject, allProjects, 0, maxDepth, includeArchived);
-      treeData = [rootNode];
-      totalNodes = countTreeNodes(rootNode);
-      actualDepth = getTreeDepth(rootNode);
+      rootNode = buildProjectTree(rootProject, allProjects, 0, maxDepth, includeArchived) || undefined;
+      treeData = [rootNode!];
+      totalNodes = countTreeNodes(rootNode!);
+      actualDepth = getTreeDepth(rootNode!);
     } else {
       // Build forest of all root projects
       treeData = rootProjects
-        .map(project => buildProjectTree(project, allProjects, 0, maxDepth, includeArchived))
+        .map((project: any) => buildProjectTree(project, allProjects, 0, maxDepth, includeArchived))
         .filter(Boolean) as ProjectTreeNode[];
 
       totalNodes = treeData.reduce((sum, node) => sum + countTreeNodes(node), 0);
       actualDepth = treeData.reduce((max, node) => Math.max(max, getTreeDepth(node)), 0);
     }
 
+    // Build options object, only including defined properties to satisfy exactOptionalPropertyTypes
+    const options1: { verbosity?: string; useOptimizedFormat?: boolean; useAorp?: boolean } = {};
+
+    if (verbosity !== undefined) {
+      options1.verbosity = verbosity;
+    }
+
+    if (useOptimizedFormat !== undefined) {
+      options1.useOptimizedFormat = useOptimizedFormat;
+    }
+
+    if (useAorp !== undefined) {
+      options1.useAorp = useAorp;
+    }
+
     const result = createProjectTreeResponse(
       treeData,
       actualDepth,
       totalNodes,
-      { verbosity, useOptimizedFormat, useAorp }
+      options1
     );
 
     return {
@@ -192,11 +207,11 @@ export async function getProjectBreadcrumb(
   try {
     validateId(id, 'project id');
 
-    const client = await getClientFromContext(context);
+    const client = await getClientFromContext();
 
     // Get all projects for navigation
-    const allProjects = await client.getProjects({ per_page: 1000 });
-    const targetProject = allProjects.find((p) => p.id === id);
+    const allProjects = await client.projects.getProjects({ per_page: 1000 });
+    const targetProject = allProjects.find((p: any) => p.id === id);
 
     if (!targetProject) {
       throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${id} not found`);
@@ -204,9 +219,24 @@ export async function getProjectBreadcrumb(
 
     const breadcrumb = buildBreadcrumb(id, allProjects);
 
+    // Build options object, only including defined properties to satisfy exactOptionalPropertyTypes
+    const options2: { verbosity?: string; useOptimizedFormat?: boolean; useAorp?: boolean } = {};
+
+    if (verbosity !== undefined) {
+      options2.verbosity = verbosity;
+    }
+
+    if (useOptimizedFormat !== undefined) {
+      options2.useOptimizedFormat = useOptimizedFormat;
+    }
+
+    if (useAorp !== undefined) {
+      options2.useAorp = useAorp;
+    }
+
     const result = createBreadcrumbResponse(
       breadcrumb,
-      { verbosity, useOptimizedFormat, useAorp }
+      options2
     );
 
     return {
@@ -237,29 +267,31 @@ export async function moveProject(
   try {
     validateId(id, 'project id');
 
-    const client = await getClientFromContext(context);
+    const client = await getClientFromContext();
 
     // Get current project
-    const currentProject = await client.getProject(id);
+    const currentProject = await client.projects.getProject(id);
 
     // Get all projects for validation
-    const allProjects = await client.getProjects({ per_page: 1000 });
+    const allProjects = await client.projects.getProjects({ per_page: 1000 });
 
     // Validate move constraints
     validateMoveConstraints(id, parentProjectId, allProjects);
 
     // If parent is specified, validate it exists
     if (parentProjectId) {
-      const parentProject = allProjects.find((p) => p.id === parentProjectId);
+      const parentProject = allProjects.find((p: any) => p.id === parentProjectId);
       if (!parentProject) {
         throw new MCPError(ErrorCode.NOT_FOUND, `Parent project with ID ${parentProjectId} not found`);
       }
     }
 
     // Perform the move
-    const updatedProject = await client.updateProject(id, {
-      parent_project_id: parentProjectId
-    });
+    const updateData: any = {};
+    if (parentProjectId !== undefined) {
+      updateData.parent_project_id = parentProjectId;
+    }
+    const updatedProject = await client.projects.updateProject(id, updateData);
 
     const parentInfo = parentProjectId
       ? ` to parent project ${parentProjectId}`
@@ -310,9 +342,9 @@ function buildProjectTree(
   }
 
   const children = allProjects
-    .filter((p) => p.parent_project_id === project.id)
-    .filter((p) => includeArchived || !p.is_archived)
-    .map((child) =>
+    .filter((p: any) => p.parent_project_id === project.id)
+    .filter((p: any) => includeArchived || !p.is_archived)
+    .map((child: any) =>
       buildProjectTree(child, allProjects, currentDepth + 1, maxDepth, includeArchived)
     )
     .filter(Boolean) as ProjectTreeNode[];
@@ -357,7 +389,7 @@ function buildBreadcrumb(targetId: number, allProjects: Project[]): Project[] {
       );
     }
 
-    const project = allProjects.find((p) => p.id === currentId);
+    const project = allProjects.find((p: any) => p.id === currentId);
     if (!project) {
       break;
     }

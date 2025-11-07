@@ -24,10 +24,16 @@ export class CommentValidationService {
     }
     validateId(args.id, 'id');
 
-    return {
+    // Build return object, only including defined properties to satisfy exactOptionalPropertyTypes
+    const result: { taskId: number; commentText?: string } = {
       taskId: args.id,
-      commentText: args.comment,
     };
+
+    if (args.comment !== undefined) {
+      result.commentText = args.comment;
+    }
+
+    return result;
   }
 
   /**

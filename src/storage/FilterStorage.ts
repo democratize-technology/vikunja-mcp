@@ -222,7 +222,7 @@ export class InMemoryFilterStorage implements FilterStorage {
 /**
  * Storage manager for session-scoped filter storage instances
  */
-class FilterStorageManager {
+export class FilterStorageManager {
   private storageInstances = new Map<string, InMemoryFilterStorage>();
   private cleanupInterval: NodeJS.Timeout | null = null;
   private mutex = new AsyncMutex();

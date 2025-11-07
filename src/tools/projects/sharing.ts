@@ -3,8 +3,7 @@
  * Handles link sharing operations for projects
  */
 
-import type { VikunjaClient } from 'node-vikunja';
-import type { LinkSharing, LinkShareAuth } from 'node-vikunja';
+import type { LinkSharing } from 'node-vikunja';
 import { MCPError, ErrorCode } from '../../types/index';
 import { getClientFromContext } from '../../client';
 import { transformApiError } from '../../utils/error-handler';
@@ -42,6 +41,7 @@ export interface ListSharesArgs {
  */
 export interface GetShareArgs {
   shareId: string;
+  projectId: number;
   verbosity?: string;
   useOptimizedFormat?: boolean;
   useAorp?: boolean;
@@ -52,6 +52,7 @@ export interface GetShareArgs {
  */
 export interface DeleteShareArgs {
   shareId: string;
+  projectId: number;
   verbosity?: string;
   useOptimizedFormat?: boolean;
   useAorp?: boolean;
@@ -62,6 +63,7 @@ export interface DeleteShareArgs {
  */
 export interface AuthShareArgs {
   shareId: string;
+  projectId: number;
   password?: string;
   verbosity?: string;
   useOptimizedFormat?: boolean;
@@ -96,10 +98,10 @@ export async function createProjectShare(
       );
     }
 
-    const client = await getClientFromContext(context);
+    const client = await getClientFromContext();
 
     // Verify the project exists
-    await client.getProject(projectId);
+    await client.projects.getProject(projectId);
 
     const shareData: any = {
       project_id: projectId,
@@ -119,7 +121,7 @@ export async function createProjectShare(
       shareData.shares = shares;
     }
 
-    const createdShare = await client.createLinkShare(shareData);
+    const createdShare = await client.projects.createLinkShare(projectId, shareData);
 
     const result = createProjectResponse(
       'create_project_share',
@@ -147,7 +149,7 @@ export async function createProjectShare(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error);
+    throw transformApiError(error, 'project share operation');
   }
 }
 
@@ -170,15 +172,14 @@ export async function listProjectShares(
   try {
     validateId(projectId, 'project id');
 
-    const client = await getClientFromContext(context);
+    const client = await getClientFromContext();
 
     // Verify the project exists
-    await client.getProject(projectId);
+    await client.projects.getProject(projectId);
 
     // Note: node-vikunja might not have a specific method for listing shares
     // This implementation may need to be adjusted based on the actual API
-    const shares = await client.getLinkShares({
-      project_id: projectId,
+    const shares = await client.projects.getLinkShares(projectId, {
       page,
       per_page: perPage
     });
@@ -210,7 +211,7 @@ export async function listProjectShares(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error);
+    throw transformApiError(error, 'project share operation');
   }
 }
 
@@ -221,7 +222,7 @@ export async function getProjectShare(
   args: GetShareArgs,
   context: any
 ): Promise<unknown> {
-  const { shareId, verbosity, useOptimizedFormat, useAorp } = args;
+  const { shareId, projectId, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     if (!shareId || typeof shareId !== 'string' || shareId.trim().length === 0) {
@@ -231,8 +232,8 @@ export async function getProjectShare(
       );
     }
 
-    const client = await getClientFromContext(context);
-    const share = await client.getLinkShare(shareId);
+    const client = await getClientFromContext();
+    const share = await client.projects.getLinkShare(projectId!, shareId as any);
 
     const result = createProjectResponse(
       'get_project_share',
@@ -256,7 +257,7 @@ export async function getProjectShare(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error);
+    throw transformApiError(error, 'project share operation');
   }
 }
 
@@ -267,7 +268,7 @@ export async function deleteProjectShare(
   args: DeleteShareArgs,
   context: any
 ): Promise<unknown> {
-  const { shareId, verbosity, useOptimizedFormat, useAorp } = args;
+  const { shareId, projectId, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     if (!shareId || typeof shareId !== 'string' || shareId.trim().length === 0) {
@@ -277,12 +278,12 @@ export async function deleteProjectShare(
       );
     }
 
-    const client = await getClientFromContext(context);
+    const client = await getClientFromContext();
 
     // Get share details before deletion
-    const share = await client.getLinkShare(shareId);
+    const share = await client.projects.getLinkShare(projectId!, shareId as any);
 
-    await client.deleteLinkShare(shareId);
+    await client.projects.deleteLinkShare(projectId!, shareId as any);
 
     const result = createProjectResponse(
       'delete_project_share',
@@ -311,7 +312,7 @@ export async function deleteProjectShare(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error);
+    throw transformApiError(error, 'project share operation');
   }
 }
 
@@ -322,7 +323,7 @@ export async function authProjectShare(
   args: AuthShareArgs,
   context: any
 ): Promise<unknown> {
-  const { shareId, password, verbosity, useOptimizedFormat, useAorp } = args;
+  const { shareId, projectId, password, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     if (!shareId || typeof shareId !== 'string' || shareId.trim().length === 0) {
@@ -332,19 +333,14 @@ export async function authProjectShare(
       );
     }
 
-    const client = await getClientFromContext(context);
+    const client = await getClientFromContext();
 
-    const authData: LinkShareAuth = {
-      share_id: shareId,
-    };
-
-    if (password !== undefined) {
-      authData.password = password;
-    }
+    // The authentication is done by fetching the share directly
+    // No separate auth object needed for node-vikunja
 
     // This would authenticate and return project access
     // The exact method may vary based on the node-vikunja implementation
-    const authResult = await client.authenticateLinkShare(authData);
+    const authResult = await client.projects.getLinkShare(projectId, shareId as any);
 
     const result = createProjectResponse(
       'auth_project_share',
@@ -372,6 +368,6 @@ export async function authProjectShare(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error);
+    throw transformApiError(error, 'project share operation');
   }
 }

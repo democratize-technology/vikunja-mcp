@@ -208,8 +208,8 @@ async function updateTaskAssignees(client: any, taskId: number, newAssigneeIds: 
     const currentAssigneeIds = currentTask.assignees?.map((a: any) => a.id) || [];
 
     // Calculate which assignees to add and remove
-    const toAdd = newAssigneeIds.filter((id) => !currentAssigneeIds.includes(id));
-    const toRemove = currentAssigneeIds.filter((id) => !newAssigneeIds.includes(id));
+    const toAdd = newAssigneeIds.filter((id: number) => !currentAssigneeIds.includes(id));
+    const toRemove = currentAssigneeIds.filter((id: number) => !newAssigneeIds.includes(id));
 
     // Add new assignees first to avoid leaving task unassigned if removal fails
     if (toAdd.length > 0) {

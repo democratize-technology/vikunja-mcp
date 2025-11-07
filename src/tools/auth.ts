@@ -15,13 +15,14 @@ import { createSecureConnectionMessage } from '../utils/security';
 
 interface AuthArgs {
   subcommand: 'connect' | 'status' | 'refresh' | 'disconnect';
-  apiUrl?: string;
-  apiToken?: string;
+  apiUrl?: string | undefined;
+  apiToken?: string | undefined;
 }
 
 export function registerAuthTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_auth',
+    'Manage authentication with Vikunja API (connect, status, refresh, disconnect)',
     {
       subcommand: z.enum(['connect', 'status', 'refresh', 'disconnect']),
       apiUrl: z.string().url().optional(),

@@ -3,8 +3,6 @@
  * Main service that coordinates all filtering operations for tasks
  */
 
-import type { Task } from 'node-vikunja';
-import type { GetTasksParams } from 'node-vikunja';
 import type { TaskListingArgs, TaskFilterExecutionResult, TaskFilterValidationConfig } from '../types/filters';
 import { FilterValidator } from './FilterValidator';
 import { FilterExecutor } from './FilterExecutor';
@@ -61,7 +59,7 @@ export class TaskFilteringOrchestrator {
       );
 
       // Step 4: Post-process and validate results
-      const finalValidation = FilterValidator.validateLoadedTasks(filteringResult.tasks);
+      const finalValidation = FilterValidator.validateLoadedTasks(filteringResult.tasks.length);
       if (finalValidation.warnings.length > 0) {
         logger.warn('Task filtering result warnings', {
           warnings: finalValidation.warnings
@@ -178,16 +176,42 @@ export class TaskFilteringOrchestrator {
       processingTimeMs?: number;
     };
   } {
+    // Build input object, only including defined properties to satisfy exactOptionalPropertyTypes
+    const input: {
+      hasFilter: boolean;
+      hasFilterId: boolean;
+      projectId?: number;
+      page?: number;
+      perPage?: number;
+      search?: string;
+      sort?: string;
+    } = {
+      hasFilter: !!args.filter,
+      hasFilterId: !!args.filterId,
+    };
+
+    if (args.projectId !== undefined) {
+      input.projectId = args.projectId;
+    }
+
+    if (args.page !== undefined) {
+      input.page = args.page;
+    }
+
+    if (args.perPage !== undefined) {
+      input.perPage = args.perPage;
+    }
+
+    if (args.search !== undefined) {
+      input.search = args.search;
+    }
+
+    if (args.sort !== undefined) {
+      input.sort = args.sort;
+    }
+
     return {
-      input: {
-        hasFilter: !!args.filter,
-        hasFilterId: !!args.filterId,
-        projectId: args.projectId,
-        page: args.page,
-        perPage: args.perPage,
-        search: args.search,
-        sort: args.sort
-      },
+      input,
       output: {
         taskCount: result.tasks.length,
         serverSideFilteringUsed: result.metadata.serverSideFilteringUsed,
