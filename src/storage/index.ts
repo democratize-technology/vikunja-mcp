@@ -13,7 +13,7 @@ import { loadStorageConfig } from './config';
 export { InMemoryFilterStorage, storageManager } from './FilterStorage';
 
 // New persistent storage exports
-export { PersistentFilterStorage, persistentStorageManager } from './PersistentFilterStorage';
+export { PersistentFilterStorage, RefactoredPersistentFilterStorage, persistentStorageManager } from './PersistentFilterStorage';
 
 // Storage interfaces and configuration
 export * from './interfaces';
@@ -24,6 +24,15 @@ export * from './adapters/factory';
 // Storage adapters
 export { SQLiteStorageAdapter } from './adapters/SQLiteStorageAdapter';
 export { InMemoryStorageAdapter } from './adapters/InMemoryStorageAdapter';
+
+// New modular services
+export { StorageService } from './services/StorageService';
+export { SessionManager } from './services/SessionManager';
+export { HealthMonitor } from './services/HealthMonitor';
+export { CleanupService } from './services/CleanupService';
+
+// Note: Filtering modules are available but not exported by default to avoid circular dependencies
+// Use direct imports if needed: import { FilterValidator } from './filtering/FilterValidator';
 
 import type { FilterStorage } from '../types/filters';
 import { persistentStorageManager } from './PersistentFilterStorage';

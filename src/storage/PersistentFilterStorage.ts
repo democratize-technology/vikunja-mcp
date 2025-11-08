@@ -565,3 +565,6 @@ class PersistentFilterStorageManager {
 
 // Global persistent storage manager instance
 export const persistentStorageManager = new PersistentFilterStorageManager();
+
+// Import the properly refactored implementation
+export { RefactoredPersistentFilterStorage } from './RefactoredPersistentFilterStorage';
