@@ -115,7 +115,7 @@ function estimateStringMemoryUsage(str?: string): number {
 /**
  * Estimate memory usage for a JavaScript object with V8 overhead
  */
-function estimateObjectMemoryUsage(obj: any, baseOverhead: number = 56): number {
+function estimateObjectMemoryUsage(obj: Record<string, unknown> | unknown[], baseOverhead: number = 56): number {
   if (!obj || typeof obj !== 'object') return 0;
 
   let size = baseOverhead; // V8 object overhead
@@ -131,7 +131,7 @@ function estimateObjectMemoryUsage(obj: any, baseOverhead: number = 56): number 
       } else if (typeof item === 'boolean') {
         size += 4; // Boolean size in V8
       } else if (typeof item === 'object' && item !== null) {
-        size += estimateObjectMemoryUsage(item, 32); // Smaller overhead for nested objects
+        size += estimateObjectMemoryUsage(item as Record<string, unknown> | unknown[], 32); // Smaller overhead for nested objects
       }
     }
   } else {
@@ -145,7 +145,7 @@ function estimateObjectMemoryUsage(obj: any, baseOverhead: number = 56): number 
       } else if (typeof value === 'boolean') {
         size += 4;
       } else if (typeof value === 'object' && value !== null) {
-        size += estimateObjectMemoryUsage(value, 32);
+        size += estimateObjectMemoryUsage(value as Record<string, unknown> | unknown[], 32);
       }
     }
   }
@@ -284,7 +284,7 @@ export function estimateTasksMemoryUsage(tasks: Task[]): number {
 /**
  * Estimate memory usage for filter expressions and query parameters
  */
-export function estimateFilterMemoryUsage(filterExpression?: string, queryParams?: Record<string, any>): number {
+export function estimateFilterMemoryUsage(filterExpression?: string, queryParams?: Record<string, unknown>): number {
   let size = 0;
 
   if (filterExpression) {
@@ -306,7 +306,7 @@ export function estimateOperationMemoryUsage(params: {
   taskCount: number;
   sampleTask?: Task;
   filterExpression?: string;
-  queryParams?: Record<string, any>;
+  queryParams?: Record<string, unknown>;
   includeResponseOverhead?: boolean;
 }): number {
   const { taskCount, sampleTask, filterExpression, queryParams, includeResponseOverhead = true } = params;
@@ -344,7 +344,7 @@ export function validateTaskCountLimit(
   sampleTask?: Task,
   operationContext?: {
     filterExpression?: string;
-    queryParams?: Record<string, any>;
+    queryParams?: Record<string, unknown>;
     operationType?: string;
   }
 ): {
@@ -429,7 +429,7 @@ export function logMemoryUsage(
   actualTasks?: Task[],
   operationContext?: {
     filterExpression?: string;
-    queryParams?: Record<string, any>;
+    queryParams?: Record<string, unknown>;
     operationType?: string;
   }
 ): void {
@@ -525,7 +525,7 @@ export function validateTaskCountLimitLegacy(taskCount: number): {
   };
 
   if (result.error) {
-    (legacyResult as any).error = result.error;
+    (legacyResult as { error?: string }).error = result.error;
   }
 
   return legacyResult;

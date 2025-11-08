@@ -85,7 +85,7 @@ export function sanitizeLogData(data: unknown): unknown {
     return data.map(item => sanitizeLogData(item));
   }
 
-  if (typeof data === 'object') {
+  if (typeof data === 'object' && data !== null) {
     const sanitized: Record<string, unknown> = {};
     const sensitiveKeys = [
       'token', 'api_token', 'apitoken', 'password', 'passwd', 'secret',
@@ -93,7 +93,7 @@ export function sanitizeLogData(data: unknown): unknown {
       'credential', 'credentials', 'jwt', 'bearer'
     ];
 
-    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    for (const [key, value] of Object.entries(data)) {
       const keyLower = key.toLowerCase();
       
       if (sensitiveKeys.some(sensitiveKey => keyLower.includes(sensitiveKey))) {

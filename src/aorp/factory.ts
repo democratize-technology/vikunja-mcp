@@ -317,7 +317,8 @@ export class AorpResponseFactory {
   private extractId(data: unknown): string | number {
     if (data && typeof data === 'object') {
       const dataObj = data as Record<string, unknown>;
-      return (dataObj.id as string | number) || (dataObj.ID as string | number) || 'unknown';
+      const id = dataObj.id ?? dataObj.ID;
+      return (typeof id === 'string' || typeof id === 'number') ? id : 'unknown';
     }
     return 'unknown';
   }
