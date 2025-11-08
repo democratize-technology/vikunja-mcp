@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Fixed critical JSON injection vulnerability in `src/utils/simple-filters.ts:66`
+- Implemented strict JSON array validation to prevent prototype pollution and code injection attacks
+- Added comprehensive security tests covering injection attempts, malformed JSON, and DoS protection
+- Enhanced input validation with size limits, type restrictions, and dangerous pattern detection
+
 ## [0.2.0] - 2025-08-16
 
 ### Added

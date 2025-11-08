@@ -94,6 +94,19 @@ All inputs are validated using:
 - ID validation for numeric inputs
 - Date format validation (ISO 8601)
 - Hex color format validation
+- Strict JSON array validation to prevent injection attacks
+
+### 2.1. JSON Injection Protection
+
+The MCP server implements strict validation for JSON array inputs in filter operations:
+
+- **Schema Validation**: Only accepts arrays starting with `[` and ending with `]`
+- **Size Limits**: Maximum 200 characters, 100 array items
+- **Type Restrictions**: Only allows strings, numbers, and null values
+- **Content Validation**: Rejects dangerous patterns like `__proto__`, `constructor`, `function`, `eval`
+- **Number Validation**: Rejects `NaN`, `Infinity`, and extremely large numbers
+
+This prevents prototype pollution, code injection, and DoS attacks through malicious JSON payloads.
 
 ### 3. No Direct Database Access
 
