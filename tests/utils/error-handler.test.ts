@@ -2,13 +2,14 @@
  * Tests for Centralized Error Handling Utilities
  */
 
-import { 
+import {
   handleStatusCodeError,
   transformApiError,
   wrapToolError,
   createAuthRequiredError,
   createValidationError,
-  createInternalError
+  createInternalError,
+  handleFetchError
 } from '../../src/utils/error-handler';
 import { MCPError, ErrorCode } from '../../src/types/errors';
 
@@ -304,5 +305,76 @@ describe('Error Handler Utilities', () => {
       expect(unknownResult.message).toBe('Resource with ID 999 not found');
     });
 
+  });
+
+  describe('Security - Information Disclosure Prevention', () => {
+    describe('Error Message Sanitization', () => {
+      it('should sanitize error messages containing file paths', () => {
+        const error = new Error('Failed to open file /Users/eringreen/Development/vikunja-mcp/src/config/secrets.json: Permission denied');
+        const result = handleStatusCodeError(error, 'load configuration');
+
+        // This test will fail initially - we're exposing file paths in error messages
+        expect(result.message).not.toContain('/Users/eringreen/Development/vikunja-mcp');
+        expect(result.message).not.toContain('secrets.json');
+        expect(result.message).not.toContain('Permission denied');
+        expect(result.message).toBe('Failed to load configuration: File system access error');
+      });
+
+      it('should sanitize database errors with schema information', () => {
+        const error = new Error('ER_NO_SUCH_TABLE: Table \'vikunja_production.user_tokens\' doesn\'t exist in database mysql://user:password@localhost:3306/vikunja');
+        const result = transformApiError(error, 'Authenticating user');
+
+        // This test will fail initially - we're exposing database schema and connection details
+        expect(result.message).not.toContain('vikunja_production');
+        expect(result.message).not.toContain('user_tokens');
+        expect(result.message).not.toContain('mysql://user:password@localhost:3306');
+        expect(result.message).toBe('Authenticating user: Database access error');
+      });
+
+      it('should sanitize network errors with system details', () => {
+        const error = new Error('connect ETIMEDOUT 192.168.1.100:443 - Local (192.168.1.50:54321)');
+        const result = wrapToolError(error, 'vikunja_tasks', 'list tasks');
+
+        // This test will fail initially - we're exposing internal IP addresses and ports
+        expect(result.message).not.toContain('192.168.1.100');
+        expect(result.message).not.toContain('192.168.1.50');
+        expect(result.message).not.toContain('54321');
+        expect(result.message).toBe('vikunja_tasks.list tasks failed: Network connection error');
+      });
+
+      it('should sanitize authentication errors with mechanism details', () => {
+        const error = new Error('JWT validation failed: signature verification error using key from /etc/keys/jwt-public.pem');
+        const result = createInternalError('Authentication processing failed', error);
+
+        // This test will fail initially - we're exposing file system paths and implementation details
+        expect(result.message).not.toContain('/etc/keys/jwt-public.pem');
+        expect(result.message).not.toContain('signature verification error');
+        expect(result.message).toBe('Authentication processing failed');
+      });
+
+      it('should sanitize stack traces and internal system details', () => {
+        const error = new Error('Unexpected token in JSON at position 42\n    at JSON.parse (<anonymous>)\n    at parseConfig (/Users/eringreen/Development/vikunja-mcp/src/utils/config.js:123:45)\n    at loadConfig (/Users/eringreen/Development/vikunja-mcp/src/index.js:67:89)');
+        const result = handleStatusCodeError(error, 'parse configuration file');
+
+        // This test will fail initially - we're exposing stack traces and file paths
+        expect(result.message).not.toContain('JSON.parse');
+        expect(result.message).not.toContain('config.js:123:45');
+        expect(result.message).not.toContain('index.js:67:89');
+        expect(result.message).not.toContain('/Users/eringreen/Development/vikunja-mcp/src/utils/config.js');
+        expect(result.message).toBe('Failed to parse configuration file: Internal system error');
+      });
+
+      it('should sanitize API endpoint structures', () => {
+        const error = new Error('404 Not Found - GET https://api.vikunja.example.com/api/v1/projects/123/tasks?status=completed&limit=50 failed');
+        const result = handleFetchError(error, 'fetch tasks');
+
+        // This test will fail initially - we're exposing API structure and parameters
+        expect(result.message).not.toContain('api.vikunja.example.com');
+        expect(result.message).not.toContain('/api/v1/projects/123/tasks');
+        expect(result.message).not.toContain('status=completed&limit=50');
+        // Fetch errors have special handling, so we expect a sanitized message
+        expect(result.message).toContain('Failed to fetch tasks');
+      });
+    });
   });
 });
