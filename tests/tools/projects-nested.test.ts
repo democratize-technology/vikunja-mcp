@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../../src/auth/AuthManager';
-import { registerProjectsTool } from '../../src/tools/projects/index';
+import { registerProjectsTool } from '../../src/tools/projects';
 import type { Project, User } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
@@ -132,21 +132,18 @@ describe('Projects Tool - Nested Project Features', () => {
       getSession: jest.fn(),
     } as unknown as MockAuthManager;
 
-    // Setup server
+    // Setup server with handler capture - handler is the 4th argument, not 3rd
     mockServer = {
-      tool: jest.fn(),
-    } as unknown as MockServer;
+      tool: jest.fn((name, description, schema, handler) => {
+        toolHandler = handler;
+      }) as jest.MockedFunction<(name: string, description: any, schema: any, handler: any) => void>,
+    } as MockServer;
 
-    // Register the tool and capture the handler
-    registerProjectsTool(
-      mockServer as unknown as McpServer,
-      mockAuthManager as unknown as AuthManager,
-    );
-    const toolCall = mockServer.tool.mock.calls[0];
-    toolHandler = toolCall[2];
-
-    // Mock getClientFromContext
+    // Mock getClientFromContext BEFORE registering tool (same as working test)
     (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
+
+    // Register the tool
+    registerProjectsTool(mockServer, mockAuthManager);
 
     // Mirror the project methods to the top level for backward compatibility with new implementation
     mockClient.getProjects = mockClient.projects.getProjects;

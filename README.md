@@ -1219,6 +1219,7 @@ This standardized format ensures:
 ### Security Enhancements
 - **Credential Protection**: Automatic masking of sensitive tokens and URLs in logs and error messages
 - **Input Validation**: Comprehensive sanitization and allowlist validation to prevent injection attacks
+- **Entity Resolution Service**: Robust label and user mapping with defensive error handling for malformed API responses
 - **Rate Limiting**: Configurable request rate limits and payload size restrictions to prevent DoS attacks
 - **Memory Protection**: Pagination limits and memory usage monitoring to prevent resource exhaustion
 - **Error Handling**: Structured error responses that avoid exposing sensitive system information

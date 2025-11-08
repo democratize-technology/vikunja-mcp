@@ -75,8 +75,14 @@ const MAX_TASKS_ENV_VAR = 'VIKUNJA_MAX_TASKS_LIMIT';
  */
 export function getMaxTasksLimit(): number {
   const envValue = process.env[MAX_TASKS_ENV_VAR];
-  
+
   if (envValue) {
+    // Check for invalid format first (non-integer values)
+    if (!/^\d+$/.test(envValue.trim())) {
+      logger.warn(`Invalid ${MAX_TASKS_ENV_VAR} value format: ${envValue}. Must be a positive integer. Using default: ${DEFAULT_MAX_TASKS}`);
+      return DEFAULT_MAX_TASKS;
+    }
+
     const parsed = parseInt(envValue, 10);
     if (isNaN(parsed) || parsed <= 0) {
       logger.warn(`Invalid ${MAX_TASKS_ENV_VAR} value: ${envValue}. Using default: ${DEFAULT_MAX_TASKS}`);
@@ -88,7 +94,7 @@ export function getMaxTasksLimit(): number {
     }
     return parsed;
   }
-  
+
   return DEFAULT_MAX_TASKS;
 }
 
