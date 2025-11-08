@@ -37,7 +37,7 @@ async function initializeFactory(): Promise<void> {
   try {
     clientFactory = await createVikunjaClientFactory(authManager);
     if (clientFactory) {
-      setGlobalClientFactory(clientFactory);
+      await setGlobalClientFactory(clientFactory);
     }
   } catch (error) {
     logger.warn('Failed to initialize client factory during startup:', error);

@@ -227,7 +227,7 @@ export function registerTasksTool(
 
         // Set the client factory for this request if provided
         if (clientFactory) {
-          setGlobalClientFactory(clientFactory);
+          await setGlobalClientFactory(clientFactory);
         }
 
         // Test client connection

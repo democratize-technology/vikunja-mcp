@@ -73,10 +73,11 @@ describe('Auth Tool', () => {
     // Capture the tool handler
     expect(mockServer.tool).toHaveBeenCalledWith(
       'vikunja_auth',
+      'Manage authentication with Vikunja API (connect, status, refresh, disconnect)',
       expect.any(Object),
       expect.any(Function),
     );
-    toolHandler = mockServer.tool.mock.calls[0][2];
+    toolHandler = mockServer.tool.mock.calls[0][3];
   });
 
   describe('connect subcommand', () => {

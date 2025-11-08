@@ -121,7 +121,7 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager, _c
 
           case 'disconnect': {
             authManager.disconnect();
-            clearGlobalClientFactory();
+            await clearGlobalClientFactory();
             const response = createStandardResponse(
               'auth-disconnect',
               'Successfully disconnected from Vikunja',
