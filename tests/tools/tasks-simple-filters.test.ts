@@ -3,9 +3,12 @@
  * These tests validate that simple filter parsing and application works correctly
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import type { Task } from 'node-vikunja';
 import { parseSimpleFilter, applyClientSideFilter } from '../../src/utils/simple-filters';
+
+// Import the private function for testing by re-implementing the test cases
+// This tests the security validation indirectly through parseSimpleFilter
 
 // Mock data
 const mockTasks: Task[] = [
@@ -289,6 +292,213 @@ describe('Simplified Filter Parsing', () => {
       // Should find only task 2 (high priority and incomplete)
       expect(finalResult).toHaveLength(1);
       expect(finalResult[0].id).toBe(2);
+    });
+  });
+
+  describe('JSON Injection Security Tests', () => {
+    it('should reject malicious object injection attempts', () => {
+      // Attempt to inject an object instead of array
+      const maliciousPayloads = [
+        '{"__proto__": {"polluted": true}}',
+        '{"constructor": {"prototype": {"polluted": true}}}',
+        '{"toString": "hacked"}',
+        '{"valueOf": "hacked"}',
+        '{"key": "value"}'
+      ];
+
+      maliciousPayloads.forEach(payload => {
+        const result = parseSimpleFilter(`labels in ${payload}`);
+        expect(result).toBeNull();
+      });
+    });
+
+    it('should reject arrays with nested objects', () => {
+      const maliciousArrays = [
+        '[{"__proto__": {"polluted": true}}]',
+        '[{"constructor": {"prototype": {"polluted": true}}}]',
+        '[{"nested": {"object": "here"}}]',
+        '[{"key": "value"}, {"another": "object"}]',
+        '[{"function": "() => { console.log(\\"hacked\\") }"}]'
+      ];
+
+      maliciousArrays.forEach(payload => {
+        const result = parseSimpleFilter(`labels in ${payload}`);
+        expect(result).toBeNull();
+      });
+    });
+
+    it('should reject prototype pollution attempts', () => {
+      const pollutionPayloads = [
+        '["__proto__"]',
+        '["constructor", "prototype"]',
+        '["__proto__", "polluted"]',
+        '[{"__proto__": {"polluted": "yes"}}]'
+      ];
+
+      pollutionPayloads.forEach(payload => {
+        const result = parseSimpleFilter(`labels in ${payload}`);
+        expect(result).toBeNull();
+      });
+    });
+
+    it('should reject oversized arrays', () => {
+      // Create an array with more than 100 items
+      const oversizedArray = '[' + Array.from({length: 101}, (_, i) => i).join(', ') + ']';
+      const result = parseSimpleFilter(`labels in ${oversizedArray}`);
+      expect(result).toBeNull();
+    });
+
+    it('should reject arrays with functions or code', () => {
+      const functionPayloads = [
+        '[() => { console.log("hacked") }]',
+        '[function() { return "malicious"; }]',
+        '[{"key": "function() { return \\"hacked\\"; }"}]',
+        '[{"func": "() => {}"}]'
+      ];
+
+      functionPayloads.forEach(payload => {
+        const result = parseSimpleFilter(`labels in ${payload}`);
+        expect(result).toBeNull();
+      });
+    });
+
+    it('should reject malformed JSON', () => {
+      const malformedPayloads = [
+        '[1, 2, 3',      // Missing closing bracket
+        '[1, 2, ]',      // Trailing comma
+        '[, 1, 2]',      // Leading comma
+        '[1 2 3]',       // Missing commas
+        '[invalid]',     // Invalid token
+        '[1.2.3]',       // Invalid number
+        '[]]'           // Extra bracket
+      ];
+
+      malformedPayloads.forEach(payload => {
+        const result = parseSimpleFilter(`labels in ${payload}`);
+        expect(result).toBeNull();
+      });
+    });
+
+    it('should reject overly long array strings', () => {
+      // Create a string longer than 200 characters
+      const longArray = '[' + Array.from({length: 50}, (_, i) => `"item${i}"`).join(', ') + ']';
+      expect(longArray.length).toBeGreaterThan(200);
+
+      const result = parseSimpleFilter(`labels in ${longArray}`);
+      expect(result).toBeNull();
+    });
+
+    it('should still accept valid arrays within limits', () => {
+      const validArrays = [
+        '[1, 2, 3]',
+        '["a", "b", "c"]',
+        '[1]',
+        '[]',
+        '[0, -1, 999999999]',
+        '["valid", "strings", "here"]'
+      ];
+
+      validArrays.forEach(payload => {
+        const result = parseSimpleFilter(`labels in ${payload}`);
+        expect(result).not.toBeNull();
+        if (result) {
+          expect(Array.isArray(result.value)).toBe(true);
+        }
+      });
+    });
+
+    it('should accept arrays at the size limit (within constraints)', () => {
+      // Create an array that fits within 200 characters but has many items
+      const maxSizeArray = '[' + Array.from({length: 50}, (_, i) => i).join(',') + ']';
+      const result = parseSimpleFilter(`labels in ${maxSizeArray}`);
+      expect(result).not.toBeNull();
+      if (result) {
+        expect(Array.isArray(result.value)).toBe(true);
+        expect(result.value).toHaveLength(50);
+      }
+    });
+
+    it('should reject arrays with dangerous string patterns', () => {
+      const dangerousPayloads = [
+        '["function malicious() {}"]',
+        '["() => { console.log(\\"hacked\\") }"]',
+        '["constructor.prototype.polluted"]',
+        '["__proto__.polluted"]',
+        '["eval(malicious)"]',
+        '["prototype.hack"]'
+      ];
+
+      dangerousPayloads.forEach(payload => {
+        const result = parseSimpleFilter(`labels in ${payload}`);
+        expect(result).toBeNull();
+      });
+    });
+
+    it('should reject arrays with invalid numbers', () => {
+      const invalidNumberPayloads = [
+        '[Infinity]',
+        '[-Infinity]',
+        '[NaN]',
+        '[1.7976931348623157e+308]', // Very large number
+        '[999999999999999999999]' // Very large integer
+      ];
+
+      invalidNumberPayloads.forEach(payload => {
+        const result = parseSimpleFilter(`labels in ${payload}`);
+        expect(result).toBeNull();
+      });
+    });
+
+    it('should accept arrays with valid safe numbers', () => {
+      const validNumberPayloads = [
+        '[0]',
+        '[-1]',
+        '[2147483647]', // Max 32-bit int
+        '[-2147483648]', // Min 32-bit int
+        '[3.14159]',
+        '[1.23, 4.56, 7.89]'
+      ];
+
+      validNumberPayloads.forEach(payload => {
+        const result = parseSimpleFilter(`labels in ${payload}`);
+        expect(result).not.toBeNull();
+        if (result) {
+          expect(Array.isArray(result.value)).toBe(true);
+        }
+      });
+    });
+
+    it('should accept arrays with null values', () => {
+      const result = parseSimpleFilter('labels in [1, null, "test"]');
+      expect(result).not.toBeNull();
+      if (result) {
+        expect(Array.isArray(result.value)).toBe(true);
+        expect(result.value).toEqual([1, null, "test"]);
+      }
+    });
+
+    it('should handle edge cases properly', () => {
+      // Test that empty arrays are allowed
+      const result1 = parseSimpleFilter('labels in []');
+      expect(result1).not.toBeNull();
+      if (result1) {
+        expect(Array.isArray(result1.value)).toBe(true);
+        expect(result1.value).toHaveLength(0);
+      }
+
+      // Test that single item arrays work
+      const result2 = parseSimpleFilter('labels in [42]');
+      expect(result2).not.toBeNull();
+      if (result2) {
+        expect(result2.value).toEqual([42]);
+      }
+
+      // Test that mixed type arrays work
+      const result3 = parseSimpleFilter('labels in [1, "test", null]');
+      expect(result3).not.toBeNull();
+      if (result3) {
+        expect(result3.value).toEqual([1, "test", null]);
+      }
     });
   });
 });
