@@ -222,11 +222,12 @@ describe('Tasks Memory Protection', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(MCPError);
         expect(error.code).toBe(ErrorCode.VALIDATION_ERROR);
-        expect(error.message).toContain('Cannot list tasks');
-        expect(error.message).toContain('150 tasks');
-        expect(error.message).toContain('maximum limit of 100');
-        expect(error.message).toContain('Suggestions:');
-        expect(error.message).toContain('VIKUNJA_MAX_TASKS_LIMIT');
+        expect(error.message).toContain('Task count limit exceeded');
+        expect(error.message).toContain('Requested: 150');
+        expect(error.message).toContain('Max allowed: 100');
+        expect(error.message).toContain('Estimated memory usage:');
+        expect(error.message).toContain('risk:');
+        expect(error.message).toContain('Reduce the perPage parameter');
       }
     });
   });

@@ -87,13 +87,22 @@ export class FilterValidator {
   } {
     const warnings: string[] = [];
 
-    // Validate pagination limits for memory protection
-    const taskCountValidation = validateTaskCountLimit(requestedPageSize);
+    // Validate pagination limits for memory protection with enhanced analysis
+    const taskCountValidation = validateTaskCountLimit(
+      requestedPageSize,
+      undefined,
+      args.filter ? {
+        filterExpression: args.filter,
+        queryParams: { page: args.page, perPage: args.perPage, search: args.search },
+        operationType: 'list'
+      } : undefined
+    );
 
     if (!taskCountValidation.allowed) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
         `Task count limit exceeded. Requested: ${requestedPageSize}, Max allowed: ${taskCountValidation.maxAllowed}. ` +
+        `Estimated memory usage: ${taskCountValidation.estimatedMemoryMB}MB (risk: ${taskCountValidation.riskLevel}). ` +
         'Reduce the perPage parameter, use pagination with smaller page sizes, or apply more specific filters.'
       );
     }
@@ -103,35 +112,49 @@ export class FilterValidator {
       warnings.push(`Large page size (${requestedPageSize}) may impact performance. Consider using smaller pages or more specific filters.`);
     }
 
+    // Include enhanced memory validation warnings
+    if (taskCountValidation.warnings.length > 0) {
+      warnings.push(...taskCountValidation.warnings);
+    }
+
     return {
       isValid: true,
       warnings,
       maxAllowed: taskCountValidation.maxAllowed
+    } as {
+      isValid: boolean;
+      warnings: string[];
+      maxAllowed?: number;
+      riskLevel?: 'low' | 'medium' | 'high';
+      estimatedMemoryMB?: number;
     };
   }
 
   /**
    * Validates the actual loaded task count against limits
    */
-  static validateLoadedTasks(actualTaskCount: number): {
+  static validateLoadedTasks(actualTaskCount: number, sampleTask?: Task): {
     isValid: boolean;
     warnings: string[];
     shouldThrow: boolean;
+    riskLevel?: 'low' | 'medium' | 'high';
+    estimatedMemoryMB?: number;
   } {
     const warnings: string[] = [];
-    const finalTaskCountValidation = validateTaskCountLimit(actualTaskCount);
+    const finalTaskCountValidation = validateTaskCountLimit(actualTaskCount, sampleTask);
 
     if (!finalTaskCountValidation.allowed) {
       // Log warning but don't fail since tasks are already loaded
       logger.warn('Loaded task count exceeds recommended limits', {
         actualCount: actualTaskCount,
         maxRecommended: finalTaskCountValidation.maxAllowed,
-        estimatedMemoryMB: finalTaskCountValidation.estimatedMemoryMB
+        estimatedMemoryMB: finalTaskCountValidation.estimatedMemoryMB,
+        riskLevel: finalTaskCountValidation.riskLevel
       });
 
       warnings.push(
         `Loaded ${actualTaskCount} tasks, which exceeds recommended limit of ${finalTaskCountValidation.maxAllowed}. ` +
-        `Estimated memory usage: ${finalTaskCountValidation.estimatedMemoryMB}MB.`
+        `Estimated memory usage: ${finalTaskCountValidation.estimatedMemoryMB}MB (risk: ${finalTaskCountValidation.riskLevel}).`
       );
 
       // For extremely large datasets, still enforce hard limits
@@ -139,15 +162,24 @@ export class FilterValidator {
         return {
           isValid: false,
           warnings,
-          shouldThrow: true
+          shouldThrow: true,
+          riskLevel: finalTaskCountValidation.riskLevel,
+          estimatedMemoryMB: finalTaskCountValidation.estimatedMemoryMB
         };
       }
+    }
+
+    // Include warnings from enhanced validation
+    if (finalTaskCountValidation.warnings.length > 0) {
+      warnings.push(...finalTaskCountValidation.warnings);
     }
 
     return {
       isValid: true,
       warnings,
-      shouldThrow: false
+      shouldThrow: false,
+      riskLevel: finalTaskCountValidation.riskLevel,
+      estimatedMemoryMB: finalTaskCountValidation.estimatedMemoryMB
     };
   }
 

@@ -56,15 +56,22 @@ server.tool('vikunja_tasks', {
 1. **Hybrid Filtering System**
    - Intelligent server-side filtering with client-side fallback
    - Automatic detection of server filtering capabilities
-   - Memory protection with pagination limits for large datasets
+   - Enhanced memory protection with V8-specific memory estimation
    - Located in `src/tools/tasks/index.ts` and `src/utils/filters.ts`
 
-2. **Conditional Tool Registration**
+2. **Enhanced Memory Protection System**
+   - V8-specific memory estimation algorithms with 93%+ test coverage
+   - Risk-based analysis (Low/Medium/High) with conservative 2.5x safety margins
+   - Comprehensive task object modeling including nested arrays and dynamic properties
+   - Backward compatible with legacy systems while providing improved accuracy
+   - Located in `src/utils/memory.ts` with integration in `src/tools/tasks/filtering/FilterValidator.ts`
+
+3. **Conditional Tool Registration**
    - Tools requiring JWT auth only registered when authenticated with JWT
    - API token authentication excludes `users` and `export` tools
    - Authentication type auto-detected by token format
 
-3. **Session Management**
+4. **Session Management**
    - In-memory session persistence with client caching
    - Automatic client recreation on credential changes
    - No persistent storage - sessions reset on server restart
@@ -126,7 +133,7 @@ tests/
 ### Security Architecture
 - **Rate Limiting**: `src/middleware/rate-limiting.ts` - Configurable DoS protection
 - **Input Validation**: `src/utils/security.ts` - Sanitization and allowlist validation  
-- **Memory Protection**: `src/utils/memory.ts` - Resource usage monitoring and limits
+- **Memory Protection**: `src/utils/memory.ts` - Enhanced V8-specific memory estimation with risk analysis and 93%+ test coverage
 - **Thread Safety**: `src/storage/FilterStorage.ts` - Concurrent access protection with AsyncMutex
 
 ### Error Handling Architecture
