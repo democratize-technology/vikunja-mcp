@@ -8,6 +8,7 @@ import { MCPError, ErrorCode } from '../types/index';
 import { isAuthenticationError } from '../utils/auth-error-handler';
 import type { Task, Label, User } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
+import { parseCSVLine } from '../parsers/CSVParser';
 
 /* ===================================================================
  * TYPE DEFINITIONS & SCHEMAS
@@ -60,54 +61,6 @@ interface ImportResult {
  * PARSING - CSV/JSON input data parsing and validation
  * =================================================================== */
 
-/**
- * Parses a CSV line handling quoted values, escaped quotes, and field delimiters.
- * Implements RFC 4180 CSV parsing with support for:
- * - Quoted fields with commas ("field, with comma")
- * - Escaped quotes within fields ("field with ""quotes""")
- * - Proper delimiter handling outside quotes
- *
- * @param line - The CSV line to parse
- * @returns Array of field values with quotes removed and escapes resolved
- *
- * @example
- * parseCSVLine('title,description,done')
- * // Returns: ['title', 'description', 'done']
- *
- * parseCSVLine('"Task with, comma","Description with ""quotes""",true')
- * // Returns: ['Task with, comma', 'Description with "quotes"', 'true']
- */
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = '';
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const nextChar = line[i + 1];
-
-    if (char === '"') {
-      if (inQuotes && nextChar === '"') {
-        // Escaped quote
-        current += '"';
-        i++; // Skip next quote
-      } else {
-        // Toggle quote mode
-        inQuotes = !inQuotes;
-      }
-    } else if (char === ',' && !inQuotes) {
-      // End of field
-      result.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-
-  // Don't forget the last field
-  result.push(current.trim());
-  return result;
-}
 
 /**
  * Parses JSON input and normalizes to array of ImportedTask objects.
