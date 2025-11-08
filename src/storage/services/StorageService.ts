@@ -74,7 +74,7 @@ export class StorageService {
 
     try {
       this.session = session;
-      this.adapter = await this.adapterFactory!.createAdapter(this.config!);
+      this.adapter = await this.adapterFactory.createAdapter(this.config);
       await this.adapter!.initialize(this.session);
       this.initialized = true;
 
@@ -120,7 +120,7 @@ export class StorageService {
         // Try to reinitialize
         if (this.adapterFactory && this.config) {
           try {
-            this.adapter = await this.adapterFactory!.createAdapter(this.config!);
+            this.adapter = await this.adapterFactory.createAdapter(this.config);
             await this.adapter!.initialize(this.session);
           } catch (reinitError) {
             logger.error('Failed to reinitialize storage adapter', {

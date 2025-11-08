@@ -27,9 +27,52 @@ export { InMemoryStorageAdapter } from './adapters/InMemoryStorageAdapter';
 
 // New modular services
 export { StorageService } from './services/StorageService';
-export { SessionManager } from './services/SessionManager';
+export { SessionManager as LegacySessionManager } from './services/SessionManager';
+export { SessionManager } from './managers/SessionManager';
 export { HealthMonitor } from './services/HealthMonitor';
 export { CleanupService } from './services/CleanupService';
+
+// New modular architecture components
+export { StorageAdapterOrchestrator } from './orchestrators';
+export { StorageHealthMonitor } from './monitors';
+export { StorageStatistics } from './statistics';
+
+// Export all types for the new modular components
+export type {
+  IStorageAdapterOrchestrator,
+  AdapterState,
+  AdapterStatus,
+  AdapterInitializationOptions,
+  OrchestrationConfig,
+} from './orchestrators';
+
+export type {
+  IStorageHealthMonitor,
+  HealthMonitorConfig,
+  HealthCheckResult,
+  HealthStatus,
+  HealthTrend,
+  HealthMonitorStats,
+  HealthAlert,
+  HealthAlertHandler,
+  HealthMetrics,
+  HealthCheckStrategy,
+  IHealthCheckStrategy,
+  DEFAULT_HEALTH_MONITOR_CONFIG,
+} from './monitors';
+
+export type {
+  IStorageStatistics,
+  StorageOperationMetrics,
+  StoragePerformanceMetrics,
+  StorageHistoricalMetrics,
+  StorageStatisticsSnapshot,
+  StorageStatisticsConfig,
+  StorageStatisticsEvents,
+  StoragePerformanceAlert,
+  StorageAggregatedStatistics,
+  StorageTrendAnalysis,
+} from './statistics';
 
 // Note: Filtering modules are available but not exported by default to avoid circular dependencies
 // Use direct imports if needed: import { FilterValidator } from './filtering/FilterValidator';

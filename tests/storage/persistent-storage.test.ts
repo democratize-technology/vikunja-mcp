@@ -491,7 +491,7 @@ describe('Persistent Storage Implementation', () => {
       };
 
       await adapter.initialize(session);
-      migrationRunner = new MigrationRunner((adapter as any).db);
+      migrationRunner = new MigrationRunner((adapter as any).connectionManager.getConnection());
     });
 
     afterEach(async () => {

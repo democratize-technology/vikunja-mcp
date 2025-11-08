@@ -138,7 +138,9 @@ describe('SQLiteStorageAdapter - Security Tests', () => {
           isGlobal: false
         };
 
-        const result = await expect(adapter.create(validFilter)).resolves.toBeDefined();
+        const result = await adapter.create(validFilter);
+        console.log('Result:', result);
+        expect(result).toBeDefined();
         expect(result.name).toBe('valid-filter');
         expect(result.expression).toEqual(validExpression);
       });
@@ -203,7 +205,8 @@ describe('SQLiteStorageAdapter - Security Tests', () => {
           expression: validExpression
         };
 
-        const updated = await expect(adapter.update(created.id, validUpdate)).resolves.toBeDefined();
+        const updated = await adapter.update(created.id, validUpdate);
+        expect(updated).toBeDefined();
         expect(updated.expression).toEqual(validExpression);
       });
     });
@@ -253,14 +256,18 @@ describe('SQLiteStorageAdapter - Security Tests', () => {
           };
         }
         return {
-          groups: [{
-            conditions: [{
-              field: 'title',
-              operator: 'like',
-              value: 'test'
-            }],
-            operator: '&&'
-          }],
+          groups: [
+            {
+              conditions: [{
+                field: 'title',
+                operator: 'like',
+                value: 'test'
+              }],
+              operator: '&&'
+            },
+            // Create actual nesting by embedding expressions within groups
+            ...createDeeplyNested(depth - 1).groups
+          ],
           operator: '&&'
         };
       };

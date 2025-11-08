@@ -6,7 +6,7 @@
  */
 
 import type Database from 'better-sqlite3';
-import type { SavedFilter } from '../../types/filters';
+import type { SavedFilter } from '../../../types/filters';
 import {
   StorageInitializationError,
   StorageDataError,

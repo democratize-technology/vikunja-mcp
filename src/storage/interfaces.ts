@@ -192,7 +192,7 @@ export class StorageAdapterError extends Error {
   constructor(
     message: string,
     code: string,
-    public override readonly cause?: Error,
+    public readonly cause?: Error,
   ) {
     super(message);
     this.name = 'StorageAdapterError';

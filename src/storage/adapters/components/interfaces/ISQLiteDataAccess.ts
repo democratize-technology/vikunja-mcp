@@ -7,7 +7,7 @@
 
 import type Database from 'better-sqlite3';
 import type { SavedFilter } from '../../../types/filters';
-import type { StorageSession } from '../../../interfaces';
+import type { StorageSession } from '../../interfaces';
 
 /**
  * Database row representation for saved filters

@@ -110,6 +110,25 @@ export function sanitizeString(value: string): string {
     }
   }
 
+  // Also check for HTML-encoded dangerous content
+  const decodedValue = value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/');
+
+  for (const pattern of XSS_PATTERNS) {
+    const testResult = pattern.test(decodedValue);
+    // Reset regex lastIndex for global patterns
+    if (pattern.global) {
+      pattern.lastIndex = 0;
+    }
+    if (testResult) {
+      throw new StorageDataError('String contains potentially dangerous content');
+    }
+  }
+
   // Additional escaping for HTML special characters
   return value
     .replace(/</g, '&lt;')

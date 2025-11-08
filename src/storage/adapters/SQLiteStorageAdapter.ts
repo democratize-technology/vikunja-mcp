@@ -22,12 +22,15 @@ import {
   StorageConnectionError,
   StorageDataError,
 } from '../interfaces';
-import { safeJsonStringify } from '../../utils/validation';
+import { safeJsonStringify, validateFilterExpression, sanitizeString } from '../../utils/validation';
 
 // Extracted components
-import { SQLiteConnectionManager, type ISQLiteConnectionManager } from './components/SQLiteConnectionManager';
-import { SQLiteSchemaManager, type ISQLiteSchemaManager } from './components/SQLiteSchemaManager';
-import { SQLiteDataAccess, type ISQLiteDataAccess } from './components/SQLiteDataAccess';
+import { SQLiteConnectionManager } from './components/SQLiteConnectionManager';
+import type { ISQLiteConnectionManager } from './components/interfaces/ISQLiteConnectionManager';
+import { SQLiteSchemaManager } from './components/SQLiteSchemaManager';
+import type { ISQLiteSchemaManager } from './components/interfaces/ISQLiteSchemaManager';
+import { SQLiteDataAccess } from './components/SQLiteDataAccess';
+import type { ISQLiteDataAccess } from './components/interfaces/ISQLiteDataAccess';
 import { SQLiteDataMapper, type FilterRow } from './components/SQLiteDataMapper';
 
 
@@ -144,9 +147,36 @@ export class SQLiteStorageAdapter implements StorageAdapter {
     this.ensureInitialized();
 
     try {
+      // Validate input data - only check for dangerous content in user-facing text,
+      // but allow safe special characters in filter text field
+      const sanitizedName = sanitizeString(filter.name);
+      if (sanitizedName !== filter.name) {
+        throw new StorageDataError('Filter name contains potentially dangerous content');
+      }
+
+      const sanitizedDescription = filter.description ? sanitizeString(filter.description) : filter.description;
+      if (sanitizedDescription !== filter.description) {
+        throw new StorageDataError('Filter description contains potentially dangerous content');
+      }
+
+      // Note: filter.text field is allowed to contain special characters since it's descriptive text,
+      // but we validate it for script tags specifically
+      if (filter.filter && /<script[^>]*>.*?<\/script>/gi.test(filter.filter)) {
+        throw new StorageDataError('Filter text contains script tags');
+      }
+
+      // Validate filter expression if present
+      let validatedExpression = filter.expression;
+      if (filter.expression) {
+        validatedExpression = validateFilterExpression(filter.expression);
+      }
+
       const now = new Date();
       const savedFilter: SavedFilter = {
         ...filter,
+        name: sanitizedName,
+        description: sanitizedDescription,
+        expression: validatedExpression,
         id: uuidv4(),
         created: now,
         updated: now,
@@ -194,6 +224,50 @@ export class SQLiteStorageAdapter implements StorageAdapter {
         throw new StorageDataError(`Filter with id ${id} not found`);
       }
 
+      // Validate and sanitize any provided updates
+      const validatedUpdates: Partial<SavedFilter> = {};
+
+      if (filter.name !== undefined) {
+        const sanitizedName = sanitizeString(filter.name);
+        if (sanitizedName !== filter.name) {
+          throw new StorageDataError('Filter name contains potentially dangerous content');
+        }
+        validatedUpdates.name = sanitizedName;
+      }
+
+      if (filter.filter !== undefined) {
+        // Note: filter.text field is allowed to contain special characters since it's descriptive text,
+        // but we validate it for script tags specifically
+        if (filter.filter && /<script[^>]*>.*?<\/script>/gi.test(filter.filter)) {
+          throw new StorageDataError('Filter text contains script tags');
+        }
+        validatedUpdates.filter = filter.filter;
+      }
+
+      if (filter.description !== undefined) {
+        const sanitizedDescription = filter.description ? sanitizeString(filter.description) : filter.description;
+        if (sanitizedDescription !== filter.description) {
+          throw new StorageDataError('Filter description contains potentially dangerous content');
+        }
+        validatedUpdates.description = sanitizedDescription;
+      }
+
+      if (filter.expression !== undefined) {
+        if (filter.expression === null) {
+          validatedUpdates.expression = null;
+        } else {
+          validatedUpdates.expression = validateFilterExpression(filter.expression);
+        }
+      }
+
+      // Copy safe fields directly
+      if (filter.projectId !== undefined) {
+        validatedUpdates.projectId = filter.projectId;
+      }
+      if (filter.isGlobal !== undefined) {
+        validatedUpdates.isGlobal = filter.isGlobal;
+      }
+
       // Merge updates - ensure updated timestamp is always later than created
       let updatedTime = new Date();
       if (updatedTime.getTime() <= existing.updated.getTime()) {
@@ -202,7 +276,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
 
       const updated: SavedFilter = {
         ...existing,
-        ...filter,
+        ...validatedUpdates,
         updated: updatedTime,
       };
 
@@ -316,7 +390,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
     }
 
     try {
-      const filterCount = this.dataAccess.getFilterCount(this.session!.id);
+      const filterCount = this.dataAccess.getFilterCount(this.session.id);
 
       return {
         filterCount,
