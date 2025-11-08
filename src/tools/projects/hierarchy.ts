@@ -109,7 +109,7 @@ export async function getProjectChildren(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'get project children');
+    throw transformApiError(error, 'Failed to get project children');
   }
 }
 
@@ -121,6 +121,11 @@ export async function getProjectTree(
   context: any
 ): Promise<unknown> {
   const { id, maxDepth = 10, includeArchived = false, verbosity, useOptimizedFormat, useAorp } = args;
+
+  // Validate that project ID is provided for tree operations
+  if (!id) {
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+  }
 
   try {
     const client = await getClientFromContext();
@@ -172,11 +177,19 @@ export async function getProjectTree(
       options1.useAorp = useAorp;
     }
 
+    // Custom message to match test expectations
+    const customMessage = id
+      ? `Retrieved project tree with ${totalNodes} projects starting from project ID ${id}`
+      : `Retrieved project tree with ${totalNodes} projects`;
+
     const result = createProjectTreeResponse(
       treeData,
       actualDepth,
       totalNodes,
-      options1
+      {
+        ...options1,
+        message: customMessage
+      }
     );
 
     return {
@@ -191,7 +204,7 @@ export async function getProjectTree(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'get project tree');
+    throw transformApiError(error, 'Failed to get project tree');
   }
 }
 
@@ -234,9 +247,15 @@ export async function getProjectBreadcrumb(
       options2.useAorp = useAorp;
     }
 
+    // Custom message to match test expectations
+    const customBreadcrumbMessage = `Retrieved breadcrumb path with ${breadcrumb.length} projects from root to project ID ${id}`;
+
     const result = createBreadcrumbResponse(
       breadcrumb,
-      options2
+      {
+        ...options2,
+        message: customBreadcrumbMessage
+      }
     );
 
     return {
@@ -251,7 +270,7 @@ export async function getProjectBreadcrumb(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'get project breadcrumb');
+    throw transformApiError(error, 'Failed to get project breadcrumb');
   }
 }
 
@@ -271,6 +290,10 @@ export async function moveProject(
 
     // Get current project
     const currentProject = await client.projects.getProject(id);
+
+    if (!currentProject) {
+      throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${id} not found`);
+    }
 
     // Get all projects for validation
     const allProjects = await client.projects.getProjects({ per_page: 1000 });
@@ -323,7 +346,7 @@ export async function moveProject(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'move project');
+    throw transformApiError(error, 'Failed to move project');
   }
 }
 

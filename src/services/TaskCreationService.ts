@@ -76,7 +76,7 @@ export class TaskCreationService {
         success: true,
         taskId: createdTask.id ?? 0,
         title: createdTask.title,
-        warnings: warnings.length > 0 ? warnings : [],
+        warnings: warnings.length > 0 ? warnings : undefined,
       };
     } catch (error) {
       // Let MCPErrors bubble up to be handled at the batch level

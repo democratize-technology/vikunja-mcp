@@ -127,6 +127,7 @@ export function createProjectTreeResponse(
       totalNodes,
       maxDepth: 10, // From MAX_PROJECT_DEPTH
     },
+    totalProjects: totalNodes,
   };
 
   const tree = treeData as any;
@@ -157,6 +158,8 @@ export function createBreadcrumbResponse(
       breadcrumbLength: breadcrumb.length,
       hasPath: breadcrumb.length > 0,
     },
+    path: (breadcrumb as any[]).map((p: any) => p.title).join(' > ') || 'Root',
+    depth: breadcrumb.length,
   };
 
   return createProjectSuccessResponse(

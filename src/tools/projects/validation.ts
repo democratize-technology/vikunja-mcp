@@ -55,7 +55,7 @@ export function calculateProjectDepth(projectId: number, allProjects: Project[])
       break;
     }
 
-    currentId = typeof project.parentProjectId === 'number' ? project.parentProjectId : undefined;
+    currentId = typeof (project as any).parent_project_id === 'number' ? (project as any).parent_project_id : undefined;
     depth++;
   }
 
@@ -86,7 +86,7 @@ export function getMaxSubtreeDepth(projectId: number, allProjects: Project[]): n
     visited.add(currentId);
     let maxDepth = currentDepth;
 
-    const children = allProjects.filter((p) => p.parentProjectId === currentId);
+    const children = allProjects.filter((p) => (p as any).parent_project_id === currentId);
     for (const child of children) {
       const childDepth = dfs(child.id!, currentDepth + 1);
       maxDepth = Math.max(maxDepth, childDepth);
@@ -115,7 +115,7 @@ export function validateMoveConstraints(
 
   // Check if moving would create a circular reference
   const updatedProjects = allProjects.map((p) =>
-    p.id === projectId ? { ...p, parentProjectId: newParentId } : p
+    p.id === projectId ? { ...p, parent_project_id: newParentId } : p
   );
 
   try {
