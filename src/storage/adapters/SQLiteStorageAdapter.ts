@@ -23,6 +23,7 @@ import {
   StorageConnectionError,
   StorageDataError,
 } from '../interfaces';
+import { safeJsonStringify, safeJsonParse } from '../../utils/validation';
 
 /**
  * Database schema definition for saved filters
@@ -345,7 +346,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
         savedFilter.name,
         savedFilter.description || null,
         savedFilter.filter,
-        savedFilter.expression ? JSON.stringify(savedFilter.expression) : null,
+        savedFilter.expression ? safeJsonStringify(savedFilter.expression) : null,
         savedFilter.projectId || null,
         savedFilter.isGlobal ? 1 : 0,
         savedFilter.created.toISOString(),
@@ -406,7 +407,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
         updated.name,
         updated.description || null,
         updated.filter,
-        updated.expression ? JSON.stringify(updated.expression) : null,
+        updated.expression ? safeJsonStringify(updated.expression) : null,
         updated.projectId || null,
         updated.isGlobal ? 1 : 0,
         updated.updated.toISOString(),
@@ -895,7 +896,7 @@ export class SQLiteStorageAdapter implements StorageAdapter {
     }
 
     if (row.expression !== null) {
-      result.expression = JSON.parse(row.expression);
+      result.expression = safeJsonParse(row.expression);
     }
 
     if (row.project_id !== null) {
