@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../../auth/AuthManager';
 import type { VikunjaClientFactory } from '../../client/VikunjaClientFactory';
 import { createAuthRequiredError } from '../../utils/error-handler';
+import { validateId } from './validation';
 
 // Import all submodule operations
 import {
@@ -67,10 +68,10 @@ export function registerProjectsTool(
         'create-share', 'list-shares', 'get-share', 'delete-share', 'auth-share'
       ]),
       // CRUD arguments
-      id: z.number().optional(),
+      id: z.number().positive().optional(),
       title: z.string().optional(),
       description: z.string().optional(),
-      parentProjectId: z.number().optional(),
+      parentProjectId: z.number().positive().optional(),
       isArchived: z.boolean().optional(),
       hexColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
       page: z.number().min(1).optional(),
@@ -80,7 +81,7 @@ export function registerProjectsTool(
       maxDepth: z.number().min(1).max(20).optional(),
       includeArchived: z.boolean().optional(),
       // Sharing arguments
-      projectId: z.number().optional(),
+      projectId: z.number().positive().optional(),
       shareId: z.string().optional(),
       right: z.enum(['read', 'write', 'admin']).optional(),
       name: z.string().optional(),
@@ -110,9 +111,10 @@ export function registerProjectsTool(
             return await listProjects(args as ListProjectsArgs, context);
 
           case 'get':
-            if (!args.id) {
-              throw new Error('Project ID is required for get operation');
+            if (args.id === undefined || args.id === null) {
+              throw new Error('Project ID is required');
             }
+            validateId(args.id, 'id');
             return await getProject(args as GetProjectArgs, context);
 
           case 'create':
@@ -165,39 +167,46 @@ export function registerProjectsTool(
           if (!args.id) {
             throw new Error('Project ID is required for move operation');
           }
+          validateId(args.id, 'id');
           return await moveProject(args as MoveProjectArgs, context);
 
         // Sharing operations
         case 'create-share':
           if (!args.projectId) {
-            throw new Error('Project ID is required for create-share operation');
+            throw new Error('Project ID is required');
           }
           if (!args.right) {
-            throw new Error('Share right is required for create-share operation');
+            throw new Error('Share right is required');
           }
           return await createProjectShare(args as CreateShareArgs, context);
 
         case 'list-shares':
           if (!args.projectId) {
-            throw new Error('Project ID is required for list-shares operation');
+            throw new Error('Project ID is required');
           }
           return await listProjectShares(args as ListSharesArgs, context);
 
         case 'get-share':
-          if (!args.shareId) {
-            throw new Error('Share ID is required for get-share operation');
+          if (args.shareId === undefined || args.shareId === null) {
+            throw new Error('Share ID is required');
+          }
+          if (args.shareId.trim() === '') {
+            throw new Error('Share ID must be a non-empty string');
           }
           return await getProjectShare(args as GetShareArgs, context);
 
         case 'delete-share':
-          if (!args.shareId) {
-            throw new Error('Share ID is required for delete-share operation');
+          if (args.shareId === undefined || args.shareId === null) {
+            throw new Error('Share ID is required');
+          }
+          if (args.shareId.trim() === '') {
+            throw new Error('Share ID must be a non-empty string');
           }
           return await deleteProjectShare(args as DeleteShareArgs, context);
 
         case 'auth-share':
-          if (!args.shareId) {
-            throw new Error('Share ID is required for auth-share operation');
+          if (!args.shareHash) {
+            throw new Error('Share hash is required');
           }
           return await authProjectShare(args as AuthShareArgs, context);
 
@@ -246,9 +255,10 @@ export function registerProjectTools(
             return await listProjects(args as ListProjectsArgs, context);
 
           case 'get':
-            if (!args.id) {
-              throw new Error('Project ID is required for get operation');
+            if (args.id === undefined || args.id === null) {
+              throw new Error('Project ID is required');
             }
+            validateId(args.id, 'id');
             return await getProject(args as GetProjectArgs, context);
 
           case 'create':

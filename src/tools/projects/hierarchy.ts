@@ -6,7 +6,7 @@
 import type { Project } from 'node-vikunja';
 import { MCPError, ErrorCode } from '../../types/index';
 import { getClientFromContext } from '../../client';
-import { transformApiError } from '../../utils/error-handler';
+import { transformApiError, handleStatusCodeError } from '../../utils/error-handler';
 import { validateId, validateMoveConstraints } from './validation';
 import { createProjectResponse, createProjectTreeResponse, createBreadcrumbResponse } from './response-formatter';
 
@@ -87,9 +87,10 @@ export async function getProjectChildren(
       children = children.filter((p: any) => !p.is_archived);
     }
 
+    const childWord = children.length === 1 ? 'child project' : 'child projects';
     const response = createProjectResponse(
       'get-project-children',
-      `Found ${children.length} child projects for project ID ${id}`,
+      `Found ${children.length} ${childWord} for project ID ${id}`,
       { children },
       { parentId: id, count: children.length },
       verbosity,
@@ -124,7 +125,7 @@ export async function getProjectTree(
 
   // Validate that project ID is provided for tree operations
   if (!id) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'id must be a positive integer');
   }
 
   try {
@@ -285,6 +286,7 @@ export async function moveProject(
     // Get current project
     const currentProject = await client.projects.getProject(id);
 
+    // Check if project exists
     if (!currentProject) {
       throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${id} not found`);
     }
@@ -294,6 +296,11 @@ export async function moveProject(
 
     // Validate move constraints
     validateMoveConstraints(id, parentProjectId, allProjects);
+
+    // Validate parent project ID if provided
+    if (parentProjectId !== undefined) {
+      validateId(parentProjectId, 'parentProjectId');
+    }
 
     // If parent is specified, validate it exists
     if (parentProjectId) {
@@ -317,7 +324,7 @@ export async function moveProject(
     const result = createProjectResponse(
       'move_project',
       `Moved project "${updatedProject.title}"${parentInfo}`,
-      updatedProject,
+      { project: updatedProject },
       {
         oldParentProjectId: currentProject.parent_project_id,
         newParentProjectId: parentProjectId,
@@ -340,7 +347,7 @@ export async function moveProject(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'Failed to move project');
+    throw handleStatusCodeError(error, 'move project', id, `Project with ID ${id} not found`);
   }
 }
 

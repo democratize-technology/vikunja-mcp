@@ -213,6 +213,8 @@ describe('Projects Tool', () => {
       await callTool('list', { search: 'test' });
 
       expect(mockClient.projects.getProjects).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 50,
         s: 'test',
       });
     });
@@ -223,6 +225,8 @@ describe('Projects Tool', () => {
       await callTool('list', { isArchived: true });
 
       expect(mockClient.projects.getProjects).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 50,
         is_archived: true,
       });
     });
@@ -413,6 +417,7 @@ describe('Projects Tool', () => {
   describe('update subcommand', () => {
     it('should update a project', async () => {
       const updatedProject = { ...mockProject, title: 'Updated Title' };
+      mockClient.projects.getProject.mockResolvedValue(mockProject);
       mockClient.projects.updateProject.mockResolvedValue(updatedProject);
 
       const result = await callTool('update', {
@@ -499,6 +504,7 @@ describe('Projects Tool', () => {
 
     describe('hex color validation', () => {
       it('should accept valid hex colors in update and normalize to lowercase', async () => {
+        mockClient.projects.getProject.mockResolvedValue(mockProject);
         mockClient.projects.updateProject.mockResolvedValue(mockProject);
 
         const validColors = [
@@ -538,15 +544,17 @@ describe('Projects Tool', () => {
 
   describe('delete subcommand', () => {
     it('should delete a project', async () => {
+      mockClient.projects.getProject.mockResolvedValue(mockProject);
       mockClient.projects.deleteProject.mockResolvedValue({ message: 'Success' });
 
       const result = await callTool('delete', { id: 1 });
 
+      expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
       expect(mockClient.projects.deleteProject).toHaveBeenCalledWith(1);
       expect(result.content[0].type).toBe('text');
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project with ID 1 deleted successfully');
+      expect(parsed.message).toBe('Deleted project: Test Project');
     });
 
     it('should require project ID', async () => {
@@ -745,7 +753,7 @@ describe('Projects Tool', () => {
     it('should create a share with default read permission', async () => {
       mockClient.projects.createLinkShare.mockResolvedValue(mockShare);
 
-      const result = await callTool('create-share', { id: 1 });
+      const result = await callTool('create-share', { projectId: 1, right: 'read' });
       const response = JSON.parse(result.content[0].text);
 
       expect(response.success).toBe(true);
@@ -761,8 +769,8 @@ describe('Projects Tool', () => {
       mockClient.projects.createLinkShare.mockResolvedValue({ ...mockShare, right: 2 });
 
       await callTool('create-share', {
-        id: 1,
-        right: 2,
+        projectId: 1,
+        right: 'admin',
         label: 'Admin Share',
       });
 
@@ -778,7 +786,8 @@ describe('Projects Tool', () => {
       mockClient.projects.createLinkShare.mockResolvedValue(passwordShare);
 
       await callTool('create-share', {
-        id: 1,
+        projectId: 1,
+        right: 'read',
         password: 'secret123',
         label: 'Protected Share',
       });
@@ -796,7 +805,8 @@ describe('Projects Tool', () => {
       mockClient.projects.createLinkShare.mockResolvedValue(mockShare);
 
       await callTool('create-share', {
-        id: 1,
+        projectId: 1,
+        right: 'read',
         passwordEnabled: false,
       });
 
@@ -812,7 +822,8 @@ describe('Projects Tool', () => {
       mockClient.projects.createLinkShare.mockResolvedValue(expiringShare);
 
       await callTool('create-share', {
-        id: 1,
+        projectId: 1,
+        right: 'read',
         expires: '2025-12-31T23:59:59Z',
       });
 
@@ -824,11 +835,11 @@ describe('Projects Tool', () => {
     });
 
     it('should validate permission level', async () => {
-      await expect(callTool('create-share', { id: 1, right: 3 })).rejects.toThrow(
+      await expect(callTool('create-share', { projectId: 1, right: 3 })).rejects.toThrow(
         'Invalid permission level. Use: 0=Read, 1=Write, 2=Admin',
       );
 
-      await expect(callTool('create-share', { id: 1, right: -1 })).rejects.toThrow(
+      await expect(callTool('create-share', { projectId: 1, right: -1 })).rejects.toThrow(
         'Invalid permission level. Use: 0=Read, 1=Write, 2=Admin',
       );
     });
@@ -840,7 +851,7 @@ describe('Projects Tool', () => {
     it('should handle 404 errors', async () => {
       mockClient.projects.createLinkShare.mockRejectedValue({ statusCode: 404 });
 
-      await expect(callTool('create-share', { id: 999 })).rejects.toThrow(
+      await expect(callTool('create-share', { projectId: 999, right: 'read' })).rejects.toThrow(
         'Project with ID 999 not found',
       );
     });
@@ -848,7 +859,7 @@ describe('Projects Tool', () => {
     it('should handle API errors', async () => {
       mockClient.projects.createLinkShare.mockRejectedValue(new Error('Network error'));
 
-      await expect(callTool('create-share', { id: 1 })).rejects.toThrow(
+      await expect(callTool('create-share', { projectId: 1, right: 'read' })).rejects.toThrow(
         'Failed to create share: Network error',
       );
     });
@@ -856,7 +867,7 @@ describe('Projects Tool', () => {
     it('should handle non-Error API errors', async () => {
       mockClient.projects.createLinkShare.mockRejectedValue('String error');
 
-      await expect(callTool('create-share', { id: 1 })).rejects.toThrow(
+      await expect(callTool('create-share', { projectId: 1, right: 'read' })).rejects.toThrow(
         'Failed to create share: Unknown error',
       );
     });
@@ -893,7 +904,7 @@ describe('Projects Tool', () => {
     it('should list all shares for a project', async () => {
       mockClient.projects.getLinkShares.mockResolvedValue(mockShares);
 
-      const result = await callTool('list-shares', { id: 1 });
+      const result = await callTool('list-shares', { projectId: 1 });
       const response = JSON.parse(result.content[0].text);
 
       expect(response.success).toBe(true);
@@ -906,7 +917,7 @@ describe('Projects Tool', () => {
     it('should support pagination', async () => {
       mockClient.projects.getLinkShares.mockResolvedValue([mockShares[0]]);
 
-      await callTool('list-shares', { id: 1, page: 2, perPage: 1 });
+      await callTool('list-shares', { projectId: 1, page: 2, perPage: 1 });
 
       expect(mockClient.projects.getLinkShares).toHaveBeenCalledWith(1, {
         page: 2,
@@ -921,7 +932,7 @@ describe('Projects Tool', () => {
     it('should handle 404 errors', async () => {
       mockClient.projects.getLinkShares.mockRejectedValue({ statusCode: 404 });
 
-      await expect(callTool('list-shares', { id: 999 })).rejects.toThrow(
+      await expect(callTool('list-shares', { projectId: 999 })).rejects.toThrow(
         'Project with ID 999 not found',
       );
     });
@@ -929,7 +940,7 @@ describe('Projects Tool', () => {
     it('should handle API errors', async () => {
       mockClient.projects.getLinkShares.mockRejectedValue(new Error('Network error'));
 
-      await expect(callTool('list-shares', { id: 1 })).rejects.toThrow(
+      await expect(callTool('list-shares', { projectId: 1 })).rejects.toThrow(
         'Failed to list shares: Network error',
       );
     });
@@ -937,7 +948,7 @@ describe('Projects Tool', () => {
     it('should handle non-Error API errors', async () => {
       mockClient.projects.getLinkShares.mockRejectedValue({ message: 'API Error' });
 
-      await expect(callTool('list-shares', { id: 1 })).rejects.toThrow(
+      await expect(callTool('list-shares', { projectId: 1 })).rejects.toThrow(
         'Failed to list shares: Unknown error',
       );
     });
@@ -960,16 +971,16 @@ describe('Projects Tool', () => {
     it('should get a specific share', async () => {
       mockClient.projects.getLinkShare.mockResolvedValue(mockShare);
 
-      const result = await callTool('get-share', { id: 1, shareId: 1 });
+      const result = await callTool('get-share', { projectId: 1, shareId: '1' });
       const response = JSON.parse(result.content[0].text);
 
       expect(response.success).toBe(true);
       expect(response.data.share).toEqual(mockShare);
-      expect(mockClient.projects.getLinkShare).toHaveBeenCalledWith(1, 1);
+      expect(mockClient.projects.getLinkShare).toHaveBeenCalledWith(1, '1');
     });
 
     it('should require project ID', async () => {
-      await expect(callTool('get-share', { shareId: 1 })).rejects.toThrow('Project ID is required');
+      await expect(callTool('get-share', { shareId: '1' })).rejects.toThrow('Project ID is required');
     });
 
     it('should require share ID', async () => {
@@ -977,15 +988,15 @@ describe('Projects Tool', () => {
     });
 
     it('should validate share ID', async () => {
-      await expect(callTool('get-share', { id: 1, shareId: 0 })).rejects.toThrow(
-        'shareId must be a positive integer',
+      await expect(callTool('get-share', { projectId: 1, shareId: '' })).rejects.toThrow(
+        'Share ID must be a non-empty string',
       );
     });
 
     it('should handle 404 errors', async () => {
       mockClient.projects.getLinkShare.mockRejectedValue({ statusCode: 404 });
 
-      await expect(callTool('get-share', { id: 1, shareId: 999 })).rejects.toThrow(
+      await expect(callTool('get-share', { projectId: 1, shareId: '999' })).rejects.toThrow(
         'Share with ID 999 not found for project 1',
       );
     });
@@ -993,7 +1004,7 @@ describe('Projects Tool', () => {
     it('should handle API errors', async () => {
       mockClient.projects.getLinkShare.mockRejectedValue(new Error('Network error'));
 
-      await expect(callTool('get-share', { id: 1, shareId: 1 })).rejects.toThrow(
+      await expect(callTool('get-share', { projectId: 1, shareId: '1' })).rejects.toThrow(
         'Failed to get share: Network error',
       );
     });
@@ -1001,27 +1012,42 @@ describe('Projects Tool', () => {
     it('should handle non-Error API errors', async () => {
       mockClient.projects.getLinkShare.mockRejectedValue(123);
 
-      await expect(callTool('get-share', { id: 1, shareId: 1 })).rejects.toThrow(
+      await expect(callTool('get-share', { projectId: 1, shareId: '1' })).rejects.toThrow(
         'Failed to get share: Unknown error',
       );
     });
   });
 
   describe('delete-share', () => {
+    const mockShare: LinkSharing = {
+      id: 1,
+      project_id: 1,
+      hash: 'abc123',
+      right: 0,
+      label: 'Test Share',
+      password_enabled: false,
+      expires: null,
+      sharing_url: 'https://vikunja.example.com/share/abc123',
+      created: new Date().toISOString(),
+      updated: new Date().toISOString(),
+    };
+
     it('should delete a share', async () => {
+      mockClient.projects.getLinkShare.mockResolvedValue(mockShare);
       mockClient.projects.deleteLinkShare.mockResolvedValue({});
 
-      const result = await callTool('delete-share', { id: 1, shareId: 1 });
+      const result = await callTool('delete-share', { projectId: 1, shareId: '1' });
       const response = JSON.parse(result.content[0].text);
 
       expect(response.success).toBe(true);
       expect(response.message).toBe('Share with ID 1 deleted successfully');
       expect(response.metadata.projectId).toBe(1);
-      expect(mockClient.projects.deleteLinkShare).toHaveBeenCalledWith(1, 1);
+      expect(mockClient.projects.getLinkShare).toHaveBeenCalledWith(1, '1');
+      expect(mockClient.projects.deleteLinkShare).toHaveBeenCalledWith(1, '1');
     });
 
     it('should require project ID', async () => {
-      await expect(callTool('delete-share', { shareId: 1 })).rejects.toThrow(
+      await expect(callTool('delete-share', { shareId: '1' })).rejects.toThrow(
         'Project ID is required',
       );
     });
@@ -1031,19 +1057,19 @@ describe('Projects Tool', () => {
     });
 
     it('should validate IDs', async () => {
-      await expect(callTool('delete-share', { id: 0, shareId: 1 })).rejects.toThrow(
-        'id must be a positive integer',
+      await expect(callTool('delete-share', { projectId: 0, shareId: '1' })).rejects.toThrow(
+        'Project ID is required',
       );
 
-      await expect(callTool('delete-share', { id: 1, shareId: -1 })).rejects.toThrow(
-        'shareId must be a positive integer',
+      await expect(callTool('delete-share', { projectId: 1, shareId: '' })).rejects.toThrow(
+        'Share ID must be a non-empty string',
       );
     });
 
     it('should handle 404 errors', async () => {
       mockClient.projects.deleteLinkShare.mockRejectedValue({ statusCode: 404 });
 
-      await expect(callTool('delete-share', { id: 1, shareId: 999 })).rejects.toThrow(
+      await expect(callTool('delete-share', { projectId: 1, shareId: '999' })).rejects.toThrow(
         'Share with ID 999 not found for project 1',
       );
     });
@@ -1051,7 +1077,7 @@ describe('Projects Tool', () => {
     it('should handle API errors', async () => {
       mockClient.projects.deleteLinkShare.mockRejectedValue(new Error('Network error'));
 
-      await expect(callTool('delete-share', { id: 1, shareId: 1 })).rejects.toThrow(
+      await expect(callTool('delete-share', { projectId: 1, shareId: '1' })).rejects.toThrow(
         'Failed to delete share: Network error',
       );
     });
@@ -1059,7 +1085,7 @@ describe('Projects Tool', () => {
     it('should handle non-Error API errors', async () => {
       mockClient.projects.deleteLinkShare.mockRejectedValue(null);
 
-      await expect(callTool('delete-share', { id: 1, shareId: 1 })).rejects.toThrow(
+      await expect(callTool('delete-share', { projectId: 1, shareId: '1' })).rejects.toThrow(
         'Failed to delete share: Unknown error',
       );
     });
@@ -1456,6 +1482,7 @@ describe('Projects Tool', () => {
         { ...mockProject, id: 3, title: 'Grandchild', parent_project_id: 2 },
       ];
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
+      mockClient.projects.getProject.mockResolvedValueOnce(projects[0]); // Mock project 1 lookup
 
       await expect(callTool('move', { id: 1, parentProjectId: 3 })).rejects.toThrow('Cannot move a project to one of its descendants');
     });
@@ -1493,6 +1520,7 @@ describe('Projects Tool', () => {
       });
 
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
+      mockClient.projects.getProject.mockResolvedValueOnce(projects.find(p => p.id === 10)); // Mock project 10 lookup
 
       await expect(callTool('move', { id: 10, parentProjectId: 9 })).rejects.toThrow('exceed the maximum depth');
     });
@@ -1509,6 +1537,8 @@ describe('Projects Tool', () => {
 
     it('should validate parent project ID', async () => {
       mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockClient.projects.getProject.mockResolvedValueOnce(mockProject); // Mock the current project lookup
+      mockClient.projects.getProjects.mockResolvedValueOnce([mockProject]); // Mock all projects lookup
       await expect(callTool('move', { id: 1, parentProjectId: -1 })).rejects.toThrow('parentProjectId must be a positive integer');
     });
 
@@ -1524,17 +1554,20 @@ describe('Projects Tool', () => {
         { ...mockProject, id: 1, title: 'Project', parent_project_id: undefined },
       ];
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
+      mockClient.projects.getProject.mockResolvedValueOnce(mockProject); // Mock the current project lookup
       await expect(callTool('move', { id: 1, parentProjectId: 999 })).rejects.toThrow('Parent project with ID 999 not found');
     });
 
     it('should handle API errors', async () => {
       mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockClient.projects.getProject.mockResolvedValueOnce(mockProject); // Mock the current project lookup
       mockClient.projects.getProjects.mockRejectedValueOnce(new Error('API error'));
       await expect(callTool('move', { id: 1 })).rejects.toThrow('Failed to move project');
     });
 
     it('should handle non-Error API errors in move', async () => {
       mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockClient.projects.getProject.mockResolvedValueOnce(mockProject); // Mock the current project lookup
       mockClient.projects.getProjects.mockRejectedValueOnce(null);
       await expect(callTool('move', { id: 1 })).rejects.toThrow(
         'Failed to move project: Unknown error',
@@ -1572,6 +1605,12 @@ describe('Projects Tool', () => {
       ];
       
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
+      mockClient.projects.getProject.mockResolvedValueOnce({
+        ...mockProject,
+        id: 5,
+        title: 'Project to Move',
+        parent_project_id: undefined,
+      });
       mockClient.projects.updateProject.mockResolvedValueOnce({
         ...mockProject,
         id: 5,
@@ -1596,6 +1635,12 @@ describe('Projects Tool', () => {
       ];
       
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
+      mockClient.projects.getProject.mockResolvedValueOnce({
+        ...mockProject,
+        id: 1,
+        title: 'Project with mixed children',
+        parent_project_id: undefined,
+      });
       mockClient.projects.updateProject.mockResolvedValueOnce({
         ...mockProject,
         id: 1,
@@ -1677,7 +1722,20 @@ describe('Projects Tool', () => {
       ];
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
       mockClient.projects.getProject.mockResolvedValueOnce(projects[0]);
-      mockClient.projects.updateProject.mockResolvedValueOnce({ ...projects[0], parent_project_id: 2 });
+      mockClient.projects.updateProject.mockResolvedValueOnce({
+        ...projects[0],
+        parent_project_id: 2,
+        title: projects[0].title,
+        id: projects[0].id,
+        description: projects[0].description,
+        hex_color: projects[0].hex_color,
+        is_archived: projects[0].is_archived,
+        owner: projects[0].owner,
+        created: projects[0].created,
+        updated: projects[0].updated,
+        position: projects[0].position,
+        identifier: projects[0].identifier,
+      });
 
       // Mock Array.prototype.shift to return undefined once to trigger the defensive check
       const originalShift = Array.prototype.shift;

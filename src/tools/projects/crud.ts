@@ -200,7 +200,7 @@ export async function getProject(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw handleStatusCodeError(error, 'get project', id);
+    throw handleStatusCodeError(error, 'Failed to get project', id, `Project with ID ${id} not found`);
   }
 }
 
@@ -397,6 +397,17 @@ export async function updateProject(
 
     validateProjectData(validationUpdateData, allProjects);
 
+    // Check depth constraints if parentProjectId is being updated
+    if (parentProjectId !== undefined && allProjects.length > 0) {
+      const depth = calculateProjectDepth(parentProjectId, allProjects);
+      if (depth >= 10) { // MAX_PROJECT_DEPTH
+        throw new MCPError(
+          ErrorCode.VALIDATION_ERROR,
+          'Maximum allowed depth is 10 levels'
+        );
+      }
+    }
+
     // Prepare update data
     const updateData: any = {};
 
@@ -442,7 +453,7 @@ export async function updateProject(
     }
     throw handleStatusCodeError(
       error as any,
-      'update project',
+      'Failed to update project',
       id,
       `Project with ID ${id} not found`
     );
@@ -492,7 +503,7 @@ export async function deleteProject(
     }
     throw handleStatusCodeError(
       error as any,
-      'delete project',
+      'Failed to delete project',
       id,
       `Project with ID ${id} not found`
     );
@@ -515,6 +526,28 @@ export async function archiveProject(
 
     // Get current project first
     const currentProject = await client.projects.getProject(id);
+
+    // Check if project is already archived
+    if (currentProject.is_archived) {
+      const result = createProjectResponse(
+        'archive_project',
+        `Project "${currentProject.title}" is already archived`,
+        { project: currentProject },
+        {},
+        verbosity,
+        useOptimizedFormat,
+        useAorp
+      );
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          }
+        ]
+      };
+    }
 
     // Archive the project
     const project = await client.projects.updateProject(id, {
@@ -546,7 +579,7 @@ export async function archiveProject(
     }
     throw handleStatusCodeError(
       error as any,
-      'archive project',
+      'Failed to archive project',
       id,
       `Project with ID ${id} not found`
     );
@@ -569,6 +602,28 @@ export async function unarchiveProject(
 
     // Get current project first
     const currentProject = await client.projects.getProject(id);
+
+    // Check if project is already active (not archived)
+    if (!currentProject.is_archived) {
+      const result = createProjectResponse(
+        'unarchive_project',
+        `Project "${currentProject.title}" is already active (not archived)`,
+        { project: currentProject },
+        {},
+        verbosity,
+        useOptimizedFormat,
+        useAorp
+      );
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          }
+        ]
+      };
+    }
 
     // Unarchive the project
     const project = await client.projects.updateProject(id, {
@@ -600,7 +655,7 @@ export async function unarchiveProject(
     }
     throw handleStatusCodeError(
       error as any,
-      'unarchive project',
+      'Failed to unarchive project',
       id,
       `Project with ID ${id} not found`
     );
