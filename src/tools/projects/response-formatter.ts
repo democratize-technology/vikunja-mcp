@@ -97,11 +97,14 @@ export function createProjectListResponse(
     },
   };
 
+  const projectWord = projects.length === 1 ? 'project' : 'projects';
+  const message = `Retrieved ${projects.length} ${projectWord}`;
+
   return createProjectSuccessResponse(
     'list_projects',
     projects,
     {
-      message: `Retrieved ${projects.length} projects`,
+      message,
       ...options,
       metadata
     }

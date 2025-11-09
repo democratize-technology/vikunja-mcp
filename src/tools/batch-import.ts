@@ -20,6 +20,7 @@ const MAX_BATCH_SIZE = 100;
 export function registerBatchImportTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_batch_import',
+    'Import tasks in bulk from CSV or JSON formats with error handling and dry-run support',
     {
       projectId: z.number(),
       format: z.enum(['csv', 'json']),

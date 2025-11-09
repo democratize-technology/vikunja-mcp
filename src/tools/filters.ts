@@ -117,6 +117,7 @@ async function getSessionStorage(authManager: AuthManager): ReturnType<typeof st
 export function registerFiltersTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_filters',
+    'Manage and build advanced filters for tasks and projects with validation',
     {
       action: z.enum(['list', 'get', 'create', 'update', 'delete', 'build', 'validate']),
       parameters: z.record(z.unknown()),

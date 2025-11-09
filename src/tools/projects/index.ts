@@ -62,6 +62,7 @@ export function registerProjectsTool(
 ): void {
   server.tool(
     'vikunja_projects',
+    'Manage projects with full CRUD operations, hierarchy management, and sharing capabilities',
     {
       subcommand: z.enum(['list', 'get', 'create', 'update', 'delete', 'archive', 'unarchive',
         'get-children', 'get-tree', 'get-breadcrumb', 'move',
@@ -83,6 +84,7 @@ export function registerProjectsTool(
       // Sharing arguments
       projectId: z.number().positive().optional(),
       shareId: z.string().optional(),
+      shareHash: z.string().optional(),
       right: z.enum(['read', 'write', 'admin']).optional(),
       name: z.string().optional(),
       password: z.string().optional(),
@@ -208,7 +210,15 @@ export function registerProjectsTool(
           if (!args.shareHash) {
             throw new Error('Share hash is required');
           }
-          return await authProjectShare(args as AuthShareArgs, context);
+          const authShareArgs: AuthShareArgs = {
+            shareHash: args.shareHash
+          };
+          if (args.projectId !== undefined) authShareArgs.projectId = args.projectId;
+          if (args.password !== undefined) authShareArgs.password = args.password;
+          if (args.verbosity !== undefined) authShareArgs.verbosity = args.verbosity;
+          if (args.useOptimizedFormat !== undefined) authShareArgs.useOptimizedFormat = args.useOptimizedFormat;
+          if (args.useAorp !== undefined) authShareArgs.useAorp = args.useAorp;
+          return await authProjectShare(authShareArgs, context);
 
         default:
           throw new Error(`Unknown subcommand: ${args.subcommand}`);
@@ -355,6 +365,7 @@ export function registerProjectTools(
       subcommand: z.enum(['create_share', 'list_shares', 'get_share', 'delete_share', 'auth_share']),
       projectId: z.number().optional(),
       shareId: z.string().optional(),
+      shareHash: z.string().optional(),
       right: z.enum(['read', 'write', 'admin']).optional(),
       name: z.string().optional(),
       password: z.string().optional(),
@@ -396,10 +407,18 @@ export function registerProjectTools(
             return await deleteProjectShare(args as DeleteShareArgs, context);
 
           case 'auth_share':
-            if (!args.shareId) {
-              throw new Error('Share ID is required for auth_share operation');
+            if (!args.shareHash) {
+              throw new Error('Share hash is required for auth_share operation');
             }
-            return await authProjectShare(args as AuthShareArgs, context);
+            const authShareArgs: AuthShareArgs = {
+              shareHash: args.shareHash
+            };
+            if (args.projectId !== undefined) authShareArgs.projectId = args.projectId;
+            if (args.password !== undefined) authShareArgs.password = args.password;
+            if (args.verbosity !== undefined) authShareArgs.verbosity = args.verbosity;
+            if (args.useOptimizedFormat !== undefined) authShareArgs.useOptimizedFormat = args.useOptimizedFormat;
+            if (args.useAorp !== undefined) authShareArgs.useAorp = args.useAorp;
+            return await authProjectShare(authShareArgs, context);
 
           default:
             throw new Error(`Unknown sharing subcommand: ${args.subcommand}`);

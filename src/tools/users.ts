@@ -21,6 +21,7 @@ interface SearchParams {
 export function registerUsersTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_users',
+    'Manage user profiles, search users, and update user settings',
     {
       // Operation type
       subcommand: z.enum(['current', 'search', 'settings', 'update-settings']).optional(),

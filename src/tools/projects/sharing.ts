@@ -15,9 +15,11 @@ import { createProjectResponse } from './response-formatter';
  */
 export interface CreateShareArgs {
   projectId: number;
-  right: 'read' | 'write' | 'admin';
-  name?: string;
+  right: 'read' | 'write' | 'admin' | 0 | 1 | 2;
+  label?: string;
   password?: string;
+  passwordEnabled?: boolean;
+  expires?: string;
   shares?: number; // For public links
   verbosity?: string;
   useOptimizedFormat?: boolean;
@@ -62,8 +64,8 @@ export interface DeleteShareArgs {
  * Arguments for authenticating a project share
  */
 export interface AuthShareArgs {
-  shareId: string;
-  projectId: number;
+  shareHash: string;
+  projectId?: number;
   password?: string;
   verbosity?: string;
   useOptimizedFormat?: boolean;
@@ -80,8 +82,10 @@ export async function createProjectShare(
   const {
     projectId,
     right,
-    name,
+    label,
     password,
+    passwordEnabled,
+    expires,
     shares,
     verbosity,
     useOptimizedFormat,
@@ -91,10 +95,36 @@ export async function createProjectShare(
   try {
     validateId(projectId, 'project id');
 
-    if (!['read', 'write', 'admin'].includes(right)) {
+    // Convert string rights to numeric rights for API
+    let numericRight!: number;
+    if (right === undefined) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
-        'Share right must be one of: read, write, admin'
+        'Share right is required'
+      );
+    } else if (typeof right === 'string') {
+      const rightMap: Record<string, number> = { 'read': 0, 'write': 1, 'admin': 2 };
+      const normalizedRight = right.trim().toLowerCase();
+
+      if (!(normalizedRight in rightMap)) {
+        throw new MCPError(
+          ErrorCode.VALIDATION_ERROR,
+          'Share right must be one of: read, write, admin'
+        );
+      }
+      numericRight = rightMap[normalizedRight]!;
+    } else if (typeof right === 'number') {
+      if (![0, 1, 2].includes(right)) {
+        throw new MCPError(
+          ErrorCode.VALIDATION_ERROR,
+          'Invalid permission level. Use: 0=Read, 1=Write, 2=Admin'
+        );
+      }
+      numericRight = right;
+    } else {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        'Share right must be a string or number'
       );
     }
 
@@ -105,15 +135,27 @@ export async function createProjectShare(
 
     const shareData: any = {
       project_id: projectId,
-      right,
+      right: numericRight,
     };
 
-    if (name !== undefined) {
-      shareData.name = name.trim();
+    if (label !== undefined) {
+      shareData.label = label.trim();
     }
 
     if (password !== undefined) {
       shareData.password = password;
+      // Automatically enable password when password is provided
+      if (passwordEnabled === undefined) {
+        shareData.password_enabled = true;
+      }
+    }
+
+    if (passwordEnabled !== undefined) {
+      shareData.password_enabled = passwordEnabled;
+    }
+
+    if (expires !== undefined) {
+      shareData.expires = expires;
     }
 
     if (shares !== undefined) {
@@ -125,8 +167,8 @@ export async function createProjectShare(
 
     const result = createProjectResponse(
       'create_project_share',
-      `Created ${right} link share for project ${projectId}`,
-      createdShare,
+      `Share created successfully for project ID ${projectId}`,
+      { share: createdShare },
       {
         projectId,
         shareRight: right,
@@ -149,7 +191,13 @@ export async function createProjectShare(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'project share operation');
+
+    // Handle 404 errors specifically for share creation
+    if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 404) {
+      throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${projectId} not found`);
+    }
+
+    throw transformApiError(error, 'Failed to create share');
   }
 }
 
@@ -179,19 +227,22 @@ export async function listProjectShares(
 
     // Note: node-vikunja might not have a specific method for listing shares
     // This implementation may need to be adjusted based on the actual API
-    const shares = await client.projects.getLinkShares(projectId, {
-      page,
-      per_page: perPage
-    });
+    const params: any = {};
+    if (page !== 1 || perPage !== 50) {
+      params.page = page;
+      params.per_page = perPage;
+    }
+    const shares = await client.projects.getLinkShares(projectId, params);
 
     const result = createProjectResponse(
       'list_project_shares',
       `Retrieved ${Array.isArray(shares) ? shares.length : 0} shares for project ${projectId}`,
-      shares,
+      { shares },
       {
         projectId,
         page,
         perPage,
+        count: Array.isArray(shares) ? shares.length : 0,
         totalShares: Array.isArray(shares) ? shares.length : 0
       },
       verbosity,
@@ -211,7 +262,13 @@ export async function listProjectShares(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'project share operation');
+
+    // Handle 404 errors specifically for share listing
+    if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 404) {
+      throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${projectId} not found`);
+    }
+
+    throw transformApiError(error, 'Failed to list shares');
   }
 }
 
@@ -232,13 +289,20 @@ export async function getProjectShare(
       );
     }
 
+    if (!projectId || typeof projectId !== 'number' || projectId <= 0) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        'Project ID is required'
+      );
+    }
+
     const client = await getClientFromContext();
     const share = await client.projects.getLinkShare(projectId, shareId as any);
 
     const result = createProjectResponse(
       'get_project_share',
       `Retrieved link share: ${share.name || shareId}`,
-      share,
+      { share },
       { shareId },
       verbosity,
       useOptimizedFormat,
@@ -257,7 +321,13 @@ export async function getProjectShare(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'project share operation');
+
+    // Handle 404 errors specifically for share retrieval
+    if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 404) {
+      throw new MCPError(ErrorCode.NOT_FOUND, `Share with ID ${shareId} not found for project ${projectId}`);
+    }
+
+    throw transformApiError(error, 'Failed to get share');
   }
 }
 
@@ -278,6 +348,13 @@ export async function deleteProjectShare(
       );
     }
 
+    if (!projectId || typeof projectId !== 'number' || projectId <= 0) {
+      throw new MCPError(
+        ErrorCode.VALIDATION_ERROR,
+        'Project ID is required'
+      );
+    }
+
     const client = await getClientFromContext();
 
     // Get share details before deletion
@@ -287,14 +364,18 @@ export async function deleteProjectShare(
 
     const result = createProjectResponse(
       'delete_project_share',
-      `Deleted link share: ${share.name || shareId}`,
+      `Share with ID ${shareId} deleted successfully`,
       {
         deleted: true,
         shareId,
         shareName: share.name,
-        projectId: share.projectId
+        projectId: share.project_id
       },
-      {},
+      {
+        projectId: share.project_id,
+        shareId,
+        shareName: share.name
+      },
       verbosity,
       useOptimizedFormat,
       useAorp
@@ -312,7 +393,13 @@ export async function deleteProjectShare(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'project share operation');
+
+    // Handle 404 errors specifically for share deletion
+    if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 404) {
+      throw new MCPError(ErrorCode.NOT_FOUND, `Share with ID ${shareId} not found for project ${projectId}`);
+    }
+
+    throw transformApiError(error, 'Failed to delete share');
   }
 }
 
@@ -323,31 +410,29 @@ export async function authProjectShare(
   args: AuthShareArgs,
   context: any
 ): Promise<unknown> {
-  const { shareId, projectId, password, verbosity, useOptimizedFormat, useAorp } = args;
+  const { shareHash, projectId, password, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
-    if (!shareId || typeof shareId !== 'string' || shareId.trim().length === 0) {
+    if (!shareHash || typeof shareHash !== 'string' || shareHash.trim().length === 0) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
-        'Share ID must be a non-empty string'
+        'Share hash must be a non-empty string'
       );
     }
 
     const client = await getClientFromContext();
 
-    // The authentication is done by fetching the share directly
-    // No separate auth object needed for node-vikunja
-
-    // This would authenticate and return project access
-    // The exact method may vary based on the node-vikunja implementation
-    const authResult = await client.projects.getLinkShare(projectId, shareId as any);
+    // The authentication is done via the shares API
+    const authResult = await client.shares.getShareAuth(shareHash, {
+      password: password || '',
+    });
 
     const result = createProjectResponse(
       'auth_project_share',
-      `Successfully authenticated access to shared project`,
-      authResult,
+      `Successfully authenticated to share`,
+      { auth: authResult },
       {
-        shareId,
+        shareHash,
         hasPassword: !!password,
         authenticated: true
       },
@@ -368,6 +453,17 @@ export async function authProjectShare(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'project share operation');
+
+    // Handle specific error status codes for share authentication
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      if (error.statusCode === 401) {
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, `Invalid password for share`);
+      }
+      if (error.statusCode === 404) {
+        throw new MCPError(ErrorCode.NOT_FOUND, `Share with hash ${shareHash} not found`);
+      }
+    }
+
+    throw transformApiError(error, 'Failed to authenticate to share');
   }
 }

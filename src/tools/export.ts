@@ -133,6 +133,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
   // Export project data
   server.tool(
     'vikunja_export_project',
+    'Export project data including tasks, labels, and metadata in structured format',
     {
       projectId: z.number().int().positive(),
       includeChildren: z.boolean().optional().default(false),
@@ -203,6 +204,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
   // Request user data export
   server.tool(
     'vikunja_request_user_export',
+    'Request a complete export of user data for privacy and backup purposes',
     {
       password: z.string().min(1),
     },
@@ -274,6 +276,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
   // Download user data export
   server.tool(
     'vikunja_download_user_export',
+    'Download previously requested user data export files',
     {
       password: z.string().min(1),
     },

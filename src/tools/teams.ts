@@ -30,6 +30,7 @@ function validateId(id: unknown, fieldName: string): number {
 export function registerTeamsTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_teams',
+    'Manage teams and team memberships for collaborative project management',
     {
       // List all teams
       subcommand: z.enum(['list', 'create', 'get', 'update', 'delete', 'members']).optional(),

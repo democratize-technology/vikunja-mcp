@@ -136,6 +136,7 @@ export function registerTasksTool(
 ): void {
   server.tool(
     'vikunja_tasks',
+    'Manage tasks with comprehensive operations (create, update, delete, list, assign, attach files, comment, bulk operations)',
     {
       subcommand: z.enum([
         'create',

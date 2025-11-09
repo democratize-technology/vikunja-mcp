@@ -24,6 +24,7 @@ function validateId(id: unknown, fieldName: string): number {
 export function registerLabelsTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_labels',
+    'Manage task labels with full CRUD operations for organizing and categorizing tasks',
     {
       // Operation type
       subcommand: z.enum(['list', 'get', 'create', 'update', 'delete']).optional(),

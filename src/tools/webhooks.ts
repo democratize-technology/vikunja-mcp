@@ -151,6 +151,7 @@ interface StandardWebhookResponse {
 export function registerWebhooksTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_webhooks',
+    'Manage webhooks for integrating Vikunja events with external services',
     {
       // Operation type
       subcommand: z.enum(['list', 'get', 'create', 'update', 'delete', 'list-events']).optional(),

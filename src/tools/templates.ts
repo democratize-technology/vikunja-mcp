@@ -48,6 +48,7 @@ interface TemplateData {
 export function registerTemplatesTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_templates',
+    'Manage task templates for creating consistent tasks and project structures',
     {
       subcommand: z.enum(['create', 'list', 'get', 'update', 'delete', 'instantiate']),
       // Template fields
