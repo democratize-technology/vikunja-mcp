@@ -6,8 +6,8 @@
 import type { Project, ProjectListParams } from 'node-vikunja';
 import { MCPError, ErrorCode } from '../../types/index';
 import { getClientFromContext } from '../../client';
-import { transformApiError } from '../../utils/error-handler';
-import { validateId, validateProjectData, calculateProjectDepth } from './validation';
+import { transformApiError, handleStatusCodeError } from '../../utils/error-handler';
+import { validateId, validateHexColor, validateProjectData, calculateProjectDepth } from './validation';
 import { createProjectResponse, createProjectListResponse } from './response-formatter';
 
 // Type for API responses that may have data and total properties
@@ -159,7 +159,7 @@ export async function listProjects(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'operation failed');
+    throw transformApiError(error, 'Failed to list projects');
   }
 }
 
@@ -181,7 +181,7 @@ export async function getProject(
     const result = createProjectResponse(
       'get_project',
       `Retrieved project: ${project.title}`,
-      project,
+      { project },
       {},
       verbosity,
       useOptimizedFormat,
@@ -200,7 +200,7 @@ export async function getProject(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'operation failed');
+    throw handleStatusCodeError(error, 'get project', id);
   }
 }
 
@@ -215,7 +215,7 @@ export async function createProject(
     title,
     description,
     parentProjectId,
-    isArchived = false,
+    isArchived,
     hexColor,
     verbosity,
     useOptimizedFormat,
@@ -261,7 +261,7 @@ export async function createProject(
         if (depth >= 10) { // MAX_PROJECT_DEPTH
           throw new MCPError(
             ErrorCode.VALIDATION_ERROR,
-            'Cannot create project at this depth. Maximum hierarchy depth exceeded.'
+            'Maximum allowed depth is 10 levels'
           );
         }
       }
@@ -270,15 +270,21 @@ export async function createProject(
     // Normalize hex color if provided
     let normalizedColor = hexColor;
     if (hexColor) {
-      normalizedColor = hexColor.toUpperCase();
+      normalizedColor = hexColor.toLowerCase();
     }
 
     // Build projectData object, only including defined properties to satisfy exactOptionalPropertyTypes
     const projectData: any = {
       title: title.trim(),
-      description: description?.trim() || '',
-      is_archived: isArchived,
     };
+
+    if (description !== undefined) {
+      projectData.description = description?.trim() || '';
+    }
+
+    if (isArchived !== undefined) {
+      projectData.is_archived = isArchived;
+    }
 
     if (parentProjectId !== undefined) {
       projectData.parent_project_id = parentProjectId;
@@ -292,8 +298,8 @@ export async function createProject(
 
     const result = createProjectResponse(
       'create_project',
-      `Created project: ${createdProject.title}`,
-      createdProject,
+      `Project "${createdProject.title}" created successfully`,
+      { project: createdProject },
       {},
       verbosity,
       useOptimizedFormat,
@@ -312,7 +318,7 @@ export async function createProject(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'operation failed');
+    throw transformApiError(error, 'Failed to create project');
   }
 }
 
@@ -338,6 +344,24 @@ export async function updateProject(
   try {
     validateId(id, 'project id');
 
+    // Check if at least one field to update is provided
+    const hasUpdateFields = (
+      title !== undefined ||
+      description !== undefined ||
+      parentProjectId !== undefined ||
+      isArchived !== undefined ||
+      hexColor !== undefined
+    );
+
+    if (!hasUpdateFields) {
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'No fields to update provided');
+    }
+
+    // Validate hex color early if provided
+    if (hexColor !== undefined) {
+      validateHexColor(hexColor);
+    }
+
     const client = await getClientFromContext();
 
     // Get current project
@@ -345,7 +369,7 @@ export async function updateProject(
 
     // Get all projects for hierarchy validation
     let allProjects: Project[] = [];
-    if (parentProjectId !== undefined || currentProject.parentProjectId) {
+    if (parentProjectId !== undefined || (currentProject && currentProject.parent_project_id)) {
       try {
         const allProjectsResponse = await client.projects.getProjects({ per_page: 1000 });
         const allProjectsApiData = allProjectsResponse as ApiProjectResponse;
@@ -366,7 +390,7 @@ export async function updateProject(
       validationUpdateData.hexColor = hexColor;
     }
 
-    const resolvedParentProjectId = parentProjectId ?? (typeof currentProject.parentProjectId === 'number' ? currentProject.parentProjectId : undefined);
+    const resolvedParentProjectId = parentProjectId ?? (currentProject && typeof currentProject.parent_project_id === 'number' ? currentProject.parent_project_id : undefined);
     if (resolvedParentProjectId !== undefined) {
       validationUpdateData.parentProjectId = resolvedParentProjectId;
     }
@@ -389,15 +413,15 @@ export async function updateProject(
       updateData.is_archived = isArchived;
     }
     if (hexColor !== undefined) {
-      updateData.hex_color = hexColor.toUpperCase();
+      updateData.hex_color = hexColor.toLowerCase();
     }
 
     const updatedProject = await client.projects.updateProject(id, updateData);
 
     const result = createProjectResponse(
       'update_project',
-      `Updated project: ${updatedProject.title}`,
-      updatedProject,
+      `Project "${updatedProject.title}" updated successfully`,
+      { project: updatedProject },
       {},
       verbosity,
       useOptimizedFormat,
@@ -416,7 +440,12 @@ export async function updateProject(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'operation failed');
+    throw handleStatusCodeError(
+      error as any,
+      'update project',
+      id,
+      `Project with ID ${id} not found`
+    );
   }
 }
 
@@ -461,7 +490,12 @@ export async function deleteProject(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'operation failed');
+    throw handleStatusCodeError(
+      error as any,
+      'delete project',
+      id,
+      `Project with ID ${id} not found`
+    );
   }
 }
 
@@ -479,12 +513,19 @@ export async function archiveProject(
 
     const client = await getClientFromContext();
 
-    const project = await client.projects.updateProject(id, { is_archived: true } as any);
+    // Get current project first
+    const currentProject = await client.projects.getProject(id);
+
+    // Archive the project
+    const project = await client.projects.updateProject(id, {
+      title: currentProject.title,
+      is_archived: true
+    } as any);
 
     const result = createProjectResponse(
       'archive_project',
-      `Archived project: ${project.title}`,
-      project,
+      `Project "${project.title}" archived successfully`,
+      { project },
       {},
       verbosity,
       useOptimizedFormat,
@@ -503,7 +544,12 @@ export async function archiveProject(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'operation failed');
+    throw handleStatusCodeError(
+      error as any,
+      'archive project',
+      id,
+      `Project with ID ${id} not found`
+    );
   }
 }
 
@@ -521,12 +567,19 @@ export async function unarchiveProject(
 
     const client = await getClientFromContext();
 
-    const project = await client.projects.updateProject(id, { is_archived: false } as any);
+    // Get current project first
+    const currentProject = await client.projects.getProject(id);
+
+    // Unarchive the project
+    const project = await client.projects.updateProject(id, {
+      title: currentProject.title,
+      is_archived: false
+    } as any);
 
     const result = createProjectResponse(
       'unarchive_project',
-      `Unarchived project: ${project.title}`,
-      project,
+      `Project "${project.title}" unarchived successfully`,
+      { project },
       {},
       verbosity,
       useOptimizedFormat,
@@ -545,6 +598,11 @@ export async function unarchiveProject(
     if (error instanceof MCPError) {
       throw error;
     }
-    throw transformApiError(error, 'operation failed');
+    throw handleStatusCodeError(
+      error as any,
+      'unarchive project',
+      id,
+      `Project with ID ${id} not found`
+    );
   }
 }
