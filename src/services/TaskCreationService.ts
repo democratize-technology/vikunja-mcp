@@ -72,12 +72,17 @@ export class TaskCreationService {
         warnings.push(this.handleReminders(createdTask.id, task.reminders));
       }
 
-      return {
+      const result: TaskCreationResult = {
         success: true,
         taskId: createdTask.id ?? 0,
         title: createdTask.title,
-        warnings: warnings.length > 0 ? warnings : undefined,
       };
+
+      if (warnings.length > 0) {
+        result.warnings = warnings;
+      }
+
+      return result;
     } catch (error) {
       // Let MCPErrors bubble up to be handled at the batch level
       if (error instanceof MCPError) {

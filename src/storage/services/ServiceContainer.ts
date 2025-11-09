@@ -13,7 +13,7 @@ import { CleanupService } from './CleanupService';
 import { storageAdapterFactory } from '../adapters/factory';
 import { loadStorageConfig } from '../config';
 import type { StorageAdapter, StorageSession, StorageConfig } from '../interfaces';
-import type { AdapterFactory } from '../interfaces/AdapterFactory';
+import type { StorageAdapterFactory } from '../interfaces';
 
 /**
  * Service container with proper dependency injection
@@ -24,7 +24,7 @@ export class ServiceContainer {
   private sessionManager: SessionManager;
   private healthMonitor: HealthMonitor;
   private cleanupService: CleanupService;
-  private adapterFactory: AdapterFactory;
+  private adapterFactory: StorageAdapterFactory;
   private config: StorageConfig;
 
   private storageServices = new Map<string, StorageService>();

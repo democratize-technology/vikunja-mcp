@@ -22,7 +22,7 @@ import {
   StorageConnectionError,
   StorageDataError,
 } from '../interfaces';
-import { safeJsonStringify, validateFilterExpression, sanitizeString } from '../../utils/validation';
+import { validateFilterExpression, sanitizeString } from '../../utils/validation';
 
 // Extracted components
 import { SQLiteConnectionManager } from './components/SQLiteConnectionManager';
@@ -31,7 +31,6 @@ import { SQLiteSchemaManager } from './components/SQLiteSchemaManager';
 import type { ISQLiteSchemaManager } from './components/interfaces/ISQLiteSchemaManager';
 import { SQLiteDataAccess } from './components/SQLiteDataAccess';
 import type { ISQLiteDataAccess } from './components/interfaces/ISQLiteDataAccess';
-import { SQLiteDataMapper, type FilterRow } from './components/SQLiteDataMapper';
 
 
 /**
@@ -97,6 +96,9 @@ export class SQLiteStorageAdapter implements StorageAdapter {
 
       // Initialize schema
       const db = this.connectionManager.getConnection();
+      if (!db) {
+        throw new StorageInitializationError('Database connection not available');
+      }
       await this.schemaManager.initializeSchema(db);
 
       // Initialize data access with connection and prepared statements
@@ -172,11 +174,30 @@ export class SQLiteStorageAdapter implements StorageAdapter {
       }
 
       const now = new Date();
-      const savedFilter: SavedFilter = {
+
+      // Build the base filter object
+      const baseFilter: Omit<SavedFilter, 'id' | 'created' | 'updated'> = {
         ...filter,
         name: sanitizedName,
-        description: sanitizedDescription,
-        expression: validatedExpression,
+        filter: filter.filter,
+        isGlobal: filter.isGlobal,
+      };
+
+      // Only add optional properties if they exist
+      if (sanitizedDescription !== undefined && sanitizedDescription !== null) {
+        baseFilter.description = sanitizedDescription;
+      }
+
+      if (validatedExpression !== undefined && validatedExpression !== null) {
+        baseFilter.expression = validatedExpression;
+      }
+
+      if (filter.projectId !== undefined) {
+        baseFilter.projectId = filter.projectId;
+      }
+
+      const savedFilter: SavedFilter = {
+        ...baseFilter,
         id: uuidv4(),
         created: now,
         updated: now,
@@ -254,7 +275,8 @@ export class SQLiteStorageAdapter implements StorageAdapter {
 
       if (filter.expression !== undefined) {
         if (filter.expression === null) {
-          validatedUpdates.expression = null;
+          // Explicitly remove the optional property by setting it to undefined
+          delete validatedUpdates.expression;
         } else {
           validatedUpdates.expression = validateFilterExpression(filter.expression);
         }

@@ -10,7 +10,7 @@ import { logger } from '../../utils/logger';
 import { AsyncMutex } from '../../utils/AsyncMutex';
 import type { SavedFilter } from '../../types/filters';
 import type { StorageAdapter, StorageSession, StorageConfig } from '../interfaces';
-import type { AdapterFactory } from '../interfaces/AdapterFactory';
+import type { StorageAdapterFactory } from '../interfaces';
 
 /**
  * StorageService handles all storage operations with proper initialization,
@@ -23,7 +23,7 @@ export class StorageService {
   private mutex = new AsyncMutex();
   private session: StorageSession;
   private initialized = false;
-  private adapterFactory: AdapterFactory | null = null;
+  private adapterFactory: StorageAdapterFactory | null = null;
   private config: StorageConfig | null = null;
 
   /**
@@ -35,7 +35,7 @@ export class StorageService {
    */
   constructor(
     adapter: StorageAdapter | null = null,
-    adapterFactory: AdapterFactory | null = null,
+    adapterFactory: StorageAdapterFactory | null = null,
     config: StorageConfig | null = null
   ) {
     // For testing, allow direct injection of mock adapter

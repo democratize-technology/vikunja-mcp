@@ -22,9 +22,12 @@ import type { StorageSession } from './interfaces';
 
 // Import new modular components
 import { SessionManager, type SessionOptions } from './managers/SessionManager';
-import { StorageAdapterOrchestrator, type OrchestrationConfig } from './orchestrators/StorageAdapterOrchestrator';
-import { StorageHealthMonitor, type HealthMonitorConfig } from './monitors/StorageHealthMonitor';
-import { StorageStatistics, type StorageStatisticsConfig } from './statistics/StorageStatistics';
+import { StorageAdapterOrchestrator } from './orchestrators/StorageAdapterOrchestrator';
+import { type OrchestrationConfig } from './orchestrators/interfaces';
+import { StorageHealthMonitor } from './monitors/StorageHealthMonitor';
+import { type HealthMonitorConfig } from './monitors/interfaces/StorageHealthMonitor';
+import { StorageStatistics } from './statistics/StorageStatistics';
+import { type StorageStatisticsConfig } from './statistics/interfaces';
 
 /**
  * Component injection options for flexible dependency management
@@ -83,8 +86,8 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
 
   // Session information
   private sessionId: string;
-  private userId?: string;
-  private apiUrl?: string;
+  private userId: string | undefined;
+  private apiUrl: string | undefined;
 
   // Lifecycle management
   private initState: InitializationState = 'uninitialized';
@@ -115,12 +118,21 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
     this.config = config;
 
     // Dependency injection with defaults for backward compatibility
-    this.sessionManager = components.sessionManager ?? new SessionManager({
-      sessionTimeoutMs: config.session?.timeoutMs,
-      cleanupIntervalMs: config.session?.cleanupIntervalMs,
-      maxSessions: config.session?.maxSessions,
-      debugLogging: config.debugLogging
-    });
+    const sessionManagerConfig: any = {};
+    if (config.session?.timeoutMs !== undefined) {
+      sessionManagerConfig.sessionTimeoutMs = config.session.timeoutMs;
+    }
+    if (config.session?.cleanupIntervalMs !== undefined) {
+      sessionManagerConfig.cleanupIntervalMs = config.session.cleanupIntervalMs;
+    }
+    if (config.session?.maxSessions !== undefined) {
+      sessionManagerConfig.maxSessions = config.session.maxSessions;
+    }
+    if (config.debugLogging !== undefined) {
+      sessionManagerConfig.debugLogging = config.debugLogging;
+    }
+
+    this.sessionManager = components.sessionManager ?? new SessionManager(sessionManagerConfig);
 
     this.orchestrator = components.orchestrator ?? new StorageAdapterOrchestrator(
       config.orchestration
@@ -130,9 +142,7 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
       config.health
     );
 
-    this.statistics = components.statistics ?? new StorageStatistics(
-      config.statistics
-    );
+    this.statistics = components.statistics ?? new StorageStatistics();
 
     if (config.debugLogging) {
       logger.debug('RefactoredPersistentFilterStorage created', {
@@ -149,13 +159,21 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
    */
   getSession(): StorageSession {
     // Return basic session info for compatibility
-    return {
+    const session: any = {
       id: this.sessionId,
       createdAt: new Date(), // This will be updated after proper initialization
       lastAccessAt: new Date(),
-      userId: this.userId,
-      apiUrl: this.apiUrl
     };
+
+    if (this.userId) {
+      session.userId = this.userId;
+    }
+
+    if (this.apiUrl) {
+      session.apiUrl = this.apiUrl;
+    }
+
+    return session;
   }
 
   /**
@@ -163,13 +181,13 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
    */
 
   async list(): Promise<SavedFilter[]> {
-    return this.executeWithInstrumentation('list', async (adapter) => {
+    return this.executeWithInstrumentation('query', async (adapter) => {
       return await adapter.list();
     });
   }
 
   async get(id: string): Promise<SavedFilter | null> {
-    return this.executeWithInstrumentation('get', async (adapter) => {
+    return this.executeWithInstrumentation('read', async (adapter) => {
       return await adapter.get(id);
     }, { filterId: id });
   }
@@ -196,7 +214,7 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
   }
 
   async findByName(name: string): Promise<SavedFilter | null> {
-    return this.executeWithInstrumentation('findByName', async (adapter) => {
+    return this.executeWithInstrumentation('query', async (adapter) => {
       return await adapter.findByName(name);
     }, { filterName: name });
   }
@@ -208,7 +226,7 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
   }
 
   async getByProject(projectId: number): Promise<SavedFilter[]> {
-    return this.executeWithInstrumentation('getByProject', async (adapter) => {
+    return this.executeWithInstrumentation('query', async (adapter) => {
       return await adapter.getByProject(projectId);
     }, { projectId });
   }
@@ -275,14 +293,17 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
         try {
           await this.initialize();
         } catch (error) {
-          return {
+          const result: any = {
             healthy: false,
-            error: `Failed to initialize: ${error instanceof Error ? error.message : 'Unknown error'}`,
             details: {
               sessionId: this.sessionId,
               initPhase: this.initState
             }
           };
+
+          result.error = `Failed to initialize: ${error instanceof Error ? error.message : 'Unknown error'}`;
+
+          return result;
         }
       }
 
@@ -293,13 +314,8 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
 
       const healthy = sessionValid && adapterHealth.healthy && healthCheck.healthy;
 
-      return {
+      const result: any = {
         healthy,
-        error: healthy ? undefined :
-          !sessionValid ? 'Session invalid or expired' :
-          !adapterHealth.healthy ? adapterHealth.error :
-          !healthCheck.healthy ? healthCheck.error :
-          'Unknown health issue',
         details: {
           sessionId: this.sessionId,
           sessionValid,
@@ -309,6 +325,20 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
           adapterState: this.orchestrator.getAdapterStatus().state
         }
       };
+
+      if (!healthy) {
+        if (!sessionValid) {
+          result.error = 'Session invalid or expired';
+        } else if (!adapterHealth.healthy && adapterHealth.error) {
+          result.error = adapterHealth.error;
+        } else if (!healthCheck.healthy && healthCheck.error) {
+          result.error = healthCheck.error;
+        } else {
+          result.error = 'Unknown health issue';
+        }
+      }
+
+      return result;
     } catch (error) {
       return {
         healthy: false,
@@ -336,22 +366,22 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
 
       // Close components in reverse initialization order
       const closePromises = [
-        this.healthMonitor.stopMonitoring().catch(error => {
+        this.healthMonitor.stopMonitoring().catch((error: unknown) => {
           logger.warn('Error stopping health monitor', {
             error: error instanceof Error ? error.message : 'Unknown error'
           });
         }),
-        this.statistics.close().catch(error => {
+        this.statistics.close().catch((error: unknown) => {
           logger.warn('Error closing statistics', {
             error: error instanceof Error ? error.message : 'Unknown error'
           });
         }),
-        this.orchestrator.close().catch(error => {
+        this.orchestrator.close().catch((error: unknown) => {
           logger.warn('Error closing orchestrator', {
             error: error instanceof Error ? error.message : 'Unknown error'
           });
         }),
-        this.sessionManager.removeSession(this.sessionId).catch(error => {
+        this.sessionManager.removeSession(this.sessionId).catch((error: unknown) => {
           logger.warn('Error removing session', {
             error: error instanceof Error ? error.message : 'Unknown error'
           });
@@ -361,7 +391,6 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
       await Promise.allSettled(closePromises);
 
       this.initState = 'uninitialized';
-      this.initError = undefined;
 
       logger.debug('RefactoredPersistentFilterStorage closed successfully', {
         sessionId: this.sessionId
@@ -401,11 +430,19 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
       });
 
       // Step 1: Create session
-      const session = await this.sessionManager.createSession({
+      const sessionOptions: any = {
         sessionId: this.sessionId,
-        userId: this.userId,
-        apiUrl: this.apiUrl
-      });
+      };
+
+      if (this.userId) {
+        sessionOptions.userId = this.userId;
+      }
+
+      if (this.apiUrl) {
+        sessionOptions.apiUrl = this.apiUrl;
+      }
+
+      const session = await this.sessionManager.createSession(sessionOptions);
 
       // Step 2: Initialize orchestrator with session
       await this.orchestrator.initialize(session, this.config.orchestration);
@@ -414,17 +451,12 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
       const adapter = await this.orchestrator.getAdapter();
 
       // Step 4: Initialize statistics
-      await this.statistics.initialize({
-        ...this.config.statistics,
-        sessionId: session.id,
-        storageType: this.orchestrator.getStorageConfig().type
-      });
+      await this.statistics.initialize(this.config.statistics);
 
       // Step 5: Start health monitoring
       await this.healthMonitor.startMonitoring(adapter, this.config.health);
 
       this.initState = 'ready';
-      this.initError = undefined;
 
       logger.info('RefactoredPersistentFilterStorage initialized successfully', {
         sessionId: this.sessionId,
@@ -464,7 +496,7 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
    * Execute operation with full instrumentation and error handling
    */
   private async executeWithInstrumentation<T>(
-    operationType: string,
+    operationType: 'create' | 'read' | 'update' | 'delete' | 'batch_create' | 'query' | 'clear',
     operation: (adapter: any) => Promise<T>,
     metadata: Record<string, unknown> = {}
   ): Promise<T> {
@@ -489,8 +521,9 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
         success: true,
         startTime,
         endTime: Date.now(),
-        resultCount: Array.isArray(result) ? result.length : result ? 1 : 0,
-        metadata
+        itemCount: Array.isArray(result) ? result.length : result ? 1 : 0,
+        storageType: 'refactored',
+        sessionId: this.sessionId
       });
 
       if (this.config.debugLogging) {
@@ -510,10 +543,8 @@ export class RefactoredPersistentFilterStorage implements FilterStorage {
         startTime,
         endTime: Date.now(),
         errorType: error instanceof Error ? error.constructor.name : 'Unknown',
-        metadata: {
-          ...metadata,
-          errorMessage: error instanceof Error ? error.message : 'Unknown error'
-        }
+        storageType: 'refactored',
+        sessionId: this.sessionId
       });
 
       this.logError(`Operation ${operationType} failed`, error);

@@ -67,6 +67,7 @@ export class StorageAdapterOrchestrator implements IStorageAdapterOrchestrator {
       state: AdapterState.UNINITIALIZED,
       healthy: false,
       lastHealthCheck: new Date(),
+      error: undefined,
       consecutiveFailures: 0,
     };
   }
@@ -100,6 +101,7 @@ export class StorageAdapterOrchestrator implements IStorageAdapterOrchestrator {
         state: AdapterState.UNINITIALIZED,
         healthy: false,
         lastHealthCheck: new Date(),
+        error: undefined,
         consecutiveFailures: 0,
       };
 
@@ -177,6 +179,7 @@ export class StorageAdapterOrchestrator implements IStorageAdapterOrchestrator {
         state: AdapterState.UNINITIALIZED,
         healthy: false,
         lastHealthCheck: new Date(),
+        error: undefined,
         consecutiveFailures: 0,
       };
 
@@ -222,7 +225,7 @@ export class StorageAdapterOrchestrator implements IStorageAdapterOrchestrator {
 
           return {
             healthy: false,
-            error: this.adapterStatus.error,
+            ...(this.adapterStatus.error && { error: this.adapterStatus.error }),
             details: { state: this.adapterStatus.state, consecutiveFailures: this.adapterStatus.consecutiveFailures },
           };
         }

@@ -44,8 +44,8 @@ export class PersistentFilterStorage implements FilterStorage {
 
   // Session information
   private sessionId: string;
-  private userId?: string;
-  private apiUrl?: string;
+  private userId: string | undefined;
+  private apiUrl: string | undefined;
 
   // Lifecycle management
   private initialized = false;
@@ -84,8 +84,8 @@ export class PersistentFilterStorage implements FilterStorage {
       id: this.sessionId,
       createdAt: new Date(),
       lastAccessAt: new Date(),
-      userId: this.userId,
-      apiUrl: this.apiUrl
+      ...(this.userId && { userId: this.userId }),
+      ...(this.apiUrl && { apiUrl: this.apiUrl })
     };
   }
 
@@ -100,11 +100,19 @@ export class PersistentFilterStorage implements FilterStorage {
     const release = await this.mutex.acquire();
     try {
       // Step 1: Create session
-      const session = await this.sessionManager.createSession({
+      const sessionOptions: any = {
         sessionId: this.sessionId,
-        userId: this.userId,
-        apiUrl: this.apiUrl
-      });
+      };
+
+      if (this.userId) {
+        sessionOptions.userId = this.userId;
+      }
+
+      if (this.apiUrl) {
+        sessionOptions.apiUrl = this.apiUrl;
+      }
+
+      const session = await this.sessionManager.createSession(sessionOptions);
 
       // Step 2: Initialize orchestrator
       await this.orchestrator.initialize(session);
@@ -113,10 +121,7 @@ export class PersistentFilterStorage implements FilterStorage {
       const adapter = await this.orchestrator.getAdapter();
 
       // Step 4: Initialize statistics
-      await this.statistics.initialize({
-        sessionId: session.id,
-        storageType: this.orchestrator.getStorageConfig().type
-      });
+      await this.statistics.initialize({});
 
       // Step 5: Start health monitoring
       await this.healthMonitor.startMonitoring(adapter);
@@ -186,7 +191,7 @@ export class PersistentFilterStorage implements FilterStorage {
    * Execute operation with instrumentation
    */
   private async executeWithInstrumentation<T>(
-    operationType: string,
+    operationType: "create" | "update" | "delete" | "clear" | "read" | "batch_create" | "query",
     operation: () => Promise<T>
   ): Promise<T> {
     const startTime = Date.now();
@@ -204,7 +209,9 @@ export class PersistentFilterStorage implements FilterStorage {
         success: true,
         startTime,
         endTime: Date.now(),
-        resultCount: Array.isArray(result) ? result.length : result ? 1 : 0
+        itemCount: Array.isArray(result) ? result.length : result ? 1 : 0,
+        storageType: 'persistent',
+        sessionId: this.sessionId
       });
 
       return result;
@@ -215,7 +222,9 @@ export class PersistentFilterStorage implements FilterStorage {
         success: false,
         startTime,
         endTime: Date.now(),
-        errorType: error instanceof Error ? error.constructor.name : 'Unknown'
+        errorType: error instanceof Error ? error.constructor.name : 'Unknown',
+        storageType: 'persistent',
+        sessionId: this.sessionId
       });
 
       throw error;
@@ -227,14 +236,14 @@ export class PersistentFilterStorage implements FilterStorage {
   // CRUD operations with backward compatibility
 
   async list(): Promise<SavedFilter[]> {
-    return this.executeWithInstrumentation('list', async () => {
+    return this.executeWithInstrumentation('query', async () => {
       const adapter = await this.orchestrator.getAdapter();
       return await adapter.list();
     });
   }
 
   async get(id: string): Promise<SavedFilter | null> {
-    return this.executeWithInstrumentation('get', async () => {
+    return this.executeWithInstrumentation('read', async () => {
       const adapter = await this.orchestrator.getAdapter();
       return await adapter.get(id);
     });
@@ -265,7 +274,7 @@ export class PersistentFilterStorage implements FilterStorage {
   }
 
   async findByName(name: string): Promise<SavedFilter | null> {
-    return this.executeWithInstrumentation('findByName', async () => {
+    return this.executeWithInstrumentation('query', async () => {
       const adapter = await this.orchestrator.getAdapter();
       return await adapter.findByName(name);
     });
@@ -285,7 +294,7 @@ export class PersistentFilterStorage implements FilterStorage {
    * Get filters for a specific project
    */
   async getByProject(projectId: number): Promise<SavedFilter[]> {
-    return this.executeWithInstrumentation('getByProject', async () => {
+    return this.executeWithInstrumentation('query', async () => {
       const adapter = await this.orchestrator.getAdapter();
       return await adapter.getByProject(projectId);
     });
@@ -371,7 +380,6 @@ export class PersistentFilterStorage implements FilterStorage {
       await Promise.allSettled(closePromises);
 
       this.initialized = false;
-      this.initError = undefined;
 
       logger.debug(`Persistent filter storage closed for session ${this.sessionId}`);
     } catch (error) {
@@ -417,13 +425,8 @@ export class PersistentFilterStorage implements FilterStorage {
 
       const healthy = sessionValid && adapterHealth.healthy && healthCheck.healthy;
 
-      return {
+      const result: any = {
         healthy,
-        error: healthy ? undefined :
-          !sessionValid ? 'Session invalid or expired' :
-          !adapterHealth.healthy ? adapterHealth.error :
-          !healthCheck.healthy ? healthCheck.error :
-          'Unknown health issue',
         details: {
           sessionId: this.sessionId,
           initialized: this.initialized,
@@ -433,6 +436,20 @@ export class PersistentFilterStorage implements FilterStorage {
           adapterState: this.orchestrator.getAdapterStatus().state
         },
       };
+
+      if (!healthy) {
+        if (!sessionValid) {
+          result.error = 'Session invalid or expired';
+        } else if (!adapterHealth.healthy && adapterHealth.error) {
+          result.error = adapterHealth.error;
+        } else if (!healthCheck.healthy && healthCheck.error) {
+          result.error = healthCheck.error;
+        } else {
+          result.error = 'Unknown health issue';
+        }
+      }
+
+      return result;
     } catch (error) {
       return {
         healthy: false,
@@ -592,14 +609,19 @@ class LegacyPersistentFilterStorageManager {
       for (const [sessionId, storage] of this.storageInstances.entries()) {
         try {
           const storageStats = await storage.getStats();
-          stats.push({
+          const statItem: any = {
             sessionId,
             filterCount: storageStats.filterCount,
             createdAt: storageStats.createdAt,
             lastAccessAt: storageStats.lastAccessAt,
             storageType: storageStats.storageType,
-            additionalInfo: storageStats.additionalInfo
-          });
+          };
+
+          if (storageStats.additionalInfo) {
+            statItem.additionalInfo = storageStats.additionalInfo;
+          }
+
+          stats.push(statItem);
         } catch (error) {
           logger.warn('Error getting stats for storage session', {
             sessionId,
@@ -630,12 +652,20 @@ class LegacyPersistentFilterStorageManager {
       for (const [sessionId, storage] of this.storageInstances.entries()) {
         try {
           const healthCheck = await storage.healthCheck();
-          healthResults.push({
+          const healthResult: any = {
             sessionId,
             healthy: healthCheck.healthy,
-            error: healthCheck.error,
-            details: healthCheck.details
-          });
+          };
+
+          if (healthCheck.error) {
+            healthResult.error = healthCheck.error;
+          }
+
+          if (healthCheck.details) {
+            healthResult.details = healthCheck.details;
+          }
+
+          healthResults.push(healthResult);
         } catch (error) {
           healthResults.push({
             sessionId,

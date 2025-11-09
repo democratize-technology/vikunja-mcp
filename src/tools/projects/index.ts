@@ -99,7 +99,7 @@ export function registerProjectsTool(
 
       // Set the client factory for this request if provided
       if (clientFactory) {
-        const { setGlobalClientFactory } = await import('../../client');
+        const { setGlobalClientFactory } = await import('../../client.js');
         await setGlobalClientFactory(clientFactory);
       }
 

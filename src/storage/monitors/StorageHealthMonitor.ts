@@ -41,8 +41,8 @@ class PingHealthCheckStrategy implements IHealthCheckStrategy {
 
       return {
         healthy: result.healthy,
-        error: result.error ?? undefined,
-        details: result.details,
+        ...(result.error && { error: result.error }),
+        ...(result.details && { details: result.details }),
         responseTime,
       };
     } catch (error) {
@@ -171,7 +171,7 @@ class ComprehensiveHealthCheckStrategy implements IHealthCheckStrategy {
         results.push({
           strategy: strategy.getStrategy(),
           healthy: result.healthy,
-          error: result.error ?? undefined,
+          ...(result.error && { error: result.error }),
           responseTime: result.responseTime,
         });
       } catch (error) {
@@ -190,7 +190,9 @@ class ComprehensiveHealthCheckStrategy implements IHealthCheckStrategy {
 
     return {
       healthy: allHealthy,
-      error: allHealthy ? undefined : `Failed strategies: ${failedStrategies.map(r => r.strategy).join(', ')}`,
+      ...(!allHealthy && {
+        error: `Failed strategies: ${failedStrategies.map(r => r.strategy).join(', ')}`
+      }),
       responseTime: totalResponseTime,
       details: {
         strategyResults: results,
@@ -360,13 +362,15 @@ export class StorageHealthMonitor implements IStorageHealthMonitor {
       const healthResult: HealthCheckResult = {
         status,
         healthy: status === HealthStatus.HEALTHY,
-        error: strategyResult.error,
+        ...(strategyResult.error && { error: strategyResult.error }),
         strategy: checkStrategy,
         metrics: {
           responseTime: totalResponseTime,
           timestamp: new Date(),
           strategy: checkStrategy,
-          adapterMetrics: strategyResult.details as Record<string, number> | undefined,
+          ...(strategyResult.details && {
+            adapterMetrics: strategyResult.details as Record<string, number>
+          }),
         },
         details: {
           ...strategyResult.details,
@@ -374,9 +378,9 @@ export class StorageHealthMonitor implements IStorageHealthMonitor {
           uptime: Date.now() - this.startTime,
         },
         consecutiveFailures: this.consecutiveFailures,
-        timeSinceLastSuccess: this.healthStatistics.lastSuccessfulCheck
-          ? Date.now() - this.healthStatistics.lastSuccessfulCheck.getTime()
-          : undefined,
+        ...(this.healthStatistics.lastSuccessfulCheck && {
+          timeSinceLastSuccess: Date.now() - this.healthStatistics.lastSuccessfulCheck.getTime()
+        }),
       };
 
       // Update tracking
@@ -474,7 +478,7 @@ export class StorageHealthMonitor implements IStorageHealthMonitor {
       averageResponseTime,
       successRate,
       trendDirection,
-      predictedStatus,
+      ...(predictedStatus && { predictedStatus }),
     };
   }
 
@@ -677,7 +681,7 @@ export class StorageHealthMonitor implements IStorageHealthMonitor {
 
   private async handleHealthStateChange(result: HealthCheckResult): Promise<void> {
     const previousStatus = this.healthHistory.length > 1
-      ? this.healthHistory[this.healthHistory.length - 2].status
+      ? this.healthHistory[this.healthHistory.length - 2]?.status ?? HealthStatus.UNKNOWN
       : HealthStatus.UNKNOWN;
 
     // Handle failure threshold exceeded

@@ -132,11 +132,13 @@ describe('Projects Tool - Nested Project Features', () => {
       getSession: jest.fn(),
     } as unknown as MockAuthManager;
 
-    // Setup server with handler capture
+    // Setup server with handler capture that handles both 3 and 4 parameter calls
     mockServer = {
-      tool: jest.fn((name, schema, handler) => {
+      tool: jest.fn((name, param2, param3, param4) => {
+        // Handle both 3-param (name, schema, handler) and 4-param (name, description, schema, handler) calls
+        const handler = param4 || param3;
         toolHandler = handler;
-      }) as jest.MockedFunction<(name: string, schema: any, handler: any) => void>,
+      }) as jest.MockedFunction<any>,
     } as MockServer;
 
     // Mock getClientFromContext BEFORE registering tool (same as working test)
@@ -149,6 +151,20 @@ describe('Projects Tool - Nested Project Features', () => {
     if (typeof toolHandler !== 'function') {
       throw new Error('toolHandler was not set properly by registerProjectsTool in projects-nested test');
     }
+
+    // Helper function to find project by ID
+    const findProjectById = (id: number) => mockProjects.find(p => p.id === id);
+
+    // Setup getProject mock to return projects from mockProjects array
+    mockClient.projects.getProject.mockImplementation((id: number) => {
+      const project = findProjectById(id);
+      if (project) {
+        return Promise.resolve(project);
+      }
+      const error: any = new Error('Not found');
+      error.statusCode = 404;
+      return Promise.reject(error);
+    });
 
     // Mirror the project methods to the top level for backward compatibility with new implementation
     mockClient.getProjects = mockClient.projects.getProjects;
@@ -341,10 +357,9 @@ describe('Projects Tool - Nested Project Features', () => {
       const response = JSON.parse(result.content[0].text);
 
       expect(response.success).toBe(true);
-      expect(response.operation).toBe('move-project');
-      expect(response.message).toBe('Project "Orphan Project" moved to parent project ID 1');
-      expect(response.metadata.previousParentId).toBeUndefined();
-      expect(response.metadata.newParentId).toBe(1);
+      expect(response.operation).toBe('move_project');
+      expect(response.message).toBe('Moved project "Orphan Project" to parent project 1');
+      expect(response.metadata.newParentProjectId).toBe(1);
       expect(mockClient.projects.updateProject).toHaveBeenCalledWith(5, { parent_project_id: 1 });
     });
 

@@ -183,7 +183,7 @@ export class StorageStatistics implements IStorageStatistics {
           retentionHours: this.config.retentionHours,
           dataPointsCollected: this.historicalData.length,
           lastCollectionTime: this.historicalData.length > 0
-            ? this.historicalData[this.historicalData.length - 1].timestamp
+            ? this.historicalData[this.historicalData.length - 1]?.timestamp || 0
             : 0,
           collectionIntervalMinutes: this.config.collectionIntervalMinutes,
         },
@@ -193,8 +193,11 @@ export class StorageStatistics implements IStorageStatistics {
           consecutiveFailures: this.consecutiveFailures,
           averageRecoveryTime: this.calculateAverageRecoveryTime(),
         },
-        additionalInfo: this.currentStats.additionalInfo,
       };
+
+      if (this.currentStats.additionalInfo) {
+        snapshot.additionalInfo = this.currentStats.additionalInfo;
+      }
 
       return snapshot;
 
@@ -344,18 +347,23 @@ export class StorageStatistics implements IStorageStatistics {
       const nextValue = trend.intercept + trend.slope * (values.length + 1);
       const confidence = Math.max(0, Math.min(1, 1 - volatility));
 
-      return {
+      const result: any = {
         metric,
         period: periodHours,
         trend: trendDirection,
         trendStrength,
         changeRate,
-        seasonality,
         prediction: {
           nextValue,
           confidence,
         },
       };
+
+      if (seasonality) {
+        result.seasonality = seasonality;
+      }
+
+      return result;
 
     } catch (error) {
       logger.error('Failed to analyze trend', error);
@@ -626,8 +634,8 @@ export class StorageStatistics implements IStorageStatistics {
       .map(op => op.duration!)
       .sort((a, b) => a - b);
 
-    const minLatency = durations.length > 0 ? durations[0] : 0;
-    const maxLatency = durations.length > 0 ? durations[durations.length - 1] : 0;
+    const minLatency = durations.length > 0 ? (durations[0] ?? 0) : 0;
+    const maxLatency = durations.length > 0 ? (durations[durations.length - 1] ?? 0) : 0;
 
     const p50Latency = this.calculatePercentile(durations, 50);
     const p95Latency = this.calculatePercentile(durations, 95);
@@ -643,7 +651,7 @@ export class StorageStatistics implements IStorageStatistics {
       errorsByType[type] = count;
     }
 
-    const sessionStart = this.currentStats.createdAt?.getTime() || this.operations.reduce((min, op) => Math.min(min, op.startTime), Date.now());
+    const sessionStart = this.currentStats.createdAt?.getTime() ?? this.operations.reduce((min, op) => Math.min(min, op.startTime), Date.now());
     const durationHours = (Date.now() - sessionStart) / (1000 * 60 * 60);
     const throughput = durationHours > 0 ? totalOperations / durationHours : 0;
 
@@ -666,8 +674,8 @@ export class StorageStatistics implements IStorageStatistics {
 
   private calculateSessionMetrics(): StorageStatisticsSnapshot['sessionMetrics'] {
     const now = Date.now();
-    const createdAt = this.currentStats.createdAt?.getTime() || now;
-    const lastAccessAt = this.currentStats.lastAccessAt?.getTime() || now;
+    const createdAt = this.currentStats.createdAt?.getTime() ?? now;
+    const lastAccessAt = this.currentStats.lastAccessAt?.getTime() ?? now;
 
     const sessionDuration = now - createdAt;
     const averageAccessInterval = this.operations.length > 1
@@ -690,7 +698,7 @@ export class StorageStatistics implements IStorageStatistics {
     if (sortedValues.length === 0) return 0;
 
     const index = Math.ceil((percentile / 100) * sortedValues.length) - 1;
-    return sortedValues[Math.max(0, Math.min(index, sortedValues.length - 1))];
+    return sortedValues[Math.max(0, Math.min(index, sortedValues.length - 1))] ?? 0;
   }
 
   private async checkPerformanceAlerts(metrics: StorageOperationMetrics): Promise<void> {
@@ -753,7 +761,6 @@ export class StorageStatistics implements IStorageStatistics {
   private stopPeriodicCollection(): void {
     if (this.collectionTimer) {
       clearInterval(this.collectionTimer);
-      this.collectionTimer = undefined;
     }
   }
 
@@ -774,7 +781,6 @@ export class StorageStatistics implements IStorageStatistics {
   private stopPeriodicCleanup(): void {
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
-      this.cleanupTimer = undefined;
     }
   }
 
@@ -782,18 +788,24 @@ export class StorageStatistics implements IStorageStatistics {
     const now = Date.now();
     const recentOperations = this.operations.filter(op => now - op.startTime < 300000); // Last 5 minutes
 
-    const dataPoint: StorageHistoricalMetrics = {
+    const dataPoint: any = {
       timestamp: now,
       filterCount: this.currentStats.filterCount || 0,
-      memoryUsageBytes: this.currentStats.storageMetrics?.memoryUsageBytes,
       operationCount: recentOperations.length,
       errorCount: recentOperations.filter(op => !op.success).length,
       averageLatency: recentOperations.length > 0
         ? recentOperations.reduce((sum, op) => sum + (op.duration || 0), 0) / recentOperations.length
         : 0,
-      storageSize: this.currentStats.storageMetrics?.storageSizeBytes,
       activeSessionCount: 1, // This would need to be enhanced for multi-session support
     };
+
+    if (this.currentStats.storageMetrics?.memoryUsageBytes !== undefined) {
+      dataPoint.memoryUsageBytes = this.currentStats.storageMetrics.memoryUsageBytes;
+    }
+
+    if (this.currentStats.storageMetrics?.storageSizeBytes !== undefined) {
+      dataPoint.storageSize = this.currentStats.storageMetrics.storageSizeBytes;
+    }
 
     this.historicalData.push(dataPoint);
 
@@ -810,7 +822,7 @@ export class StorageStatistics implements IStorageStatistics {
     const x = Array.from({ length: n }, (_, i) => i);
     const sumX = x.reduce((sum, val) => sum + val, 0);
     const sumY = values.reduce((sum, val) => sum + val, 0);
-    const sumXY = x.reduce((sum, xi, i) => sum + xi * values[i], 0);
+    const sumXY = x.reduce((sum, xi, i) => sum + xi * (values[i] ?? 0), 0);
     const sumXX = x.reduce((sum, xi) => sum + xi * xi, 0);
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
@@ -887,8 +899,10 @@ export class StorageStatistics implements IStorageStatistics {
     let sumYSquared = 0;
 
     for (let i = 0; i < x.length; i++) {
-      const diffX = x[i] - meanX;
-      const diffY = y[i] - meanY;
+      const xi = x[i] ?? 0;
+      const yi = y[i] ?? 0;
+      const diffX = xi - meanX;
+      const diffY = yi - meanY;
       numerator += diffX * diffY;
       sumXSquared += diffX * diffX;
       sumYSquared += diffY * diffY;
@@ -901,8 +915,8 @@ export class StorageStatistics implements IStorageStatistics {
   private calculateGrowthRate(values: number[], periodMs: number): number {
     if (values.length < 2) return 0;
 
-    const firstValue = values[0];
-    const lastValue = values[values.length - 1];
+    const firstValue = values[0] ?? 0;
+    const lastValue = values[values.length - 1] ?? 0;
 
     if (firstValue === 0) return 0;
 

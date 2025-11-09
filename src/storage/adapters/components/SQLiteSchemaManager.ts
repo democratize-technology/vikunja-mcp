@@ -71,6 +71,11 @@ export class SQLiteSchemaManager implements ISQLiteSchemaManager {
       // Apply initial schema if not already done
       if (currentVersion === 0) {
         const migration = this.migrations[0];
+        if (!migration) {
+          throw new StorageInitializationError(
+            'No initial migration available for schema initialization'
+          );
+        }
         this.executeMigration(db, migration);
         this.recordSchemaVersion(db, migration.version, migration.description);
         currentVersion = migration.version;
