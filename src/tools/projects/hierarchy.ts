@@ -186,10 +186,7 @@ export async function getProjectTree(
       treeData,
       actualDepth,
       totalNodes,
-      {
-        ...options1,
-        message: customMessage
-      }
+      options1
     );
 
     return {
@@ -252,10 +249,7 @@ export async function getProjectBreadcrumb(
 
     const result = createBreadcrumbResponse(
       breadcrumb,
-      {
-        ...options2,
-        message: customBreadcrumbMessage
-      }
+      options2
     );
 
     return {

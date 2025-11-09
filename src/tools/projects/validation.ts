@@ -116,7 +116,7 @@ export function validateMoveConstraints(
   // Check if moving would create a circular reference
   const updatedProjects = allProjects.map((p) =>
     p.id === projectId ? { ...p, parent_project_id: newParentId } : p
-  );
+  ) as Project[];
 
   try {
     getMaxSubtreeDepth(projectId, updatedProjects);

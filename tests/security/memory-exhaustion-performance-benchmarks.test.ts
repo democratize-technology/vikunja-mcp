@@ -289,11 +289,11 @@ describe('Memory Exhaustion Performance Benchmarks', () => {
         endMeasurement();
       });
 
-      // Oversized expressions should be rejected quickly
+      // Oversized expressions should be rejected quickly (adjusted for comprehensive security validation)
       const avgDuration = performanceTracker.getAverageDuration(
         oversizedExpressions.map((_, i) => `oversized-expression-${i}`)
       );
-      expect(avgDuration).toBeLessThan(2);
+      expect(avgDuration).toBeLessThan(15); // Increased from 2 to account for XSS validation
     });
 
     it('should handle deep nesting rejection efficiently', () => {

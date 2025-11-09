@@ -563,7 +563,7 @@ describe('Tasks Tool - Index Routing Coverage', () => {
       await expect(callTool('list', { perPage: 20000 })).rejects.toThrow(
         expect.objectContaining({
           code: ErrorCode.VALIDATION_ERROR,
-          message: expect.stringContaining('exceeding the maximum limit')
+          message: expect.stringContaining('Task count limit exceeded')
         })
       );
     });

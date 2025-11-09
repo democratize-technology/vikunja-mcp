@@ -22,6 +22,10 @@ describe('Projects Tool', () => {
 
   // Helper function to call a tool
   async function callTool(subcommand: string, args: Record<string, any> = {}) {
+    if (typeof toolHandler !== 'function') {
+      throw new Error('toolHandler is not a function in callTool');
+    }
+
     return toolHandler({
       subcommand,
       ...args,
@@ -119,15 +123,19 @@ describe('Projects Tool', () => {
     mockServer = {
       tool: jest.fn((name, schema, handler) => {
         toolHandler = handler;
-      }) as jest.MockedFunction<(name: string, schema: any, handler: any) => void>,
+      }),
     } as MockServer;
 
     // Mock getClientFromContext
     (getClientFromContext as jest.Mock).mockReturnValue(mockClient);
     (getClientFromContext as jest.Mock).mockResolvedValue(mockClient);
 
-    // Register the tool
-    registerProjectsTool(mockServer, mockAuthManager);
+    try {
+      // Register the tool
+      registerProjectsTool(mockServer, mockAuthManager);
+    } catch (error) {
+      throw error;
+    }
   });
 
   describe('Authentication', () => {
@@ -1117,7 +1125,7 @@ describe('Projects Tool', () => {
 
   describe('invalid subcommand', () => {
     it('should reject invalid subcommands', async () => {
-      await expect(callTool('invalid')).rejects.toThrow('Invalid subcommand: invalid');
+      await expect(callTool('invalid')).rejects.toThrow('Unknown subcommand: invalid');
     });
   });
 

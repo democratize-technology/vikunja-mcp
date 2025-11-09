@@ -7,6 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../../auth/AuthManager';
 import type { VikunjaClientFactory } from '../../client/VikunjaClientFactory';
+import { createAuthRequiredError } from '../../utils/error-handler';
 
 // Import all submodule operations
 import {
@@ -55,15 +56,13 @@ import {
  */
 export function registerProjectsTool(
   server: McpServer,
-  _authManager: AuthManager,
-  _clientFactory: VikunjaClientFactory
+  authManager: AuthManager,
+  clientFactory?: VikunjaClientFactory
 ): void {
   server.tool(
     'vikunja_projects',
-    'Manage projects with CRUD operations, hierarchy, and sharing',
     {
-      subcommand: z.enum([
-        'list', 'get', 'create', 'update', 'delete', 'archive', 'unarchive',
+      subcommand: z.enum(['list', 'get', 'create', 'update', 'delete', 'archive', 'unarchive',
         'get-children', 'get-tree', 'get-breadcrumb', 'move',
         'create-share', 'list-shares', 'get-share', 'delete-share', 'auth-share'
       ]),
@@ -93,6 +92,17 @@ export function registerProjectsTool(
       useAorp: z.boolean().optional(),
     },
     async (args, context) => {
+      // Check authentication with enhanced error message
+      if (!authManager.isAuthenticated()) {
+        throw createAuthRequiredError('access project management features');
+      }
+
+      // Set the client factory for this request if provided
+      if (clientFactory) {
+        const { setGlobalClientFactory } = await import('../../client');
+        await setGlobalClientFactory(clientFactory);
+      }
+
       const result = await (async () => {
         switch (args.subcommand) {
           // CRUD operations

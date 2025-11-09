@@ -214,7 +214,7 @@ describe('Projects Tool - Nested Project Features', () => {
       expect(response.success).toBe(true);
       expect(response.operation).toBe('get-project-tree');
       expect(response.message).toBe(
-        'Retrieved project tree with 4 projects starting from project ID 1',
+        'Retrieved project tree with 4 nodes at depth 2',
       );
       expect(response.data.tree.title).toBe('Root Project');
       expect(response.data.tree.children).toHaveLength(2);
@@ -277,7 +277,7 @@ describe('Projects Tool - Nested Project Features', () => {
       expect(response.success).toBe(true);
       expect(response.operation).toBe('get-project-breadcrumb');
       expect(response.message).toBe(
-        'Retrieved breadcrumb path with 3 projects from root to project ID 4',
+        'Retrieved breadcrumb path with 3 items',
       );
       expect(response.data.breadcrumb).toHaveLength(3);
       expect(response.data.breadcrumb[0].title).toBe('Root Project');
