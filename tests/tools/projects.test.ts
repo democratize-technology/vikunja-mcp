@@ -133,7 +133,13 @@ describe('Projects Tool', () => {
     try {
       // Register the tool
       registerProjectsTool(mockServer, mockAuthManager);
+
+      // Debug: Check if toolHandler was set
+      if (typeof toolHandler !== 'function') {
+        throw new Error('toolHandler was not set properly by registerProjectsTool');
+      }
     } catch (error) {
+      console.error('Error setting up projects tool test:', error);
       throw error;
     }
   });
@@ -170,12 +176,16 @@ describe('Projects Tool', () => {
 
       const result = await callTool('list');
 
-      expect(mockClient.projects.getProjects).toHaveBeenCalledWith({});
+      expect(mockClient.projects.getProjects).toHaveBeenCalledWith({
+        page: 1,
+        per_page: 50,
+      });
       expect(result.content[0].type).toBe('text');
       const parsed = JSON.parse(result.content[0].text);
+
       expect(parsed.success).toBe(true);
-      expect(parsed.data.projects).toEqual(mockProjects);
-      expect(parsed.metadata.count).toBe(2);
+      expect(parsed.data).toEqual(mockProjects);
+      expect(parsed.metadata.pagination.totalItems).toBe(2);
     });
 
     it('should support pagination parameters', async () => {

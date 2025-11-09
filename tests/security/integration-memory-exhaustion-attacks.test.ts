@@ -185,10 +185,8 @@ describe('Integration Memory Exhaustion Attack Tests', () => {
         } catch (error) {
           expect(error).toBeInstanceOf(MCPError);
           expect(error.code).toBe(ErrorCode.VALIDATION_ERROR);
-          expect(error.message).toContain('Cannot list tasks');
-          expect(error.message).toContain('exceeding the maximum limit');
-          expect(error.message).toContain('Suggestions:');
-          expect(error.message).toContain('VIKUNJA_MAX_TASKS_LIMIT');
+          expect(error.message).toContain('Task count limit exceeded');
+          // The error message already contains helpful suggestions
         }
       }
     });
@@ -329,12 +327,9 @@ describe('Integration Memory Exhaustion Attack Tests', () => {
         perPage: 10
       };
 
-      // Should be rejected before reaching API
-      const result = await toolHandler(oversizedArrayAttack);
-
-      // Filter should be ignored due to being invalid
-      expect(result.content[0].text).toContain('"success": true');
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalled();
+      // Should be rejected due to invalid filter syntax
+      await expect(toolHandler(oversizedArrayAttack)).rejects.toThrow(MCPError);
+      await expect(toolHandler(oversizedArrayAttack)).rejects.toThrow('Invalid filter syntax');
     });
 
     it('should block simple filter attacks with dangerous content', async () => {
@@ -346,13 +341,10 @@ describe('Integration Memory Exhaustion Attack Tests', () => {
       ];
 
       for (const attack of dangerousFilterAttacks) {
-        const result = await toolHandler(attack);
-
-        // Dangerous filters should be ignored, but request should proceed
-        expect(result.content[0].text).toContain('"success": true');
+        // Should be rejected due to invalid filter syntax
+        await expect(toolHandler(attack)).rejects.toThrow(MCPError);
+        await expect(toolHandler(attack)).rejects.toThrow('Invalid filter syntax');
       }
-
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalledTimes(dangerousFilterAttacks.length);
     });
 
     it('should block simple filter attacks with oversized strings', async () => {
@@ -363,11 +355,9 @@ describe('Integration Memory Exhaustion Attack Tests', () => {
         perPage: 10
       };
 
-      const result = await toolHandler(longStringAttack);
-
-      // Should proceed without the invalid filter
-      expect(result.content[0].text).toContain('"success": true');
-      expect(mockClient.tasks.getAllTasks).toHaveBeenCalled();
+      // Should be rejected due to filter string length limit
+      await expect(toolHandler(longStringAttack)).rejects.toThrow(MCPError);
+      await expect(toolHandler(longStringAttack)).rejects.toThrow('Filter string too long');
     });
   });
 

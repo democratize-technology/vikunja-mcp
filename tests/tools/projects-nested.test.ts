@@ -132,11 +132,11 @@ describe('Projects Tool - Nested Project Features', () => {
       getSession: jest.fn(),
     } as unknown as MockAuthManager;
 
-    // Setup server with handler capture - handler is the 4th argument, not 3rd
+    // Setup server with handler capture
     mockServer = {
-      tool: jest.fn((name, description, schema, handler) => {
+      tool: jest.fn((name, schema, handler) => {
         toolHandler = handler;
-      }) as jest.MockedFunction<(name: string, description: any, schema: any, handler: any) => void>,
+      }) as jest.MockedFunction<(name: string, schema: any, handler: any) => void>,
     } as MockServer;
 
     // Mock getClientFromContext BEFORE registering tool (same as working test)
@@ -144,6 +144,11 @@ describe('Projects Tool - Nested Project Features', () => {
 
     // Register the tool
     registerProjectsTool(mockServer, mockAuthManager);
+
+    // Debug: Check if toolHandler was set
+    if (typeof toolHandler !== 'function') {
+      throw new Error('toolHandler was not set properly by registerProjectsTool in projects-nested test');
+    }
 
     // Mirror the project methods to the top level for backward compatibility with new implementation
     mockClient.getProjects = mockClient.projects.getProjects;
