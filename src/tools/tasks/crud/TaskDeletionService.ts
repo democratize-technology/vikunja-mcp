@@ -7,6 +7,7 @@ import { MCPError, ErrorCode } from '../../../types/index';
 import { getClientFromContext } from '../../../client';
 import type { Task, VikunjaClient } from 'node-vikunja';
 import { validateId } from '../validation';
+import { transformApiError, handleFetchError, handleStatusCodeError } from '../../../utils/error-handler';
 import { createTaskResponse } from './TaskResponseFormatter';
 import type { AorpBuilderConfig } from '../../../aorp/types';
 
@@ -64,10 +65,25 @@ export async function deleteTask(args: DeleteTaskArgs): Promise<{ content: Array
       ],
     };
   } catch (error) {
-    throw new MCPError(
-      ErrorCode.API_ERROR,
-      `Failed to delete task: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    // Re-throw MCPError instances without modification
+    if (error instanceof MCPError) {
+      throw error;
+    }
+
+    // Handle fetch/connection errors with helpful guidance
+    if (error instanceof Error && (
+      error.message.includes('fetch failed') ||
+      error.message.includes('ECONNREFUSED') ||
+      error.message.includes('ENOTFOUND')
+    )) {
+      throw handleFetchError(error, 'delete task');
+    }
+
+    // Use standardized error transformation for all other errors
+    if (args.id) {
+      throw handleStatusCodeError(error, 'delete task', args.id, `Task with ID ${args.id} not found`);
+    }
+    throw transformApiError(error, 'Failed to delete task');
   }
 }
 

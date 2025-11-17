@@ -8,6 +8,7 @@ import type { Task, VikunjaClient } from 'node-vikunja';
 import { logger } from '../../../utils/logger';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
+import { transformApiError, handleFetchError } from '../../../utils/error-handler';
 import { BatchProcessorFactory } from './BatchProcessorFactory';
 import { BulkOperationValidator, type BulkUpdateArgs, type BulkDeleteArgs, type BulkCreateArgs } from './BulkOperationValidator';
 import { BulkOperationErrorHandler } from './BulkOperationErrorHandler';
@@ -38,13 +39,22 @@ export class BulkOperationProcessor {
         return await BulkOperationErrorHandler.handleBulkUpdateFallback(args, taskIds, bulkError as Error);
       }
     } catch (error) {
+      // Re-throw MCPError instances without modification
       if (error instanceof MCPError) {
         throw error;
       }
-      throw new MCPError(
-        ErrorCode.API_ERROR,
-        `Failed to bulk update tasks: ${error instanceof Error ? error.message : String(error)}`,
-      );
+
+      // Handle fetch/connection errors with helpful guidance
+      if (error instanceof Error && (
+        error.message.includes('fetch failed') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('ENOTFOUND')
+      )) {
+        throw handleFetchError(error, 'bulk update tasks');
+      }
+
+      // Use standardized error transformation for all other errors
+      throw transformApiError(error, 'Failed to bulk update tasks');
     }
   }
 
@@ -222,13 +232,22 @@ export class BulkOperationProcessor {
 
       return this.processDeleteResults(taskIds, deletionResult, tasksToDelete);
     } catch (error) {
+      // Re-throw MCPError instances without modification
       if (error instanceof MCPError) {
         throw error;
       }
-      throw new MCPError(
-        ErrorCode.API_ERROR,
-        `Failed to bulk delete tasks: ${error instanceof Error ? error.message : String(error)}`,
-      );
+
+      // Handle fetch/connection errors with helpful guidance
+      if (error instanceof Error && (
+        error.message.includes('fetch failed') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('ENOTFOUND')
+      )) {
+        throw handleFetchError(error, 'bulk delete tasks');
+      }
+
+      // Use standardized error transformation for all other errors
+      throw transformApiError(error, 'Failed to bulk delete tasks');
     }
   }
 
@@ -319,13 +338,22 @@ export class BulkOperationProcessor {
 
       return this.processCreateResults(creationResult);
     } catch (error) {
+      // Re-throw MCPError instances without modification
       if (error instanceof MCPError) {
         throw error;
       }
-      throw new MCPError(
-        ErrorCode.API_ERROR,
-        `Failed to bulk create tasks: ${error instanceof Error ? error.message : String(error)}`,
-      );
+
+      // Handle fetch/connection errors with helpful guidance
+      if (error instanceof Error && (
+        error.message.includes('fetch failed') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('ENOTFOUND')
+      )) {
+        throw handleFetchError(error, 'bulk create tasks');
+      }
+
+      // Use standardized error transformation for all other errors
+      throw transformApiError(error, 'Failed to bulk create tasks');
     }
   }
 

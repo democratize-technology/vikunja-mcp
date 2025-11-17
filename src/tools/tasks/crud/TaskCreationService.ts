@@ -9,6 +9,7 @@ import type { Task, VikunjaClient } from 'node-vikunja';
 import { logger } from '../../../utils/logger';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
+import { transformApiError, handleFetchError } from '../../../utils/error-handler';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from '../validation';
 import { createTaskResponse } from './TaskResponseFormatter';
@@ -151,13 +152,22 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
       ],
     };
   } catch (error) {
+    // Re-throw MCPError instances without modification
     if (error instanceof MCPError) {
       throw error;
     }
-    throw new MCPError(
-      ErrorCode.API_ERROR,
-      `Failed to create task: ${error instanceof Error ? error.message : String(error)}`,
-    );
+
+    // Handle fetch/connection errors with helpful guidance
+    if (error instanceof Error && (
+      error.message.includes('fetch failed') ||
+      error.message.includes('ECONNREFUSED') ||
+      error.message.includes('ENOTFOUND')
+    )) {
+      throw handleFetchError(error, 'create task');
+    }
+
+    // Use standardized error transformation for all other errors
+    throw transformApiError(error, 'Failed to create task');
   }
 }
 
