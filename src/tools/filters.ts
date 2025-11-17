@@ -7,6 +7,8 @@ import { FilterBuilder } from '../utils/filters';
 import type { FilterField, FilterOperator, SavedFilter } from '../types/filters';
 import { logger } from '../utils/logger';
 import { createStandardResponse, createErrorResponse } from '../types/index';
+import { ErrorCode, MCPError } from '../types/errors';
+import { handleStatusCodeError, createValidationError, wrapToolError } from '../utils/error-handler';
 
 /**
  * Schema for listing filters
@@ -174,7 +176,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
 
             const filter = await storage.get(params.id);
             if (!filter) {
-              throw new Error(`Filter with id ${params.id} not found`);
+              throw new MCPError(ErrorCode.NOT_FOUND, `Filter with id ${params.id} not found`);
             }
 
             const response = createStandardResponse(
@@ -244,12 +246,12 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
             }
 
             if (!filterString) {
-              throw new Error('No filter conditions provided');
+              throw createValidationError('No filter conditions provided');
             }
 
             const existing = await storage.findByName(name);
             if (existing) {
-              throw new Error(`Filter with name "${name}" already exists`);
+              throw createValidationError(`Filter with name "${name}" already exists`);
             }
 
             const filter = await storage.create({
@@ -297,7 +299,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
             if (updates.name) {
               const existing = await storage.findByName(updates.name);
               if (existing && existing.id !== id) {
-                throw new Error(`Filter with name "${updates.name}" already exists`);
+                throw createValidationError(`Filter with name "${updates.name}" already exists`);
               }
             }
 
@@ -348,7 +350,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
 
             const filter = await storage.get(params.id);
             if (!filter) {
-              throw new Error(`Filter with id ${params.id} not found`);
+              throw new MCPError(ErrorCode.NOT_FOUND, `Filter with id ${params.id} not found`);
             }
 
             await storage.delete(params.id);
@@ -390,7 +392,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
             const validation = builder.validate();
 
             if (!validation.valid && validation.errors.length > 0) {
-              throw new Error(`Invalid filter configuration: ${validation.errors.join(', ')}`);
+              throw createValidationError(`Invalid filter configuration: ${validation.errors.join(', ')}`);
             }
 
             const response = createStandardResponse(
@@ -423,7 +425,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
             const isValid = Boolean(params.filter && params.filter.trim().length > 0);
 
             if (!isValid) {
-              throw new Error('Invalid filter: Filter string cannot be empty');
+              throw createValidationError('Invalid filter: Filter string cannot be empty');
             }
 
             const response = createStandardResponse('validate-filter', 'Filter is valid', {
@@ -443,7 +445,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
           }
 
           default:
-            throw new Error(`Unknown action: ${action as string}`);
+            throw new MCPError(ErrorCode.NOT_IMPLEMENTED, `Unknown action: ${action as string}`);
         }
       } catch (error) {
         logger.error(`Error in vikunja_filters tool:`, error);

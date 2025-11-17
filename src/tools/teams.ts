@@ -9,7 +9,7 @@ import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getClientFromContext } from '../client';
-import { wrapToolError } from '../utils/error-handler';
+import { wrapToolError, handleStatusCodeError } from '../utils/error-handler';
 import type { Team } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 
@@ -176,7 +176,12 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
 
               if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`API error: ${response.status} - ${errorText}`);
+                throw handleStatusCodeError(
+                  { statusCode: response.status, message: errorText },
+                  'leave team',
+                  teamId,
+                  `Failed to leave team ${teamId}: ${errorText}`
+                );
               }
 
               const result = (await response.json()) as { message: string };

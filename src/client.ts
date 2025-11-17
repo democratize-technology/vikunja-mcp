@@ -11,6 +11,7 @@ import type {
 import { isVikunjaClientConstructor } from './types/node-vikunja-extended';
 import { VikunjaClientFactory } from './client/VikunjaClientFactory';
 import { AsyncMutex } from './utils/AsyncMutex';
+import { createAuthRequiredError, createInternalError } from './utils/error-handler';
 
 export { VikunjaClientFactory } from './client/VikunjaClientFactory';
 
@@ -75,7 +76,7 @@ class ClientContext {
       if (this.clientFactory) {
         return this.clientFactory.getClient();
       }
-      throw new Error('No client factory available. Please authenticate first.');
+      throw createAuthRequiredError('get Vikunja client');
     } finally {
       release();
     }
@@ -127,7 +128,7 @@ export async function createVikunjaClientFactory(authManager: AuthManager): Prom
   // Dynamically import VikunjaClient
   const module: VikunjaModule = await import('node-vikunja');
   if (!isVikunjaClientConstructor(module.VikunjaClient)) {
-    throw new Error('Invalid VikunjaClient constructor imported');
+    throw createInternalError('Invalid VikunjaClient constructor imported from node-vikunja module');
   }
   
   return new VikunjaClientFactory(authManager, module.VikunjaClient);
