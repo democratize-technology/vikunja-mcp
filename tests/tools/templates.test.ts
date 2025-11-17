@@ -111,15 +111,19 @@ describe('Templates Tool', () => {
 
     // Setup mock server
     mockServer = {
-      tool: jest.fn((name: string, schema: any, handler: any) => {
-        if (name === 'vikunja_templates') {
-          toolHandler = handler;
-        }
-      }),
+      tool: jest.fn() as jest.MockedFunction<(name: string, schema: any, handler: any) => void>,
     } as any;
 
     // Register the tool
     registerTemplatesTool(mockServer, mockAuthManager);
+
+    // Get the tool handler
+    const calls = (mockServer.tool as jest.Mock).mock.calls;
+    if (calls.length > 0) {
+      toolHandler = calls[0][3]; // Handler is the 4th argument (index 3)
+    } else {
+      throw new Error('Tool handler not found');
+    }
   });
 
   describe('create subcommand', () => {

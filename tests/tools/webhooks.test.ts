@@ -80,9 +80,7 @@ describe('Webhooks Tool', () => {
 
     // Create mock server
     mockServer = {
-      tool: jest.fn((name: string, schema: any, handler: any) => {
-        mockHandler = handler;
-      }),
+      tool: jest.fn() as jest.MockedFunction<(name: string, schema: any, handler: any) => void>,
     } as MockServer;
 
     // Mock the getClientFromContext function
@@ -102,6 +100,14 @@ describe('Webhooks Tool', () => {
       mockServer as unknown as McpServer,
       mockAuthManager as unknown as AuthManager,
     );
+
+    // Get the tool handler
+    const calls = (mockServer.tool as jest.Mock).mock.calls;
+    if (calls.length > 0) {
+      mockHandler = calls[0][3]; // Handler is the 4th argument (index 3)
+    } else {
+      throw new Error('Tool handler not found');
+    }
   });
 
   describe('Authentication', () => {
@@ -943,6 +949,7 @@ describe('Webhooks Tool', () => {
     it('should register with correct schema', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_webhooks',
+        expect.any(String), // description
         expect.objectContaining({
           subcommand: expect.any(Object),
           projectId: expect.any(Object),

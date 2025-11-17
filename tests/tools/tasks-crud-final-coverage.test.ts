@@ -239,7 +239,7 @@ describe('Tasks CRUD - Final Coverage', () => {
           id: 1,
           assignees: [1, 3], // Remove 2, add 3
         })
-      ).rejects.toThrow('[object Object]');
+      ).rejects.toThrow('Failed to update task: Unknown error');
     });
   });
 

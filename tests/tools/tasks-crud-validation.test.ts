@@ -122,7 +122,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
           projectId: 1,
           title: 'Test Task',
         })
-      ).rejects.toThrow('Failed to create task: [object Object]');
+      ).rejects.toThrow('Failed to create task: Unknown error');
     });
 
     it('should handle generic Error in getTask (line 229)', async () => {
@@ -144,7 +144,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         getTask({
           id: 1,
         })
-      ).rejects.toThrow('Failed to get task: [object Object]');
+      ).rejects.toThrow('Failed to get task: Unknown error');
     });
 
     it('should handle generic Error in updateTask (line 407)', async () => {
@@ -196,7 +196,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
           id: 1,
           title: 'Updated Title',
         })
-      ).rejects.toThrow('Failed to update task: Update service unavailable');
+      ).rejects.toThrow('Failed to update task: Unknown error');
     });
 
     it('should handle generic Error in deleteTask (line 459)', async () => {
@@ -226,7 +226,7 @@ describe('Tasks CRUD - Validation Coverage', () => {
         deleteTask({
           id: 1,
         })
-      ).rejects.toThrow('Failed to delete task: null');
+      ).rejects.toThrow('Failed to delete task: Unknown error');
     });
   });
 

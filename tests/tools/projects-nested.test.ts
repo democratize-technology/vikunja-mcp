@@ -284,7 +284,7 @@ describe('Projects Tool - Nested Project Features', () => {
     });
 
     it('should require project ID', async () => {
-      await expect(callTool('get-tree')).rejects.toThrow('Project ID is required');
+      await expect(callTool('get-tree')).rejects.toThrow('id must be a positive integer');
     });
   });
 
@@ -374,7 +374,7 @@ describe('Projects Tool - Nested Project Features', () => {
       const response = JSON.parse(result.content[0].text);
 
       expect(response.success).toBe(true);
-      expect(response.message).toBe('Project "Child Project 1" moved to root level');
+      expect(response.message).toBe('Moved project "Child Project 1" to root level');
       expect(response.metadata.previousParentId).toBe(1);
       expect(response.metadata.newParentId).toBeUndefined();
     });
@@ -383,7 +383,7 @@ describe('Projects Tool - Nested Project Features', () => {
       mockClient.projects.getProjects.mockResolvedValue(mockProjects);
 
       await expect(callTool('move', { id: 1, parentProjectId: 1 })).rejects.toThrow(
-        'A project cannot be its own parent',
+        'Cannot move a project to be its own parent',
       );
     });
 
@@ -392,7 +392,7 @@ describe('Projects Tool - Nested Project Features', () => {
 
       // Try to move parent to its own child
       await expect(callTool('move', { id: 1, parentProjectId: 2 })).rejects.toThrow(
-        'Cannot move a project to one of its descendants (would create a circular reference)',
+        'Move would create a circular reference in project hierarchy',
       );
     });
 
@@ -615,12 +615,12 @@ describe('Projects Tool - Nested Project Features', () => {
 
       // Should prevent moving parent (1) under its grandchild (3)
       await expect(callTool('move', { id: 1, parentProjectId: 3 })).rejects.toThrow(
-        'Cannot move a project to one of its descendants',
+        'Move would create a circular reference in project hierarchy',
       );
 
       // Should prevent moving parent (1) under its child (2)
       await expect(callTool('move', { id: 1, parentProjectId: 2 })).rejects.toThrow(
-        'Cannot move a project to one of its descendants',
+        'Move would create a circular reference in project hierarchy',
       );
     });
 

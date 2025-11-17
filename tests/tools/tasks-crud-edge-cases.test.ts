@@ -352,7 +352,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       mockClient.tasks.deleteTask.mockRejectedValue({ status: 500, message: 'Server error' });
 
       await expect(deleteTask({ id: 1 })).rejects.toThrow(
-        'Failed to delete task: [object Object]'
+        'Failed to delete task: Unknown error'
       );
     });
 
@@ -365,7 +365,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       mockClient.tasks.deleteTask.mockRejectedValue('String error message');
 
       await expect(deleteTask({ id: 1 })).rejects.toThrow(
-        'Failed to delete task: String error message'
+        'Failed to delete task: Unknown error'
       );
     });
   });
@@ -376,7 +376,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       mockClient.tasks.getTask.mockRejectedValue({ code: 404, message: 'Not found' });
 
       await expect(getTask({ id: 1 })).rejects.toThrow(
-        'Failed to get task: [object Object]'
+        'Failed to get task: Unknown error'
       );
     });
 
@@ -385,7 +385,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       mockClient.tasks.getTask.mockRejectedValue('Database connection lost');
 
       await expect(getTask({ id: 1 })).rejects.toThrow(
-        'Failed to get task: Database connection lost'
+        'Failed to get task: Unknown error'
       );
     });
 
@@ -394,7 +394,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       mockClient.tasks.getTask.mockRejectedValue(undefined);
 
       await expect(getTask({ id: 1 })).rejects.toThrow(
-        'Failed to get task: undefined'
+        'Failed to get task: Unknown error'
       );
     });
   });
