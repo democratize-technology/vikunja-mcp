@@ -1,93 +1,39 @@
 /**
- * Storage module entry point
- * 
- * This module provides a unified interface for both legacy in-memory storage
- * and new persistent storage implementations, allowing gradual migration
- * and backward compatibility.
+ * Simplified storage module - eliminates over-engineering
+ *
+ * Replaces 33 files and 9,803 lines with essential functionality:
+ * - Session-isolated filter storage
+ * - Thread-safe operations with mutex
+ * - Same external API as before
  */
 
 import { logger } from '../utils/logger';
-import { loadStorageConfig } from './config';
+import { SimpleFilterStorage, storageManager } from './SimpleFilterStorage';
+import type { FilterStorage, SavedFilter } from '../types/filters';
 
-// Legacy storage exports for backward compatibility
-export { InMemoryFilterStorage, storageManager } from './FilterStorage';
+// Export the main storage implementation
+export { SimpleFilterStorage, storageManager };
 
-// New persistent storage exports
-export { PersistentFilterStorage, persistentStorageManager } from './PersistentFilterStorage';
-export type { RefactoredPersistentFilterStorage } from './PersistentFilterStorage';
+// Export types for backward compatibility
+export type { FilterStorage, SavedFilter };
 
-// Storage interfaces and configuration
-export * from './interfaces';
-export * from './config';
-export * from './migrations';
-export * from './adapters/factory';
+// Export error classes for backward compatibility
+export class StorageDataError extends Error {
+  public readonly code: string;
 
-// Storage adapters
-export { SQLiteStorageAdapter } from './adapters/SQLiteStorageAdapter';
-export { InMemoryStorageAdapter } from './adapters/InMemoryStorageAdapter';
-
-// New modular services
-export { StorageService } from './services/StorageService';
-export { SessionManager as LegacySessionManager } from './services/SessionManager';
-export { SessionManager } from './managers/SessionManager';
-export { HealthMonitor } from './services/HealthMonitor';
-export { CleanupService } from './services/CleanupService';
-
-// New modular architecture components
-export { StorageAdapterOrchestrator } from './orchestrators';
-export { StorageHealthMonitor } from './monitors';
-export { StorageStatistics } from './statistics';
-
-// Export all types for the new modular components
-export type {
-  IStorageAdapterOrchestrator,
-  AdapterState,
-  AdapterStatus,
-  AdapterInitializationOptions,
-  OrchestrationConfig,
-} from './orchestrators';
-
-export type {
-  IStorageHealthMonitor,
-  HealthMonitorConfig,
-  HealthCheckResult,
-  HealthStatus,
-  HealthTrend,
-  HealthMonitorStats,
-  HealthAlert,
-  HealthAlertHandler,
-  HealthMetrics,
-  HealthCheckStrategy,
-  IHealthCheckStrategy,
-  DEFAULT_HEALTH_MONITOR_CONFIG,
-} from './monitors';
-
-export type {
-  IStorageStatistics,
-  StorageOperationMetrics,
-  StoragePerformanceMetrics,
-  StorageHistoricalMetrics,
-  StorageStatisticsSnapshot,
-  StorageStatisticsConfig,
-  StorageStatisticsEvents,
-  StoragePerformanceAlert,
-  StorageAggregatedStatistics,
-  StorageTrendAnalysis,
-} from './statistics';
-
-// Note: Filtering modules are available but not exported by default to avoid circular dependencies
-// Use direct imports if needed: import { FilterValidator } from './filtering/FilterValidator';
-
-import type { FilterStorage } from '../types/filters';
-import { persistentStorageManager } from './PersistentFilterStorage';
-import { storageManager } from './FilterStorage';
+  constructor(message: string, code: string = 'STORAGE_DATA_ERROR', cause?: Error) {
+    super(message);
+    this.name = 'StorageDataError';
+    this.code = code;
+    if (cause) {
+      this.cause = cause;
+    }
+  }
+}
 
 /**
- * Factory function to create appropriate storage instance based on configuration
- * 
- * This function provides automatic selection between legacy in-memory storage
- * and new persistent storage based on configuration, with graceful fallback
- * to in-memory storage if persistent storage fails.
+ * Factory function to create filter storage instance
+ * (Maintains API compatibility with previous code)
  */
 export async function createFilterStorage(
   sessionId: string,
@@ -95,51 +41,21 @@ export async function createFilterStorage(
   apiUrl?: string,
   forcePersistent = false,
 ): Promise<FilterStorage> {
-  try {
-    const config = loadStorageConfig();
-    
-    // Use persistent storage if configured or forced
-    if (config.type !== 'memory' || forcePersistent) {
-      logger.debug('Creating persistent filter storage', {
-        sessionId,
-        storageType: config.type,
-        forcePersistent,
-      });
-      
-      return await persistentStorageManager.getStorage(sessionId, userId, apiUrl);
-    }
-    
-    // Fallback to legacy in-memory storage
-    logger.debug('Creating in-memory filter storage', {
-      sessionId,
-      storageType: 'memory',
-    });
-    
-    return await storageManager.getStorage(sessionId, userId, apiUrl);
-    
-  } catch (error) {
-    logger.warn('Failed to create configured storage, falling back to in-memory storage', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      sessionId,
-    });
-    
-    // Always fallback to in-memory storage if persistent storage fails
-    return await storageManager.getStorage(sessionId, userId, apiUrl);
-  }
+  // Ignore forcePersistent - always use simple in-memory storage
+  logger.debug('Creating simple filter storage', {
+    sessionId,
+    userId,
+    apiUrl,
+  });
+
+  return await storageManager.getStorage(sessionId, userId, apiUrl);
 }
 
 /**
  * Get storage statistics for all active sessions
  */
 export async function getAllStorageStats(): Promise<{
-  persistentSessions: Array<{
-    sessionId: string;
-    filterCount: number;
-    createdAt: Date;
-    lastAccessAt: Date;
-    storageType: string;
-    additionalInfo?: Record<string, unknown>;
-  }>;
+  persistentSessions: Array<Record<string, never>>;
   memorySessions: Array<{
     sessionId: string;
     filterCount: number;
@@ -151,17 +67,12 @@ export async function getAllStorageStats(): Promise<{
   totalFilters: number;
 }> {
   try {
-    const [persistentStats, memoryStats] = await Promise.all([
-      persistentStorageManager.getAllStats(),
-      storageManager.getAllStats(),
-    ]);
-
-    const totalSessions = persistentStats.length + memoryStats.length;
-    const totalFilters = persistentStats.reduce((sum, s) => sum + s.filterCount, 0) +
-                        memoryStats.reduce((sum, s) => sum + s.filterCount, 0);
+    const memoryStats = await storageManager.getAllStats();
+    const totalSessions = memoryStats.length;
+    const totalFilters = memoryStats.reduce((sum, s) => sum + s.filterCount, 0);
 
     return {
-      persistentSessions: persistentStats,
+      persistentSessions: [], // No persistent storage in simplified version
       memorySessions: memoryStats,
       totalSessions,
       totalFilters,
@@ -170,7 +81,7 @@ export async function getAllStorageStats(): Promise<{
     logger.error('Failed to get storage statistics', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    
+
     return {
       persistentSessions: [],
       memorySessions: [],
@@ -181,18 +92,13 @@ export async function getAllStorageStats(): Promise<{
 }
 
 /**
- * Perform health check on all storage systems
+ * Perform health check on storage system
  */
 export async function healthCheckAllStorage(): Promise<{
   overall: 'healthy' | 'degraded' | 'unhealthy';
   persistent: {
     healthy: boolean;
-    sessions: Array<{
-      sessionId: string;
-      healthy: boolean;
-      error?: string;
-      details?: Record<string, unknown>;
-    }>;
+    sessions: Array<Record<string, never>>;
   };
   memory: {
     healthy: boolean;
@@ -201,36 +107,21 @@ export async function healthCheckAllStorage(): Promise<{
   details?: Record<string, unknown>;
 }> {
   try {
-    const [persistentHealth, memoryStats] = await Promise.all([
-      persistentStorageManager.healthCheckAll(),
-      storageManager.getAllStats(),
-    ]);
-
-    const persistentHealthy = persistentHealth.every(h => h.healthy);
-    const memoryHealthy = true; // In-memory storage is always healthy
-
-    let overall: 'healthy' | 'degraded' | 'unhealthy';
-    if (persistentHealthy && memoryHealthy) {
-      overall = 'healthy';
-    } else if (memoryHealthy) {
-      overall = 'degraded'; // Persistent storage has issues but memory works
-    } else {
-      overall = 'unhealthy';
-    }
+    const memoryStats = await storageManager.getAllStats();
 
     return {
-      overall,
+      overall: 'healthy',
       persistent: {
-        healthy: persistentHealthy,
-        sessions: persistentHealth,
+        healthy: true, // Not applicable in simplified version
+        sessions: [],
       },
       memory: {
-        healthy: memoryHealthy,
+        healthy: true,
         sessionCount: memoryStats.length,
       },
       details: {
         timestamp: new Date().toISOString(),
-        configuredStorageType: loadStorageConfig().type,
+        storageType: 'memory',
       },
     };
   } catch (error) {
@@ -241,11 +132,11 @@ export async function healthCheckAllStorage(): Promise<{
     return {
       overall: 'unhealthy',
       persistent: {
-        healthy: false,
+        healthy: true,
         sessions: [],
       },
       memory: {
-        healthy: true,
+        healthy: false,
         sessionCount: 0,
       },
       details: {
@@ -257,7 +148,7 @@ export async function healthCheckAllStorage(): Promise<{
 }
 
 /**
- * Migration utility to move data from in-memory to persistent storage
+ * Migration utility (no-op in simplified version)
  */
 export async function migrateMemoryToPersistent(): Promise<{
   success: boolean;
@@ -265,106 +156,14 @@ export async function migrateMemoryToPersistent(): Promise<{
   migratedFilters: number;
   errors: string[];
 }> {
-  const errors: string[] = [];
-  let migratedSessions = 0;
-  let migratedFilters = 0;
-
-  try {
-    const memoryStats = await storageManager.getAllStats();
-    
-    if (memoryStats.length === 0) {
-      logger.info('No in-memory sessions to migrate');
-      return {
-        success: true,
-        migratedSessions: 0,
-        migratedFilters: 0,
-        errors: [],
-      };
-    }
-
-    logger.info(`Starting migration of ${memoryStats.length} in-memory sessions to persistent storage`);
-
-    for (const sessionStat of memoryStats) {
-      try {
-        // Get the in-memory storage instance
-        const memoryStorage = await storageManager.getStorage(sessionStat.sessionId);
-        const filters = await memoryStorage.list();
-
-        if (filters.length === 0) {
-          migratedSessions++;
-          continue;
-        }
-
-        // Create persistent storage instance
-        const persistentStorage = await persistentStorageManager.getStorage(sessionStat.sessionId);
-
-        // Check if persistent storage actually used persistent backend
-        const stats = await persistentStorage.getStats();
-        const usedPersistentStorage = stats.storageType === 'sqlite';
-
-        if (!usedPersistentStorage) {
-          errors.push(`Session ${sessionStat.sessionId}: Persistent storage not available, data may not be migrated to persistent storage`);
-          logger.warn(`Migration warning: Persistent storage not available for session ${sessionStat.sessionId}`);
-        }
-
-        // Migrate each filter
-        for (const filter of filters) {
-          try {
-            const filterData: Omit<typeof filter, 'id' | 'created' | 'updated'> = {
-              name: filter.name,
-              filter: filter.filter,
-              isGlobal: filter.isGlobal,
-              ...(filter.description !== undefined && { description: filter.description }),
-              ...(filter.expression !== undefined && { expression: filter.expression }),
-              ...(filter.projectId !== undefined && { projectId: filter.projectId }),
-            };
-
-            await persistentStorage.create(filterData);
-            migratedFilters++;
-          } catch (error) {
-            const errorMsg = `Failed to migrate filter ${filter.id} from session ${sessionStat.sessionId}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-            errors.push(errorMsg);
-            logger.warn(errorMsg);
-          }
-        }
-
-        migratedSessions++;
-        logger.debug(`Migrated session ${sessionStat.sessionId}`, {
-          filterCount: filters.length,
-        });
-
-      } catch (error) {
-        const errorMsg = `Failed to migrate session ${sessionStat.sessionId}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        errors.push(errorMsg);
-        logger.error(errorMsg);
-      }
-    }
-
-    const success = errors.length === 0;
-    
-    logger.info('Migration completed', {
-      success,
-      migratedSessions,
-      migratedFilters,
-      errorCount: errors.length,
-    });
-
-    return {
-      success,
-      migratedSessions,
-      migratedFilters,
-      errors,
-    };
-
-  } catch (error) {
-    const errorMsg = `Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
-    logger.error(errorMsg);
-    
-    return {
-      success: false,
-      migratedSessions,
-      migratedFilters,
-      errors: [errorMsg, ...errors],
-    };
-  }
+  logger.info('Migration not needed - using simplified storage');
+  return {
+    success: true,
+    migratedSessions: 0,
+    migratedFilters: 0,
+    errors: [],
+  };
 }
+
+// Legacy exports for backward compatibility
+export const InMemoryFilterStorage = SimpleFilterStorage;

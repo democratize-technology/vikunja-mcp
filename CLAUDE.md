@@ -51,27 +51,48 @@ server.tool('vikunja_tasks', {
 })
 ```
 
-### Critical Architecture Decisions
+### Critical Architecture Decisions (Post-Refactoring v0.2.0)
 
-1. **Hybrid Filtering System**
+1. **Simplified Storage Architecture (90% Code Reduction)**
+   - Eliminated over-engineered 33-file storage system (9,803 lines)
+   - Replaced with `SimpleFilterStorage.ts` (393 lines) for essential functionality
+   - Thread-safe operations with AsyncMutex
+   - Session-isolated storage with automatic cleanup
+   - Located in `src/storage/SimpleFilterStorage.ts`
+
+2. **Zod-Based Filter System (850+ Lines Removed)**
+   - Replaced custom tokenizer/parser/validator with secure Zod schemas
+   - Enhanced security with DoS protection and input validation
+   - Production-ready parsing with comprehensive error handling
+   - Located in `src/utils/filters-zod.ts`
+   - Backward compatible filter syntax with improved reliability
+
+3. **Production-Ready Retry System (580+ Lines Replaced)**
+   - Replaced custom retry logic with battle-tested opossum library
+   - Circuit breaker with state sharing and automatic recovery
+   - Configurable timeouts, error thresholds, and reset behavior
+   - Enhanced error handling for network failures
+   - Located in `src/utils/retry.ts` with opossum integration
+
+4. **Hybrid Filtering System**
    - Intelligent server-side filtering with client-side fallback
    - Automatic detection of server filtering capabilities
    - Enhanced memory protection with V8-specific memory estimation
    - Located in `src/tools/tasks/index.ts` and `src/utils/filters.ts`
 
-2. **Enhanced Memory Protection System**
+5. **Enhanced Memory Protection System**
    - V8-specific memory estimation algorithms with 93%+ test coverage
    - Risk-based analysis (Low/Medium/High) with conservative 2.5x safety margins
    - Comprehensive task object modeling including nested arrays and dynamic properties
    - Backward compatible with legacy systems while providing improved accuracy
    - Located in `src/utils/memory.ts` with integration in `src/tools/tasks/filtering/FilterValidator.ts`
 
-3. **Conditional Tool Registration**
+6. **Conditional Tool Registration**
    - Tools requiring JWT auth only registered when authenticated with JWT
    - API token authentication excludes `users` and `export` tools
    - Authentication type auto-detected by token format
 
-4. **Session Management**
+7. **Session Management**
    - In-memory session persistence with client caching
    - Automatic client recreation on credential changes
    - No persistent storage - sessions reset on server restart
@@ -123,6 +144,8 @@ tests/
 - **node-vikunja**: Vikunja API client (dynamically imported for testability)
 - **zod**: Runtime validation for MCP tool arguments and responses
 - **jest + ts-jest**: Testing with TypeScript support and coverage
+- **opossum**: Battle-tested circuit breaker for production resilience
+- **express-rate-limit**: Configurable DoS protection and rate limiting
 
 ### Authentication Strategy
 - **API Token** (`tk_*`): Standard auth, excludes user-specific endpoints
@@ -131,15 +154,16 @@ tests/
 - **Security Layer**: Credential masking in logs, secure session management with `src/auth/AuthManager.ts`
 
 ### Security Architecture
+- **Zod Validation**: `src/utils/filters-zod.ts` - Enterprise-grade input validation with DoS protection
 - **Rate Limiting**: `src/middleware/rate-limiting.ts` - Configurable DoS protection
-- **Input Validation**: `src/utils/security.ts` - Sanitization and allowlist validation  
+- **Input Validation**: `src/utils/security.ts` - Sanitization and allowlist validation
 - **Memory Protection**: `src/utils/memory.ts` - Enhanced V8-specific memory estimation with risk analysis and 93%+ test coverage
-- **Thread Safety**: `src/storage/FilterStorage.ts` - Concurrent access protection with AsyncMutex
+- **Thread Safety**: `src/storage/SimpleFilterStorage.ts` - Concurrent access protection with AsyncMutex
 
 ### Error Handling Architecture
 - **Centralized Error Utilities**: `src/utils/error-handler.ts` provides standardized error processing
 - **MCPError Types**: Structured errors with codes and messages
-- **Retry Logic**: Exponential backoff for auth and network failures with `src/utils/retry.ts`
+- **Circuit Breaker**: Production-ready retry logic with opossum integration in `src/utils/retry.ts`
 - **Security-Aware Errors**: Credential masking and safe error reporting with `src/utils/security.ts`
 - **Batch Operations**: Transaction-like error handling with partial success reporting
 
@@ -193,6 +217,8 @@ try {
    - Hybrid filtering optimizes performance with server-side attempts first
    - Memory protection prevents unbounded resource consumption
    - Rate limiting with configurable limits per tool category
+   - Circuit breaker prevents cascading failures and improves resilience
+   - Simplified storage reduces overhead and improves maintainability
    - Bulk operations make individual API calls (no batch endpoints)
    - In-memory storage for filters and sessions with thread-safe access
 

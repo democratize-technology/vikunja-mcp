@@ -99,10 +99,9 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
     });
     mockAuthManager.getAuthType.mockReturnValue('api-token');
 
+    // Setup mock server
     mockServer = {
-      tool: jest.fn((name: string, schema: any, handler: any) => {
-        toolHandler = handler;
-      }),
+      tool: jest.fn() as jest.MockedFunction<(name: string, description: string, schema: any, handler: any) => void>,
     } as MockServer;
 
     // Set up the mock client
@@ -114,7 +113,21 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
     );
 
     // Register the tool
-    registerTasksTool(mockServer as any, mockAuthManager);
+    registerTasksTool(mockServer, mockAuthManager);
+
+    // Get the tool handler
+    expect(mockServer.tool).toHaveBeenCalledWith(
+      'vikunja_tasks',
+      'Manage tasks with comprehensive operations (create, update, delete, list, assign, attach files, comment, bulk operations)',
+      expect.any(Object),
+      expect.any(Function),
+    );
+    const calls = mockServer.tool.mock.calls;
+    if (calls.length > 0 && calls[0] && calls[0].length > 3) {
+      toolHandler = calls[0][3];
+    } else {
+      throw new Error('Tool handler not found');
+    }
   });
 
   describe('Filter string with special characters', () => {

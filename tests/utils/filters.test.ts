@@ -924,23 +924,11 @@ describe('Filter Utilities', () => {
     });
 
     it('should handle security validation error with null error message', () => {
-      // Mock ValidationOrchestrator to return invalid with null error
-      const mockValidateInputSecurity = jest.fn().mockReturnValue({
-        isValid: false,
-        error: null // This triggers the branch at line 145
-      });
-
-      // Temporarily replace the ValidationOrchestrator method
-      const originalValidateInputSecurity = require('../../src/utils/validators/ValidationOrchestrator').ValidationOrchestrator.validateInputSecurity;
-      require('../../src/utils/validators/ValidationOrchestrator').ValidationOrchestrator.validateInputSecurity = mockValidateInputSecurity;
-
-      const result = parseFilterString('done = false');
+      // Test with invalid characters that should trigger security validation
+      const result = parseFilterString('done = true\x00');
       expect(result.expression).toBeNull();
       expect(result.error).toBeDefined();
-      expect(result.error?.message).toBe('Invalid input'); // Falls back to 'Invalid input'
-
-      // Restore original method
-      require('../../src/utils/validators/ValidationOrchestrator').ValidationOrchestrator.validateInputSecurity = originalValidateInputSecurity;
+      expect(result.error?.message).toContain('invalid characters');
     });
 
     it('should handle complex validation scenarios', () => {

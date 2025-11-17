@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerFiltersTool } from '../../src/tools/filters';
-import { storageManager } from '../../src/storage/FilterStorage';
+import { storageManager } from '../../src/storage';
 import type { SavedFilter } from '../../src/types/filters';
 import type { MockServer } from '../types/mocks';
 import { AuthManager } from '../../src/auth/AuthManager';

@@ -14,7 +14,6 @@ import {
   healthCheckAllStorage,
   migrateMemoryToPersistent,
   storageManager,
-  persistentStorageManager,
 } from '../../src/storage';
 import type { FilterStorage } from '../../src/types/filters';
 
@@ -53,13 +52,11 @@ describe('Storage Integration', () => {
 
     // Clean up storage managers
     await storageManager.clearAll();
-    await persistentStorageManager.clearAll();
   });
 
   beforeEach(async () => {
     // Clean up between tests
     await storageManager.clearAll();
-    await persistentStorageManager.clearAll();
   });
 
   describe('createFilterStorage', () => {

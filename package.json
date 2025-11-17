@@ -1,7 +1,7 @@
 {
   "name": "@democratize-technology/vikunja-mcp",
   "version": "0.2.0",
-  "description": "Model Context Protocol server for Vikunja task management",
+  "description": "Model Context Protocol server for Vikunja task management - Simplified architecture with enterprise-grade security and reliability",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -58,13 +58,16 @@
     "@modelcontextprotocol/sdk": "^1.20.2",
     "better-sqlite3": "^12.4.1",
     "dotenv": "^17.2.3",
+    "express-rate-limit": "^8.2.1",
     "node-vikunja": "^0.4.0",
+    "opossum": "^9.0.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.3.0",
+    "@types/opossum": "^8.1.9",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.39.1",
     "@typescript-eslint/parser": "^8.39.1",
@@ -97,10 +100,10 @@
     ],
     "coverageThreshold": {
       "global": {
-        "branches": 84,
-        "functions": 89,
-        "lines": 91,
-        "statements": 91
+        "branches": 90,
+        "functions": 98,
+        "lines": 95,
+        "statements": 95
       }
     }
   },

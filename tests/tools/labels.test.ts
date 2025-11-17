@@ -92,19 +92,32 @@ describe('Labels Tool', () => {
 
     // Mock server
     mockServer = {
-      tool: jest.fn((name, schema, handler) => {
-        mockHandler = handler;
-      }),
+      tool: jest.fn() as jest.MockedFunction<(name: string, description: string, schema: any, handler: any) => void>,
     } as MockServer;
 
     // Register the tool
     registerLabelsTool(mockServer, mockAuthManager);
+
+    // Get the tool handler
+    expect(mockServer.tool).toHaveBeenCalledWith(
+      'vikunja_labels',
+      expect.any(String),
+      expect.any(Object),
+      expect.any(Function),
+    );
+    const calls = mockServer.tool.mock.calls;
+    if (calls.length > 0 && calls[0] && calls[0].length > 3) {
+      mockHandler = calls[0][3];
+    } else {
+      throw new Error('Tool handler not found');
+    }
   });
 
   describe('Registration', () => {
     it('should register the vikunja_labels tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_labels',
+        expect.any(String),
         expect.any(Object),
         expect.any(Function),
       );

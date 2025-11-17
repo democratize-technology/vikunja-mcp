@@ -121,9 +121,7 @@ describe('Projects Tool', () => {
 
     // Setup mock server
     mockServer = {
-      tool: jest.fn((name, schema, handler) => {
-        toolHandler = handler;
-      }),
+      tool: jest.fn() as jest.MockedFunction<(name: string, description: string, schema: any, handler: any) => void>,
     } as MockServer;
 
     // Mock getClientFromContext
@@ -134,9 +132,18 @@ describe('Projects Tool', () => {
       // Register the tool
       registerProjectsTool(mockServer, mockAuthManager);
 
-      // Debug: Check if toolHandler was set
-      if (typeof toolHandler !== 'function') {
-        throw new Error('toolHandler was not set properly by registerProjectsTool');
+      // Get the tool handler
+      expect(mockServer.tool).toHaveBeenCalledWith(
+        'vikunja_projects',
+        expect.any(String),
+        expect.any(Object),
+        expect.any(Function),
+      );
+      const calls = mockServer.tool.mock.calls;
+      if (calls.length > 0 && calls[0] && calls[0].length > 3) {
+        toolHandler = calls[0][3];
+      } else {
+        throw new Error('Tool handler not found');
       }
     } catch (error) {
       console.error('Error setting up projects tool test:', error);

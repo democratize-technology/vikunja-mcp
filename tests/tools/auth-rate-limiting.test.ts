@@ -6,7 +6,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { AuthManager } from '../../src/auth/AuthManager';
 import { registerAuthTool } from '../../src/tools/auth';
-import { RateLimitingMiddleware } from '../../src/middleware/rate-limiting';
+import {
+  SimplifiedRateLimitMiddleware,
+  RateLimitingMiddleware  // Backward compatibility
+} from '../../src/middleware/simplified-rate-limit';
 import { MCPError, ErrorCode } from '../../src/types/errors';
 
 // Mock the logger
@@ -29,7 +32,7 @@ jest.mock('../../src/client', () => ({
 describe('Auth Tool Rate Limiting Integration', () => {
   let server: McpServer;
   let authManager: AuthManager;
-  let middleware: RateLimitingMiddleware;
+  let middleware: SimplifiedRateLimitMiddleware;
 
   beforeEach(() => {
     server = new McpServer({
@@ -40,7 +43,7 @@ describe('Auth Tool Rate Limiting Integration', () => {
     authManager = new AuthManager();
 
     // Create middleware with very low limits for testing
-    middleware = new RateLimitingMiddleware({
+    middleware = new SimplifiedRateLimitMiddleware({
       default: {
         requestsPerMinute: 2,
         requestsPerHour: 5,

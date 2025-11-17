@@ -112,7 +112,7 @@ describe('Teams Tool', () => {
 
     // Setup mock server
     mockServer = {
-      tool: jest.fn(),
+      tool: jest.fn() as jest.MockedFunction<(name: string, description: string, schema: any, handler: any) => void>,
     } as MockServer;
 
     // Register the tool
@@ -121,12 +121,13 @@ describe('Teams Tool', () => {
     // Get the tool handler
     expect(mockServer.tool).toHaveBeenCalledWith(
       'vikunja_teams',
+      expect.any(String),
       expect.any(Object),
       expect.any(Function),
     );
     const calls = mockServer.tool.mock.calls;
-    if (calls.length > 0 && calls[0] && calls[0].length > 2) {
-      toolHandler = calls[0][2];
+    if (calls.length > 0 && calls[0] && calls[0].length > 3) {
+      toolHandler = calls[0][3];
     } else {
       throw new Error('Tool handler not found');
     }
@@ -187,13 +188,13 @@ describe('Teams Tool', () => {
     it('should handle API errors', async () => {
       mockClient.teams.getTeams.mockRejectedValue(new Error('API Error'));
 
-      await expect(callTool('list')).rejects.toThrow('Team operation error: API Error');
+      await expect(callTool('list')).rejects.toThrow('vikunja_teams.list team failed: API Error');
     });
 
     it('should handle non-Error API errors', async () => {
       mockClient.teams.getTeams.mockRejectedValue('String error');
 
-      await expect(callTool('list')).rejects.toThrow('Team operation error: String error');
+      await expect(callTool('list')).rejects.toThrow('vikunja_teams.list team failed: Unknown error');
     });
   });
 
@@ -230,7 +231,7 @@ describe('Teams Tool', () => {
       mockClient.teams.createTeam.mockRejectedValue(new Error('Creation failed'));
 
       await expect(callTool('create', { name: 'New Team' })).rejects.toThrow(
-        'Team operation error: Creation failed',
+        'vikunja_teams.create team failed: Creation failed',
       );
     });
   });
@@ -323,7 +324,7 @@ describe('Teams Tool', () => {
       mockClient.teams.deleteTeam = jest.fn().mockRejectedValue(new Error('Team not found'));
 
       await expect(callTool('delete', { id: 999 })).rejects.toThrow(
-        'Team operation error: Team not found',
+        'vikunja_teams.delete team failed: Team not found',
       );
     });
 
@@ -368,7 +369,7 @@ describe('Teams Tool', () => {
       } as any);
 
       await expect(callTool('delete', { id: 999 })).rejects.toThrow(
-        'Team operation error: API error: 404 - Team not found',
+        'Failed to leave team 999: Team not found',
       );
     });
 
@@ -429,7 +430,7 @@ describe('Teams Tool', () => {
         throw new Error('Unexpected error');
       });
 
-      await expect(callTool('list')).rejects.toThrow('Team operation error: Unexpected error');
+      await expect(callTool('list')).rejects.toThrow('vikunja_teams.list team failed: Unexpected error');
     });
 
     it('should handle non-Error thrown values in main handler', async () => {
@@ -438,7 +439,7 @@ describe('Teams Tool', () => {
         throw 'String error thrown';
       });
 
-      await expect(callTool('list')).rejects.toThrow('Team operation error: String error thrown');
+      await expect(callTool('list')).rejects.toThrow('vikunja_teams.list team failed: Unknown error');
     });
   });
 
@@ -466,18 +467,9 @@ describe('Teams Tool', () => {
     it('should register the vikunja_teams tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_teams',
-        expect.objectContaining({
-          subcommand: expect.any(Object),
-          page: expect.any(Object),
-          perPage: expect.any(Object),
-          search: expect.any(Object),
-          id: expect.any(Object),
-          name: expect.any(Object),
-          description: expect.any(Object),
-          userId: expect.any(Object),
-          admin: expect.any(Object),
-        }),
-        expect.any(Function),
+        'Manage teams and team memberships for collaborative project management',
+        expect.any(Object), // Zod schema
+        expect.any(Function), // Handler function
       );
     });
 

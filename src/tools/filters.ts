@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
-import { storageManager } from '../storage/FilterStorage';
+import { storageManager } from '../storage';
 import { FilterBuilder } from '../utils/filters';
 import type { FilterField, FilterOperator, SavedFilter } from '../types/filters';
 import { logger } from '../utils/logger';

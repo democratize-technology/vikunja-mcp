@@ -8,14 +8,14 @@ import { PermissionManager } from '../auth/permissions';
 import { MCPError, ErrorCode } from '../types/errors';
 import { logger } from '../utils/logger';
 
-// Direct rate limiting application
+// Direct rate limiting application using simplified express-rate-limit
 export function applyRateLimiting<T extends unknown[], R>(
   toolName: string,
   handler: (...args: T) => Promise<R>
 ): (...args: T) => Promise<R> {
-  // Import and use rate limiting directly
-  const { rateLimitingMiddleware } = require('./rate-limiting');
-  return rateLimitingMiddleware.withRateLimit(toolName, handler);
+  // Use simplified rate limiting with express-rate-limit MemoryStore
+  const { withRateLimit } = require('./simplified-rate-limit');
+  return withRateLimit(toolName, handler);
 }
 
 // Direct permission checking application

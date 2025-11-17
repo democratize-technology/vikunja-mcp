@@ -56,7 +56,7 @@ describe('Batch Import Tool', () => {
 
     // Setup mock server
     mockServer = {
-      tool: jest.fn((name: string, schema: any, handler: any) => {
+      tool: jest.fn((name: string, description: string, schema: any, handler: any) => {
         toolHandler = handler;
       }),
     } as any;
@@ -113,6 +113,7 @@ describe('Batch Import Tool', () => {
       registerBatchImportTool(mockServer, mockAuthManager);
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_batch_import',
+        'Import tasks in bulk from CSV or JSON formats with error handling and dry-run support',
         expect.any(Object),
         expect.any(Function),
       );
@@ -120,9 +121,9 @@ describe('Batch Import Tool', () => {
 
     it('should register the tool with correct schema', () => {
       registerBatchImportTool(mockServer, mockAuthManager);
-      
-      // Check the schema parameter passed to tool registration
-      const schema = mockServer.tool.mock.calls[0][1];
+
+      // Check the schema parameter passed to tool registration (now at index 2)
+      const schema = mockServer.tool.mock.calls[0][2];
       expect(schema).toEqual({
         projectId: expect.any(Object),
         format: expect.any(Object),

@@ -2,21 +2,24 @@
  * Rate Limiting Middleware Tests
  */
 
-import { 
-  RateLimitingMiddleware, 
-  rateLimitingMiddleware,
+import {
+  SimplifiedRateLimitMiddleware,
+  simplifiedRateLimitMiddleware,
   withRateLimit,
   TOOL_CATEGORIES,
   ToolRateLimits,
-} from '../../src/middleware/rate-limiting';
+  // Backward compatibility aliases
+  RateLimitingMiddleware,
+  rateLimitingMiddleware,
+} from '../../src/middleware/simplified-rate-limit';
 import { MCPError, ErrorCode } from '../../src/types/errors';
 
 describe('RateLimitingMiddleware', () => {
-  let middleware: RateLimitingMiddleware;
+  let middleware: SimplifiedRateLimitMiddleware;
 
   beforeEach(() => {
     // Create a fresh middleware instance for each test
-    middleware = new RateLimitingMiddleware({
+    middleware = new SimplifiedRateLimitMiddleware({
       default: {
         requestsPerMinute: 5,
         requestsPerHour: 20,

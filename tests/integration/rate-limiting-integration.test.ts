@@ -5,7 +5,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { RateLimitingMiddleware } from '../../src/middleware/rate-limiting';
+import { SimplifiedRateLimitMiddleware } from '../../src/middleware/simplified-rate-limit';
 import { applyRateLimiting } from '../../src/middleware/direct-middleware';
 import { MCPError, ErrorCode } from '../../src/types/errors';
 
@@ -21,7 +21,7 @@ jest.mock('../../src/utils/logger', () => ({
 
 describe('Rate Limiting Integration', () => {
   let server: McpServer;
-  let middleware: RateLimitingMiddleware;
+  let middleware: SimplifiedRateLimitMiddleware;
 
   beforeEach(() => {
     server = new McpServer({
@@ -30,7 +30,7 @@ describe('Rate Limiting Integration', () => {
     });
 
     // Create middleware with very low limits for testing
-    middleware = new RateLimitingMiddleware({
+    middleware = new SimplifiedRateLimitMiddleware({
       default: {
         requestsPerMinute: 3,
         requestsPerHour: 10,
@@ -151,7 +151,7 @@ describe('Rate Limiting Integration', () => {
 
     it('should apply different limits for different tool categories', async () => {
       // Create a fresh middleware instance for this test
-      const freshMiddleware = new RateLimitingMiddleware({
+      const freshMiddleware = new SimplifiedRateLimitMiddleware({
         default: {
           requestsPerMinute: 3,
           requestsPerHour: 10,
@@ -305,7 +305,7 @@ describe('Rate Limiting Integration', () => {
 
   describe('Configuration', () => {
     it('should respect disabled rate limiting', async () => {
-      const disabledMiddleware = new RateLimitingMiddleware({
+      const disabledMiddleware = new SimplifiedRateLimitMiddleware({
         default: {
           requestsPerMinute: 1,
           requestsPerHour: 1,

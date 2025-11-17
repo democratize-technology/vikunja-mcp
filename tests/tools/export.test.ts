@@ -55,6 +55,7 @@ describe('Export Tool', () => {
     it('should register the export project tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_export_project',
+        'Export project data including tasks, labels, and metadata in structured format',
         expect.objectContaining({
           projectId: expect.any(Object),
           includeChildren: expect.any(Object),
@@ -74,7 +75,7 @@ describe('Export Tool', () => {
 
         const handler = mockServer.tool.mock.calls.find(
           (call) => call[0] === 'vikunja_export_project',
-        )?.[2];
+        )?.[3];
 
         await expect(handler?.({ projectId: 1 })).rejects.toThrow(
           'Authentication required. Please use vikunja_auth.connect first.',
@@ -92,7 +93,7 @@ describe('Export Tool', () => {
 
         const handler = mockServer.tool.mock.calls.find(
           (call) => call[0] === 'vikunja_export_project',
-        )?.[2];
+        )?.[3];
 
         await expect(handler?.({ projectId: 1 })).rejects.toThrow(
           'Export operations require JWT authentication. Please reconnect using vikunja_auth.connect with JWT authentication.',
@@ -129,7 +130,7 @@ describe('Export Tool', () => {
 
         const handler = mockServer.tool.mock.calls.find(
           (call) => call[0] === 'vikunja_export_project',
-        )?.[2];
+        )?.[3];
 
         const result = await handler?.({ projectId: 1, includeChildren: false });
 
@@ -196,7 +197,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_export_project',
-      )?.[2];
+      )?.[3];
 
       const result = await handler?.({ projectId: 1, includeChildren: false });
 
@@ -268,7 +269,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_export_project',
-      )?.[2];
+      )?.[3];
 
       const result = await handler?.({ projectId: 1, includeChildren: true });
 
@@ -319,7 +320,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_export_project',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ projectId: 1, includeChildren: true })).rejects.toThrow(
         'Circular reference detected in project hierarchy',
@@ -329,7 +330,7 @@ describe('Export Tool', () => {
     it('should validate project ID', async () => {
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_export_project',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ projectId: 0 })).rejects.toThrow(
         'projectId must be a positive integer',
@@ -351,7 +352,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_export_project',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ projectId: 999 })).rejects.toThrow('Project with ID 999 not found');
     });
@@ -388,7 +389,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_export_project',
-      )?.[2];
+      )?.[3];
 
       const result = await handler?.({ projectId: 1 });
 
@@ -416,6 +417,7 @@ describe('Export Tool', () => {
     it('should register the request user export tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_request_user_export',
+        'Request a complete export of user data for privacy and backup purposes',
         expect.objectContaining({
           password: expect.any(Object),
         }),
@@ -432,7 +434,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_request_user_export',
-      )?.[2];
+      )?.[3];
 
       const result = await handler?.({ password: 'test-password' });
 
@@ -476,7 +478,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_request_user_export',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ password: 'wrong-password' })).rejects.toThrow('Invalid password');
     });
@@ -489,7 +491,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_request_user_export',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ password: 'test-password' })).rejects.toThrow(
         'No authentication token available',
@@ -503,7 +505,7 @@ describe('Export Tool', () => {
       );
 
       expect(toolCall).toBeDefined();
-      expect(toolCall?.[1]).toMatchObject({
+      expect(toolCall?.[2]).toMatchObject({
         password: expect.objectContaining({
           minLength: 1,
         }),
@@ -521,7 +523,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_request_user_export',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ password: 'test-password' })).rejects.toThrow(
         'Failed to request export: Bad Gateway',
@@ -533,7 +535,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_request_user_export',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ password: 'test-password' })).rejects.toThrow('Request timeout');
     });
@@ -543,6 +545,7 @@ describe('Export Tool', () => {
     it('should register the download user export tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_download_user_export',
+        'Download previously requested user data export files',
         expect.objectContaining({
           password: expect.any(Object),
         }),
@@ -558,7 +561,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_download_user_export',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ password: 'test-password' })).rejects.toThrow(
         'No authentication token available',
@@ -580,7 +583,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_download_user_export',
-      )?.[2];
+      )?.[3];
 
       const result = await handler?.({ password: 'test-password' });
 
@@ -623,7 +626,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_download_user_export',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ password: 'test-password' })).rejects.toThrow('Export not ready');
     });
@@ -639,7 +642,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_download_user_export',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ password: 'test-password' })).rejects.toThrow(
         'Failed to download export: Server Error',
@@ -651,7 +654,7 @@ describe('Export Tool', () => {
 
       const handler = mockServer.tool.mock.calls.find(
         (call) => call[0] === 'vikunja_download_user_export',
-      )?.[2];
+      )?.[3];
 
       await expect(handler?.({ password: 'test-password' })).rejects.toThrow(
         'Network request failed',

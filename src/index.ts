@@ -126,15 +126,16 @@ export {
   createStandardResponse
 } from './types/index';
 export * from './types/responses';
-export * from './types/vikunja';
+export type { SavedFilter as VikunjaSavedFilter } from './types/vikunja';
 
 // Also export ParseResult from filters (used in tools)
-export { type ParseResult } from './types/filters';
+export { type ParseResult, type SavedFilter as FilterSavedFilter } from './types/filters';
 
 // Export core utilities (selective to avoid conflicts)
 export * from './utils/logger';
 export {
-  parseFilterString
+  parseFilterString,
+  FilterBuilder
 } from './utils/filters';
 export * from './utils/memory';
 export * from './utils/security';
@@ -144,14 +145,15 @@ export * from './utils/retry';
 export * from './utils/validation';
 export * from './utils/AsyncMutex';
 
-// Export specialized utilities
-export * from './utils/parser/FilterParser';
-export * from './utils/tokenizer/Tokenizer';
-export * from './utils/tokenizer/TokenTypes';
-export * from './utils/validators/SecurityValidator';
-export * from './utils/validators/DateValidator';
-export * from './utils/validators/ConditionValidator';
-export * from './utils/validators/ValidationOrchestrator';
+// Export Zod-based filter utilities (replaces custom parser/tokenizer/validator)
+export {
+  validateCondition,
+  validateFilterExpression,
+  conditionToString,
+  groupToString,
+  expressionToString,
+  SecurityValidator as FilterSecurityValidator,
+} from './utils/filters-zod';
 
 // Export filtering strategy utilities (selective to avoid conflicts)
 export {
@@ -175,14 +177,12 @@ export * from './utils/performance/performance-monitor';
 export * from './auth/index';
 export * from './client';
 
-// Export storage utilities and interfaces
-export * from './storage/interfaces';
-export * from './storage/config';
-export * from './storage/FilterStorage';
+// Export storage utilities
+export * from './storage';
 
 // Export middleware and transforms (selective to avoid conflicts)
 export {
-  RateLimitingMiddleware,
+  SimplifiedRateLimitMiddleware,
   type RateLimitConfig
 } from './middleware/index';
 export * from './transforms/index';
@@ -194,8 +194,7 @@ export * from './config/index';
 export * from './aorp/index';
 
 // Export storage interfaces
-export * from './storage/interfaces';
-export * from './storage/FilterStorage';
+export * from './storage';
 
 // Re-export commonly used external dependencies
 export type { Task } from 'node-vikunja';

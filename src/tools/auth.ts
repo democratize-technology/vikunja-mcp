@@ -12,7 +12,7 @@ import { clearGlobalClientFactory } from '../client';
 import { logger } from '../utils/logger';
 import { applyRateLimiting } from '../middleware/direct-middleware';
 import { createSecureConnectionMessage } from '../utils/security';
-import { wrapToolError } from '../utils/error-handler';
+import { wrapAuthError } from '../utils/error-handler';
 
 interface AuthArgs {
   subcommand: 'connect' | 'status' | 'refresh' | 'disconnect';
@@ -146,7 +146,7 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager, _c
             );
         }
       } catch (error) {
-        throw wrapToolError(error, 'vikunja_auth', args.subcommand);
+        throw wrapAuthError(error, args.subcommand);
       }
     })
   );

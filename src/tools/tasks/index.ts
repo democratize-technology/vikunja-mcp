@@ -12,7 +12,7 @@ import { MCPError, ErrorCode, type TaskResponseData, type TaskResponseMetadata }
 import { getClientFromContext, setGlobalClientFactory } from '../../client';
 import { logger } from '../../utils/logger';
 import type { AorpBuilderConfig } from '../../aorp/types';
-import { storageManager } from '../../storage/FilterStorage';
+import { storageManager } from '../../storage';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
 import { TaskFilteringOrchestrator } from './filtering';
 import type { TaskListingArgs } from './types/filters';

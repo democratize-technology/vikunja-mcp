@@ -81,7 +81,7 @@ export interface TaskFilteringContext {
   /** Task listing arguments */
   args: TaskListingArgs;
   /** Storage interface for saved filters */
-  storage: import('../../../storage/FilterStorage').FilterStorageManager;
+  storage: import('../../../storage').SimpleFilterStorage;
 }
 
 /**

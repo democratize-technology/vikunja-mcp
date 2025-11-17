@@ -84,7 +84,7 @@ describe('Users Tool', () => {
 
     // Setup mock server
     mockServer = {
-      tool: jest.fn(),
+      tool: jest.fn() as jest.MockedFunction<(name: string, description: string, schema: any, handler: any) => void>,
     } as MockServer;
 
     // Register the tool
@@ -93,12 +93,13 @@ describe('Users Tool', () => {
     // Get the tool handler
     expect(mockServer.tool).toHaveBeenCalledWith(
       'vikunja_users',
+      expect.any(String),
       expect.any(Object),
       expect.any(Function),
     );
     const calls = mockServer.tool.mock.calls;
-    if (calls.length > 0 && calls[0] && calls[0].length > 2) {
-      toolHandler = calls[0][2];
+    if (calls.length > 0 && calls[0] && calls[0].length > 3) {
+      toolHandler = calls[0][3];
     } else {
       throw new Error('Tool handler not found');
     }
@@ -502,21 +503,9 @@ describe('Users Tool', () => {
     it('should register the vikunja_users tool', () => {
       expect(mockServer.tool).toHaveBeenCalledWith(
         'vikunja_users',
-        expect.objectContaining({
-          subcommand: expect.any(Object),
-          search: expect.any(Object),
-          page: expect.any(Object),
-          perPage: expect.any(Object),
-          name: expect.any(Object),
-          language: expect.any(Object),
-          timezone: expect.any(Object),
-          weekStart: expect.any(Object),
-          frontendSettings: expect.any(Object),
-          emailRemindersEnabled: expect.any(Object),
-          overdueTasksRemindersEnabled: expect.any(Object),
-          overdueTasksRemindersTime: expect.any(Object),
-        }),
-        expect.any(Function),
+        'Manage user profiles, search users, and update user settings',
+        expect.any(Object), // Zod schema
+        expect.any(Function), // Handler function
       );
     });
 

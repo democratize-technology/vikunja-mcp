@@ -5,7 +5,7 @@
 /**
  * Supported filter operators
  */
-export type FilterOperator = '=' | '!=' | '>' | '>=' | '<' | '<=' | 'like' | 'in' | 'not in';
+export type FilterOperator = '=' | '!=' | '>' | '>=' | '<' | '<=' | 'like' | 'LIKE' | 'in' | 'not in';
 
 /**
  * Logical operators for combining conditions

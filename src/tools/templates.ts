@@ -10,7 +10,7 @@ import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getClientFromContext } from '../client';
 import type { Project, Task } from 'node-vikunja';
-import { storageManager } from '../storage/FilterStorage';
+import { storageManager } from '../storage';
 import { logger } from '../utils/logger';
 
 /**

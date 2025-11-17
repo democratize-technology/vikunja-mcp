@@ -348,6 +348,35 @@ export function createAuthRequiredError(operation?: string): MCPError {
 }
 
 /**
+ * Create a standardized error for authentication operation failures
+ * Preserves authentication context instead of using generic tool error format
+ *
+ * @param error - The original error that occurred
+ * @param operation - The auth operation that failed (e.g., 'connect', 'refresh')
+ * @returns MCPError with authentication context
+ */
+export function wrapAuthError(error: unknown, operation: string): MCPError {
+  // Preserve MCPError instances (validation errors, auth errors, etc.)
+  if (error instanceof MCPError) {
+    return error;
+  }
+
+  // Use status code handler for API errors with status codes
+  if (hasStatusCode(error)) {
+    return handleStatusCodeError(error, operation);
+  }
+
+  // Authentication-specific error handling
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const sanitizedMessage = sanitizeErrorMessage(errorMessage);
+
+  return new MCPError(
+    ErrorCode.API_ERROR,
+    `Authentication error: ${sanitizedMessage}`
+  );
+}
+
+/**
  * Create a standardized error for validation failures
  * 
  * @param message - The validation error message

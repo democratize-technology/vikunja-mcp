@@ -4,7 +4,7 @@
  */
 
 import type { TaskListingArgs, TaskFilterExecutionResult, TaskFilterValidationConfig } from '../types/filters';
-import { FilterValidator } from '../../../storage/filtering/FilterValidator';
+import { FilterValidator } from './FilterValidator';
 import { FilterExecutor } from './FilterExecutor';
 import { MCPError, ErrorCode } from '../../../types/index';
 import { logger } from '../../../utils/logger';

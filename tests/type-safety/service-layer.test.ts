@@ -3,113 +3,97 @@
  * This test verifies that all service layer functions have proper type annotations
  */
 
-import { CircuitBreaker } from '../../src/utils/circuit-breaker';
-import { createCircuitBreaker } from '../../src/utils/circuit-breaker';
+import { createCircuitBreaker, circuitBreakerRegistry } from '../../src/utils/retry';
+import type { CircuitBreaker as OpossumCircuitBreaker } from 'opossum';
 
 describe('Service Layer Type Safety', () => {
   describe('CircuitBreaker Type Safety', () => {
-    let circuitBreaker: CircuitBreaker;
+    let circuitBreaker: OpossumCircuitBreaker;
 
     beforeEach(() => {
-      circuitBreaker = new CircuitBreaker({
-        failureThreshold: 5,
-        recoveryTimeout: 30000
-      });
+      circuitBreaker = createCircuitBreaker(
+        'test-breaker',
+        async () => { /* placeholder operation */ },
+        {
+          timeout: 30000,
+          resetTimeout: 30000,
+          maxFailures: 5
+        }
+      );
     });
 
     describe('Method Return Type Annotations', () => {
       it('should have properly typed getStats method', async () => {
-        // This test verifies getStats has proper return type annotation
-        const stats = await circuitBreaker.getStats();
+        // This test verifies opossum getStats has proper return type annotation
+        const stats = circuitBreaker.stats;
+        const opened = circuitBreaker.opened;
+        const closed = circuitBreaker.closed;
+        const halfOpen = circuitBreaker.halfOpen;
 
         // If return type is properly annotated, TypeScript should know the shape
-        expect(stats).toHaveProperty('state');
-        expect(stats).toHaveProperty('failureCount');
-        expect(stats).toHaveProperty('successCount');
-        expect(stats).toHaveProperty('lastFailureTime');
-        expect(stats).toHaveProperty('failureThreshold');
-        expect(stats).toHaveProperty('recoveryTimeout');
+        expect(typeof opened).toBe('boolean');
+        expect(typeof closed).toBe('boolean');
+        expect(typeof halfOpen).toBe('boolean');
+        expect(stats).toHaveProperty('failures');
+        expect(stats).toHaveProperty('fires');
+        expect(stats).toHaveProperty('successes');
+        expect(stats).toHaveProperty('timeouts');
+        expect(stats).toHaveProperty('rejects');
 
         // Type assertion to verify the return type structure
         const typedStats: {
-          state: string;
-          failureCount: number;
-          successCount: number;
-          lastFailureTime: number;
-          failureThreshold: number;
-          recoveryTimeout: number;
+          failures: number;
+          fires: number;
+          successes: number;
+          timeouts: number;
+          rejects: number;
+          latencyMean: number;
+          latencyTimes: number[];
+          percentiles: Record<string, number>;
         } = stats;
 
-        expect(typeof typedStats.state).toBe('string');
-        expect(typeof typedStats.failureCount).toBe('number');
-      });
-
-      it('should have properly typed getStatsSync method', () => {
-        // This test verifies getStatsSync has proper return type annotation
-        const stats = circuitBreaker.getStatsSync();
-
-        expect(stats).toHaveProperty('state');
-        expect(stats).toHaveProperty('failureCount');
-        expect(stats).toHaveProperty('successCount');
-        expect(stats).toHaveProperty('lastFailureTime');
-        expect(stats).toHaveProperty('failureThreshold');
-        expect(stats).toHaveProperty('recoveryTimeout');
-
-        // Type assertion to verify the return type structure
-        const typedStats: {
-          state: string;
-          failureCount: number;
-          successCount: number;
-          lastFailureTime: number;
-          failureThreshold: number;
-          recoveryTimeout: number;
-        } = stats;
-
-        expect(typeof typedStats.state).toBe('string');
-        expect(typeof typedStats.failureCount).toBe('number');
+        expect(typeof typedStats.failures).toBe('number');
+        expect(typeof typedStats.successes).toBe('number');
       });
 
       it('should have properly typed getAllStats method', async () => {
-        // This test verifies getAllStats has proper return type annotation
-        const breaker = createCircuitBreaker('test-breaker');
-        const registry = (breaker as any).registry || { getAllStats: async () => ({}) };
-
         // Test the global registry's getAllStats method
-        const stats = await registry.getAllStats();
+        const stats = circuitBreakerRegistry.getAllStats();
 
         // Should return a record of circuit breaker stats
         expect(typeof stats).toBe('object');
 
         // Type assertion to verify the return type structure
         const typedStats: Record<string, {
-          state: string;
-          failureCount: number;
-          successCount: number;
-          lastFailureTime: number;
-          failureThreshold: number;
-          recoveryTimeout: number;
+          failures: number;
+          fires: number;
+          successes: number;
+          timeouts: number;
+          rejects: number;
+          latencyMean: number;
+          latencyTimes: number[];
+          percentiles: Record<string, number>;
         }> = stats;
 
         expect(typeof typedStats).toBe('object');
       });
 
       it('should have properly typed getAllStatsSync method', () => {
-        // This test verifies getAllStatsSync has proper return type annotation
-        const breaker = createCircuitBreaker('test-breaker');
-        const registry = (breaker as any).registry || { getAllStatsSync: () => ({}) };
-
-        const stats = registry.getAllStatsSync();
+        // Test the global registry's getAllStatsSync method
+        const stats = circuitBreakerRegistry.getAllStatsSync();
 
         expect(typeof stats).toBe('object');
 
         // Type assertion to verify the return type structure
         const typedStats: Record<string, {
-          state: string;
-          failureCount: number;
-          successCount: number;
-          lastFailureTime: number;
-          failureThreshold: number;
-          recoveryTimeout: number;
+          failures: number;
+          fires: number;
+          successes: number;
+          timeouts: number;
+          rejects: number;
+          latencyMean: number;
+          latencyTimes: number[];
+          percentiles: Record<string, number>;
         }> = stats;
 
         expect(typeof typedStats).toBe('object');
@@ -117,10 +101,20 @@ describe('Service Layer Type Safety', () => {
     });
 
     describe('Type Safety in Operations', () => {
-      it('should maintain type safety through execute operation', async () => {
-        const result = await circuitBreaker.execute(async () => {
-          return 'test-result';
-        });
+      it('should maintain type safety through fire operation', async () => {
+        // Create a new circuit breaker for this specific operation
+        const testBreaker = createCircuitBreaker(
+          'test-fire-operation',
+          async () => {
+            return 'test-result';
+          },
+          {
+            timeout: 30000,
+            resetTimeout: 30000
+          }
+        );
+
+        const result = await testBreaker.fire();
 
         // TypeScript should infer the return type correctly
         expect(typeof result).toBe('string');
@@ -130,14 +124,24 @@ describe('Service Layer Type Safety', () => {
       });
 
       it('should maintain type safety for complex return types', async () => {
-        const result = await circuitBreaker.execute(async () => {
-          return {
-            id: 123,
-            title: 'Test Task',
-            completed: false,
-            metadata: { count: 1, timestamp: new Date().toISOString() }
-          };
-        });
+        // Create a new circuit breaker for this specific operation
+        const testBreaker = createCircuitBreaker(
+          'test-complex-operation',
+          async () => {
+            return {
+              id: 123,
+              title: 'Test Task',
+              completed: false,
+              metadata: { count: 1, timestamp: new Date().toISOString() }
+            };
+          },
+          {
+            timeout: 30000,
+            resetTimeout: 30000
+          }
+        );
+
+        const result = await testBreaker.fire();
 
         // TypeScript should infer complex return types correctly
         expect(result).toHaveProperty('id');

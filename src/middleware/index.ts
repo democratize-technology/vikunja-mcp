@@ -4,13 +4,19 @@
  */
 
 export {
-  RateLimitingMiddleware,
-  rateLimitingMiddleware,
+  SimplifiedRateLimitMiddleware,
+  simplifiedRateLimitMiddleware,
   withRateLimit,
   TOOL_CATEGORIES,
   type RateLimitConfig,
   type ToolRateLimits,
-} from './rate-limiting';
+} from './simplified-rate-limit';
+
+// Backward compatibility exports
+export {
+  rateLimitingMiddleware,
+  RateLimitingMiddleware,
+} from './simplified-rate-limit';
 
 export {
   applyRateLimiting,

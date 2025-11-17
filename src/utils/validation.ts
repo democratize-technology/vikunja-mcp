@@ -6,7 +6,7 @@
  */
 
 import type { FilterExpression, FilterField, FilterOperator, LogicalOperator } from '../types/filters';
-import { StorageDataError } from '../storage/interfaces';
+import { StorageDataError } from '../storage';
 import { MCPError, ErrorCode } from '../types/errors';
 
 /**

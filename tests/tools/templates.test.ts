@@ -14,7 +14,7 @@ jest.mock('../../src/client', () => ({
   clearGlobalClientFactory: jest.fn(),
 }));
 
-jest.mock('../../src/storage/FilterStorage', () => ({
+jest.mock('../../src/storage', () => ({
   storageManager: {
     getStorage: jest.fn(),
   },
@@ -22,7 +22,7 @@ jest.mock('../../src/storage/FilterStorage', () => ({
 
 // Import mocked functions
 import { getClientFromContext } from '../../src/client';
-import { storageManager } from '../../src/storage/FilterStorage';
+import { storageManager } from '../../src/storage';
 
 // Mock data
 const mockUser: User = {
