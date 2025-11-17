@@ -1,10 +1,14 @@
 /**
  * Tool Registration
- * Registers all Vikunja tools with the MCP server
- * 
- * NOTE: All tools are now registered unconditionally. Permission checking
- * is handled at runtime by the permission middleware, providing better
- * user experience with clear error messages when authentication is insufficient.
+ * Registers all Vikunja tools with the MCP server using conditional registration
+ *
+ * Registration Strategy:
+ * - Core tools (auth, tasks): Always registered
+ * - Client-dependent tools: Only registered when clientFactory is available
+ * - JWT-restricted tools (users, export): Only registered with JWT authentication
+ *
+ * This approach ensures tool availability matches authentication capabilities
+ * and prevents API errors from unsupported token types.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -28,8 +32,7 @@ export function registerTools(
   authManager: AuthManager, 
   clientFactory?: VikunjaClientFactory
 ): void {
-  // Register all tool handlers with dependency injection
-  // No conditional registration - all tools are available, permission checking happens at runtime
+  // Register tools with conditional availability based on dependencies and authentication
 
   registerAuthTool(server, authManager);
   registerTasksTool(server, authManager, clientFactory);
