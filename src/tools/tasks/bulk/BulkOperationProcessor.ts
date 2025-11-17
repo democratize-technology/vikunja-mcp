@@ -2,13 +2,8 @@
  * Main orchestration for bulk operations
  */
 
-import { MCPError, ErrorCode, createStandardResponse } from '../../../types/index';
-import { getClientFromContext } from '../../../client';
+import { MCPError, ErrorCode, createStandardResponse, getClientFromContext, logger, isAuthenticationError, withRetry, RETRY_CONFIG, transformApiError, handleFetchError } from '../../../index';
 import type { Task, VikunjaClient } from 'node-vikunja';
-import { logger } from '../../../utils/logger';
-import { isAuthenticationError } from '../../../utils/auth-error-handler';
-import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
-import { transformApiError, handleFetchError } from '../../../utils/error-handler';
 import { BatchProcessorFactory } from './BatchProcessorFactory';
 import { BulkOperationValidator, type BulkUpdateArgs, type BulkDeleteArgs, type BulkCreateArgs } from './BulkOperationValidator';
 import { BulkOperationErrorHandler } from './BulkOperationErrorHandler';

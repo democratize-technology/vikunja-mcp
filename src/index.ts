@@ -110,3 +110,92 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
     process.exit(1);
   });
 }
+
+// ============================================================================
+// BARREL EXPORTS - Centralized imports to eliminate deep relative paths
+// ============================================================================
+
+// Export core types (avoiding conflicts)
+export * from './types/errors';
+export {
+  MCPError,
+  ErrorCode,
+  type TaskResponseData,
+  type StandardResponse,
+  type FilterExpression,
+  createStandardResponse
+} from './types/index';
+export * from './types/responses';
+export * from './types/vikunja';
+
+// Also export ParseResult from filters (used in tools)
+export { type ParseResult } from './types/filters';
+
+// Export core utilities (selective to avoid conflicts)
+export * from './utils/logger';
+export {
+  parseFilterString
+} from './utils/filters';
+export * from './utils/memory';
+export * from './utils/security';
+export * from './utils/error-handler';
+export * from './utils/auth-error-handler';
+export * from './utils/retry';
+export * from './utils/validation';
+export * from './utils/AsyncMutex';
+
+// Export specialized utilities
+export * from './utils/parser/FilterParser';
+export * from './utils/tokenizer/Tokenizer';
+export * from './utils/tokenizer/TokenTypes';
+export * from './utils/validators/SecurityValidator';
+export * from './utils/validators/DateValidator';
+export * from './utils/validators/ConditionValidator';
+export * from './utils/validators/ValidationOrchestrator';
+
+// Export filtering strategy utilities (selective to avoid conflicts)
+export {
+  HybridFilteringStrategy,
+  ServerSideFilteringStrategy,
+  ClientSideFilteringStrategy,
+  type FilteringContext,
+  type TaskFilteringStrategy
+} from './utils/filtering/index';
+export * from './utils/filtering/HybridFilteringStrategy';
+export * from './utils/filtering/ServerSideFilteringStrategy';
+export * from './utils/filtering/ClientSideFilteringStrategy';
+export * from './utils/filtering/FilteringContext';
+export * from './utils/filtering/types';
+
+// Export performance monitoring
+export * from './utils/performance/index';
+export * from './utils/performance/performance-monitor';
+
+// Export authentication and client utilities
+export * from './auth/index';
+export * from './client';
+
+// Export storage utilities and interfaces
+export * from './storage/interfaces';
+export * from './storage/config';
+export * from './storage/FilterStorage';
+
+// Export middleware and transforms (selective to avoid conflicts)
+export {
+  RateLimitingMiddleware,
+  type RateLimitConfig
+} from './middleware/index';
+export * from './transforms/index';
+
+// Export configuration management
+export * from './config/index';
+
+// Export specialized utility types
+export * from './aorp/index';
+
+// Export storage interfaces
+export * from './storage/interfaces';
+export * from './storage/FilterStorage';
+
+// Re-export commonly used external dependencies
+export type { Task } from 'node-vikunja';

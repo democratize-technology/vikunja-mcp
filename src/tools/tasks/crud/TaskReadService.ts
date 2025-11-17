@@ -3,13 +3,9 @@
  * Handles task retrieval operations with comprehensive error handling
  */
 
-import { MCPError, ErrorCode } from '../../../types/index';
-import { getClientFromContext } from '../../../client';
-import type { Task } from 'node-vikunja';
+import { MCPError, ErrorCode, getClientFromContext, type Task, transformApiError, handleFetchError, handleStatusCodeError, type AorpBuilderConfig } from '../../../index';
 import { validateId } from '../validation';
-import { transformApiError, handleFetchError, handleStatusCodeError } from '../../../utils/error-handler';
 import { createTaskResponse } from './TaskResponseFormatter';
-import type { AorpBuilderConfig } from '../../../aorp/types';
 
 export interface GetTaskArgs {
   id?: number;
