@@ -11,6 +11,7 @@ import { MCPError, ErrorCode } from '../types/index';
 import { getClientFromContext } from '../client';
 import type { Webhook } from '../types/vikunja';
 import { logger } from '../utils/logger';
+import { validateAndConvertId } from '../utils/validation';
 
 // Event cache for validation
 let cachedEvents: string[] | null = null;
@@ -28,14 +29,7 @@ export function expireWebhookEventCache(): void {
   cacheExpiry = new Date(0); // Set to past date
 }
 
-// Validation helpers
-function validateId(id: unknown, fieldName: string): number {
-  const num = Number(id);
-  if (!Number.isInteger(num) || num <= 0) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
-  }
-  return num;
-}
+// Use shared validateAndConvertId from utils/validation
 
 // Get valid webhook events with caching
 async function getValidEvents(authManager: AuthManager): Promise<string[]> {
@@ -187,7 +181,7 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
       try {
         switch (subcommand) {
           case 'list': {
-            const projectId = validateId(args.projectId, 'projectId');
+            const projectId = validateAndConvertId(args.projectId, 'projectId');
 
             const response = await fetch(`${baseUrl}/projects/${projectId}/webhooks`, {
               method: 'GET',
@@ -236,8 +230,8 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
           }
 
           case 'get': {
-            const projectId = validateId(args.projectId, 'projectId');
-            const webhookId = validateId(args.webhookId, 'webhookId');
+            const projectId = validateAndConvertId(args.projectId, 'projectId');
+            const webhookId = validateAndConvertId(args.webhookId, 'webhookId');
 
             // Get all webhooks and find the specific one
             const response = await fetch(`${baseUrl}/projects/${projectId}/webhooks`, {
@@ -294,7 +288,7 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
           }
 
           case 'create': {
-            const projectId = validateId(args.projectId, 'projectId');
+            const projectId = validateAndConvertId(args.projectId, 'projectId');
 
             if (!args.targetUrl) {
               throw new MCPError(
@@ -370,8 +364,8 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
           }
 
           case 'update': {
-            const projectId = validateId(args.projectId, 'projectId');
-            const webhookId = validateId(args.webhookId, 'webhookId');
+            const projectId = validateAndConvertId(args.projectId, 'projectId');
+            const webhookId = validateAndConvertId(args.webhookId, 'webhookId');
 
             if (!args.events || args.events.length === 0) {
               throw new MCPError(
@@ -437,8 +431,8 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
           }
 
           case 'delete': {
-            const projectId = validateId(args.projectId, 'projectId');
-            const webhookId = validateId(args.webhookId, 'webhookId');
+            const projectId = validateAndConvertId(args.projectId, 'projectId');
+            const webhookId = validateAndConvertId(args.webhookId, 'webhookId');
 
             const response = await fetch(`${baseUrl}/projects/${projectId}/webhooks/${webhookId}`, {
               method: 'DELETE',

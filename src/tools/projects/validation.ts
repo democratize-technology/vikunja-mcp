@@ -5,6 +5,7 @@
 
 import { MCPError, ErrorCode } from '../../types/index';
 import type { Project } from 'node-vikunja';
+import { validateId as validateSharedId } from '../../utils/validation';
 
 /**
  * Maximum allowed depth for project hierarchy to prevent excessive nesting
@@ -14,11 +15,7 @@ export const MAX_PROJECT_DEPTH = 10;
 /**
  * Validates that an ID is a positive integer
  */
-export function validateId(id: number, fieldName: string): void {
-  if (id <= 0 || !Number.isInteger(id)) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
-  }
-}
+export const validateId = validateSharedId;
 
 /**
  * Validates that a hex color is in the correct format (#RRGGBB)

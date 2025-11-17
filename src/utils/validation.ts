@@ -7,6 +7,7 @@
 
 import type { FilterExpression, FilterField, FilterOperator, LogicalOperator } from '../types/filters';
 import { StorageDataError } from '../storage/interfaces';
+import { MCPError, ErrorCode } from '../types/errors';
 
 /**
  * Maximum allowed nesting depth for filter expressions (prevents DoS)
@@ -437,4 +438,43 @@ export function safeJsonParse(jsonString: string): FilterExpression {
     }
     throw new StorageDataError(`JSON parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+}
+
+// ============================================================================
+// ID VALIDATION UTILITIES
+// ============================================================================
+
+/**
+ * Validates that an ID is a positive integer (throws on validation failure)
+ *
+ * This function validates an ID in-place without returning a value.
+ * Use this when you already have a properly typed number and just need validation.
+ *
+ * @param id - The ID to validate (should already be a number)
+ * @param fieldName - The name of the field for error messages
+ * @throws {MCPError} When the ID is not a positive integer
+ */
+export function validateId(id: number, fieldName: string): void {
+  if (id <= 0 || !Number.isInteger(id)) {
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
+  }
+}
+
+/**
+ * Validates and converts an unknown value to a positive integer ID
+ *
+ * This function accepts unknown input, validates it, and returns the converted number.
+ * Use this when receiving input from external sources that needs type conversion.
+ *
+ * @param id - The ID to validate and convert (unknown input)
+ * @param fieldName - The name of the field for error messages
+ * @returns The validated ID as a positive integer
+ * @throws {MCPError} When the ID cannot be converted to a positive integer
+ */
+export function validateAndConvertId(id: unknown, fieldName: string): number {
+  const num = Number(id);
+  if (!Number.isInteger(num) || num <= 0) {
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
+  }
+  return num;
 }

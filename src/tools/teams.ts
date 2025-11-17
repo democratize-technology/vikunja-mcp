@@ -12,6 +12,7 @@ import { getClientFromContext } from '../client';
 import { wrapToolError, handleStatusCodeError } from '../utils/error-handler';
 import type { Team } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
+import { validateAndConvertId } from '../utils/validation';
 
 interface TeamListParams {
   page?: number;
@@ -19,14 +20,7 @@ interface TeamListParams {
   s?: string;
 }
 
-// Validation helpers
-function validateId(id: unknown, fieldName: string): number {
-  const num = Number(id);
-  if (!Number.isInteger(num) || num <= 0) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
-  }
-  return num;
-}
+// Use shared validateAndConvertId from utils/validation
 
 export function registerTeamsTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
@@ -125,7 +119,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
             }
 
-            validateId(args.id, 'id');
+            validateAndConvertId(args.id, 'id');
 
             // Note: node-vikunja doesn't have getTeam method, this is a placeholder
             throw new MCPError(
@@ -139,7 +133,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
             }
 
-            validateId(args.id, 'id');
+            validateAndConvertId(args.id, 'id');
 
             if (!args.name && !args.description) {
               throw new MCPError(
@@ -160,7 +154,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
             }
 
-            const teamId = validateId(args.id, 'id');
+            const teamId = validateAndConvertId(args.id, 'id');
 
             // Check if deleteTeam method exists and is a function
             if (!client.teams.deleteTeam || typeof client.teams.deleteTeam !== 'function') {
@@ -228,7 +222,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
             }
 
-            validateId(args.id, 'id');
+            validateAndConvertId(args.id, 'id');
 
             // Note: node-vikunja doesn't have team member methods, this is a placeholder
             throw new MCPError(

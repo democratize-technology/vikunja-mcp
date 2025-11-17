@@ -8,19 +8,13 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
+import { validateAndConvertId } from '../utils/validation';
 import { wrapToolError } from '../utils/error-handler';
 import { getClientFromContext } from '../client';
 import type { Label } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 
-// Validation helpers
-function validateId(id: unknown, fieldName: string): number {
-  const num = Number(id);
-  if (!Number.isInteger(num) || num <= 0) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
-  }
-  return num;
-}
+// Use shared validateAndConvertId from utils/validation
 
 export function registerLabelsTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
@@ -90,7 +84,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
             if (args.id === undefined) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Label ID is required');
             }
-            validateId(args.id, 'id');
+            validateAndConvertId(args.id, 'id');
 
             const label = await client.labels.getLabel(args.id);
 
@@ -144,7 +138,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
             if (args.id === undefined) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Label ID is required');
             }
-            validateId(args.id, 'id');
+            validateAndConvertId(args.id, 'id');
 
             if (!args.title && args.description === undefined && !args.hexColor) {
               throw new MCPError(
@@ -181,7 +175,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
             if (args.id === undefined) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Label ID is required');
             }
-            validateId(args.id, 'id');
+            validateAndConvertId(args.id, 'id');
 
             const result = await client.labels.deleteLabel(args.id);
 

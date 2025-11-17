@@ -17,15 +17,7 @@ import { getClientFromContext } from '../client';
 import type { Project, Task, Label, User, VikunjaClient } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 import { logger } from '../utils/logger';
-
-/**
- * Validates that an ID is a positive integer
- */
-function validateId(id: number, fieldName: string): void {
-  if (id <= 0 || !Number.isInteger(id)) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
-  }
-}
+import { validateId as validateSharedId } from '../utils/validation';
 
 /**
  * Export format for project data
@@ -157,7 +149,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
       try {
         const { projectId, includeChildren } = args;
 
-        validateId(projectId, 'projectId');
+        validateSharedId(projectId, 'projectId');
 
         const client = await getClientFromContext();
 

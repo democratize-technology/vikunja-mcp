@@ -3,6 +3,7 @@
  */
 
 import { MCPError, ErrorCode } from '../../types/index';
+import { validateId as validateSharedId } from '../../utils/validation';
 
 /**
  * Validates that a date string is in valid ISO 8601 format
@@ -19,12 +20,9 @@ export function validateDateString(date: string, fieldName: string): void {
 
 /**
  * Validates that an ID is a positive integer
+ * @deprecated Use validateSharedId from '../../utils/validation' instead
  */
-export function validateId(id: number, fieldName: string): void {
-  if (id <= 0 || !Number.isInteger(id)) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
-  }
-}
+export const validateId = validateSharedId;
 
 /**
  * Convert repeat configuration from user-friendly format to Vikunja API format

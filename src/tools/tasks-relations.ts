@@ -8,17 +8,11 @@ import { MCPError, ErrorCode } from '../types/index';
 import type { StandardTaskResponse } from '../types/index';
 import { getClientFromContext } from '../client';
 import { logger } from '../utils/logger';
+import { validateId as validateSharedId } from '../utils/validation';
 import { wrapToolError } from '../utils/error-handler';
 import type { RelationKind } from 'node-vikunja';
 
-/**
- * Validates that an ID is a positive integer
- */
-function validateId(id: number, fieldName: string): void {
-  if (id <= 0 || !Number.isInteger(id)) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
-  }
-}
+// Use shared validateId from utils/validation
 
 // Relation kind mapping - matches the node-vikunja RelationKind enum
 const RELATION_KIND_MAP: Record<string, string> = {
@@ -77,12 +71,12 @@ export async function handleRelationSubcommands(
         if (!args.id) {
           throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Task ID is required');
         }
-        validateId(args.id, 'Task ID');
+        validateSharedId(args.id, 'Task ID');
 
         if (!args.otherTaskId) {
           throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Other task ID is required');
         }
-        validateId(args.otherTaskId, 'Other task ID');
+        validateSharedId(args.otherTaskId, 'Other task ID');
 
         if (!args.relationKind) {
           throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Relation kind is required');
@@ -141,12 +135,12 @@ export async function handleRelationSubcommands(
         if (!args.id) {
           throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Task ID is required');
         }
-        validateId(args.id, 'Task ID');
+        validateSharedId(args.id, 'Task ID');
 
         if (!args.otherTaskId) {
           throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Other task ID is required');
         }
-        validateId(args.otherTaskId, 'Other task ID');
+        validateSharedId(args.otherTaskId, 'Other task ID');
 
         if (!args.relationKind) {
           throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Relation kind is required');
@@ -205,7 +199,7 @@ export async function handleRelationSubcommands(
         if (!args.id) {
           throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Task ID is required');
         }
-        validateId(args.id, 'Task ID');
+        validateSharedId(args.id, 'Task ID');
 
         // Fetch the task with its relations
         const task = await client.tasks.getTask(args.id);
