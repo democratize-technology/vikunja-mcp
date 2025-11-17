@@ -1,70 +1,76 @@
 /**
  * Task Response Formatter
- * Centralizes response formatting logic for task operations to eliminate duplication
+ * Centralizes AORP response formatting logic for task operations
  */
 
-import { MCPError, ErrorCode, createStandardResponse, type TaskResponseData, type TaskResponseMetadata, type QualityIndicatorFunction } from '../../../types/index';
-import { createAorpEnabledFactory } from '../../../utils/response-factory';
+import { MCPError, ErrorCode, type TaskResponseData, type TaskResponseMetadata, type QualityIndicatorFunction, type AorpTransformationContext, type AorpFactoryOptions } from '../../../types/index';
+import { createAorpResponse, createTaskAorpResponse, createAorpErrorResponse } from '../../../utils/response-factory';
 import type { Verbosity } from '../../../transforms/index';
-import type { AorpBuilderConfig, AorpTransformationContext } from '../../../aorp/types';
+import type { AorpBuilderConfig, AorpFactoryResult } from '../../../types/index';
 import type { Task } from 'node-vikunja';
 
 /**
- * Intelligent AORP activation logic
- * Automatically determines when AORP would provide the most value
+ * AORP configuration generator for different operations
+ * Creates optimized AORP configurations based on operation type
  */
-function shouldIntelligentlyActivateAorp(
+function generateAorpConfig(
   operation: string,
   data: TaskResponseData,
   verbosity: string
-): boolean {
-  // Always enable AORP for complex operations that benefit from next steps
-  const complexOperations = [
-    'create-task',
-    'update-task',
-    'delete-task',
-    'bulk-create-tasks',
-    'bulk-update-tasks',
-    'bulk-delete-tasks',
-    'relate',
-    'unrelate'
-  ];
-
-  // Determine task count based on data structure
-  let taskCount = 1;
-  if (Array.isArray(data.tasks)) {
-    taskCount = data.tasks.length;
-  } else if (data.task) {
-    taskCount = 1;
-  }
-
-  // Enable AORP based on operation complexity and data size
-  if (complexOperations.includes(operation)) {
-    return true; // Complex operations always benefit from guidance
-  }
-
-  if (operation === 'list-tasks' && taskCount > 5) {
-    return true; // Lists with more than 5 tasks benefit from summaries
-  }
-
-  // Enable for non-standard verbosity levels (user wants optimization)
-  if (verbosity !== 'standard') {
-    return true;
-  }
-
-  // Enable for get-task operations when task has rich data
-  if (operation === 'get-task' && data.task) {
-    const task = data.task;
-    const hasRichContent = task.description ||
-                         (task.labels && task.labels.length > 0) ||
-                         (task.assignees && task.assignees.length > 0) ||
-                         task.due_date;
-    if (hasRichContent) {
-      return true;
+): AorpBuilderConfig {
+  // Base configuration
+  const baseConfig: AorpBuilderConfig = {
+    confidenceMethod: 'adaptive',
+    enableNextSteps: true,
+    enableQualityIndicators: true,
+    confidenceWeights: {
+      success: 0.4,
+      dataSize: 0.2,
+      responseTime: 0.2,
+      completeness: 0.2
     }
-  }
+  };
 
-  return false; // Default to standard responses for simple cases
+  // Operation-specific adjustments
+  switch (operation) {
+    case 'create-task':
+      return {
+        ...baseConfig,
+        confidenceWeights: {
+          success: 0.5,
+          dataSize: 0.1,
+          responseTime: 0.2,
+          completeness: 0.2
+        }
+      };
+
+    case 'bulk-create-tasks':
+    case 'bulk-update-tasks':
+    case 'bulk-delete-tasks':
+      return {
+        ...baseConfig,
+        confidenceWeights: {
+          success: 0.6,
+          dataSize: 0.3,
+          responseTime: 0.1,
+          completeness: 0.0
+        }
+      };
+
+    case 'list-tasks':
+      return {
+        ...baseConfig,
+        confidenceWeights: {
+          success: 0.3,
+          dataSize: 0.4,
+          responseTime: 0.2,
+          completeness: 0.1
+        }
+      };
+
+    default:
+      return baseConfig;
+  }
 }
 
 /**
@@ -152,7 +158,7 @@ const STANDARD_QUALITY_INDICATORS = {
 };
 
 /**
- * Creates a standardized response for task operations with optional optimization and intelligent AORP support
+ * Creates an AORP response for task operations with optimized configuration
  */
 export function createTaskResponse(
   operation: string,
@@ -166,32 +172,20 @@ export function createTaskResponse(
   useAorp?: boolean,
   aorpConfig?: AorpBuilderConfig,
   sessionId?: string
-): unknown {
+): AorpFactoryResult<TaskResponseData> {
   // Default to standard verbosity if not specified
   const selectedVerbosity = verbosity || 'standard';
 
-  // Use optimized format if requested or if verbosity is not standard
-  const shouldOptimize = useOptimizedFormat || selectedVerbosity !== 'standard';
+  // AORP is now the only response format - always use it
+  const aorpBuilderConfig = aorpConfig || generateAorpConfig(operation, data, selectedVerbosity);
 
-  // Intelligent AORP activation - auto-detect when beneficial
-  // Disable AORP for CRUD operations to preserve original data structure
-  const shouldUseAorp = useAorp && !['create-task', 'get-task', 'update-task', 'delete-task'].includes(operation)
-                       && shouldIntelligentlyActivateAorp(operation, data, selectedVerbosity);
-
-  // Use AORP if explicitly requested or intelligently detected
-  if (shouldUseAorp) {
-    const aorpFactory = createAorpEnabledFactory();
-    return aorpFactory.createResponse(operation, message, data, metadata, {
+  // For task operations, use specialized task AORP response
+  const taskData = data.task || data.tasks;
+  if (taskData) {
+    const taskResult = createTaskAorpResponse(operation, message, taskData, metadata, {
       verbosity: selectedVerbosity as Verbosity,
-      useOptimization: shouldOptimize,
-      useAorp: true,
       aorpOptions: {
-        builderConfig: {
-          confidenceMethod: 'adaptive',
-          enableNextSteps: true,
-          enableQualityIndicators: true,
-          ...aorpConfig
-        },
+        builderConfig: aorpBuilderConfig,
         nextStepsConfig: {
           maxSteps: 5,
           enableContextual: true,
@@ -212,12 +206,57 @@ export function createTaskResponse(
         ...(sessionId && { sessionId })
       }
     });
+
+    // Transform the result to use TaskResponseData type
+    return {
+      ...taskResult,
+      response: {
+        ...taskResult.response,
+        details: {
+          ...taskResult.response.details,
+          data: data // Use original TaskResponseData structure
+        }
+      }
+    } as AorpFactoryResult<TaskResponseData>;
   }
 
-  if (shouldOptimize) {
-    // For tasks, we'll use the standard response with optimization
-    return createStandardResponse(operation, message, data, metadata);
+  // Fallback for non-task data
+  return createAorpResponse(operation, message, data, metadata, {
+    verbosity: selectedVerbosity as Verbosity,
+    aorpOptions: {
+      builderConfig: aorpBuilderConfig,
+      nextStepsConfig: {
+        maxSteps: 5,
+        enableContextual: true,
+        templates: STANDARD_NEXT_STEPS_TEMPLATES
+      },
+      qualityConfig: {
+        completenessWeight: 0.6,
+        reliabilityWeight: 0.4,
+        customIndicators: STANDARD_QUALITY_INDICATORS
+      },
+      ...(sessionId && { sessionId })
+    }
+  }) as AorpFactoryResult<TaskResponseData>;
+}
+
+/**
+ * Creates an AORP error response for task operations
+ */
+export function createTaskErrorResponse(
+  operation: string,
+  error: Error | Record<string, unknown>,
+  metadata: TaskResponseMetadata = {
+    timestamp: new Date().toISOString()
+  }
+): AorpFactoryResult<null> {
+  const options: AorpFactoryOptions = {
+    includeDebug: process.env.NODE_ENV === 'development'
+  };
+
+  if (metadata.sessionId) {
+    options.sessionId = metadata.sessionId;
   }
 
-  return createStandardResponse(operation, message, data, metadata);
+  return createAorpErrorResponse(operation, error, options);
 }

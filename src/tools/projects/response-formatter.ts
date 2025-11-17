@@ -1,15 +1,15 @@
 /**
  * Project Response Formatter Module
- * Handles response creation and formatting for project operations
+ * Handles AORP response creation and formatting for project operations
  */
 
-import { createStandardResponse } from '../../types/index';
-import { createOptimizedResponse } from '../../utils/response-factory';
+import { createAorpResponse } from '../../utils/response-factory';
 import type { ResponseMetadata } from '../../types/responses';
 import type { Verbosity } from '../../transforms/index';
+import type { AorpFactoryOptions, AorpFactoryResult } from '../../aorp/types';
 
 /**
- * Creates a standardized response for project operations with optional optimization
+ * Creates an AORP response for project operations
  */
 export function createProjectResponse(
   operation: string,
@@ -17,26 +17,34 @@ export function createProjectResponse(
   data: unknown,
   metadata: Partial<ResponseMetadata> = {},
   verbosity?: string,
-  useOptimizedFormat?: boolean,
+  _useOptimizedFormat?: boolean,
   _useAorp?: boolean
-): unknown {
+): AorpFactoryResult<unknown> {
   // Default to standard verbosity if not specified
   const selectedVerbosity = verbosity || 'standard';
 
-  // Use optimized format if requested or if verbosity is not standard
-  const shouldOptimize = useOptimizedFormat || selectedVerbosity !== 'standard';
-
-  if (shouldOptimize) {
-    return createOptimizedResponse(
-      operation,
-      message,
-      data,
-      metadata,
-      selectedVerbosity as Verbosity
-    );
-  }
-
-  return createStandardResponse(operation, message, data, metadata);
+  // Always use AORP response format
+  return createAorpResponse(operation, message, data, metadata, {
+    verbosity: selectedVerbosity as Verbosity,
+    aorpOptions: {
+      builderConfig: {
+        confidenceMethod: 'adaptive',
+        enableNextSteps: true,
+        enableQualityIndicators: true
+      },
+      nextStepsConfig: {
+        maxSteps: 5,
+        enableContextual: true,
+        templates: {
+          [operation]: [
+            "Verify the project data appears correctly in listings",
+            "Check related project dependencies and hierarchies",
+            "Review project permissions and sharing settings"
+          ]
+        }
+      }
+    }
+  });
 }
 
 /**
@@ -52,7 +60,7 @@ export function createProjectSuccessResponse(
     useAorp?: boolean;
     metadata?: Partial<ResponseMetadata>;
   } = {}
-): unknown {
+): AorpFactoryResult<unknown> {
   const {
     message = `${operation} operation completed successfully`,
     verbosity,
@@ -85,7 +93,7 @@ export function createProjectListResponse(
     useOptimizedFormat?: boolean;
     useAorp?: boolean;
   } = {}
-): unknown {
+): AorpFactoryResult<unknown> {
   const metadata: Partial<ResponseMetadata> = {
     pagination: {
       page: currentPage,
@@ -123,7 +131,7 @@ export function createProjectTreeResponse(
     useOptimizedFormat?: boolean;
     useAorp?: boolean;
   } = {}
-): unknown {
+): AorpFactoryResult<unknown> {
   const metadata: Partial<ResponseMetadata> = {
     hierarchy: {
       depth,
@@ -155,7 +163,7 @@ export function createBreadcrumbResponse(
     useOptimizedFormat?: boolean;
     useAorp?: boolean;
   } = {}
-): unknown {
+): AorpFactoryResult<unknown> {
   const metadata: Partial<ResponseMetadata> = {
     navigation: {
       breadcrumbLength: breadcrumb.length,

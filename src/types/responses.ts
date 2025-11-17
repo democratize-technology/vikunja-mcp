@@ -1,6 +1,6 @@
 /**
- * Standardized response formats for all MCP tools
- * Ensures consistency across all operations
+ * AORP-Compatible Response Types
+ * All responses now use the AI-Optimized Response Protocol (AORP)
  */
 
 import type { Task } from 'node-vikunja';
@@ -44,6 +44,8 @@ export interface TaskResponseMetadata {
   assigneesAdded?: boolean;
   /** Task title for reference */
   taskTitle?: string;
+  /** Session ID for AORP tracking */
+  sessionId?: string;
   /** Additional context-specific metadata */
   [key: string]: unknown;
 }
@@ -67,6 +69,7 @@ export type QualityIndicatorFunction = (data: unknown, context: AorpTransformati
 
 /**
  * Standard metadata included in all responses
+ * Now AORP-compatible
  */
 export interface ResponseMetadata {
   /** ISO timestamp of when the operation was performed */
@@ -77,28 +80,14 @@ export interface ResponseMetadata {
   affectedFields?: string[];
   /** Previous state (for update operations) */
   previousState?: Record<string, unknown>;
+  /** Session ID for AORP tracking */
+  sessionId?: string;
   /** Additional context-specific metadata */
   [key: string]: unknown;
 }
 
 /**
- * Base response structure for all MCP tool operations
- */
-export interface StandardResponse<T = unknown> {
-  /** Whether the operation was successful */
-  success: boolean;
-  /** The operation that was performed */
-  operation: string;
-  /** Human-readable message about the operation result */
-  message: string;
-  /** The actual data returned by the operation */
-  data: T;
-  /** Metadata about the operation */
-  metadata: ResponseMetadata;
-}
-
-/**
- * Standard error response structure
+ * Standard error response structure (kept for compatibility with error handling)
  */
 export interface StandardErrorResponse {
   /** Always false for errors */
@@ -114,28 +103,8 @@ export interface StandardErrorResponse {
 }
 
 /**
- * Helper function to create a standard response
- */
-export function createStandardResponse<T>(
-  operation: string,
-  message: string,
-  data: T,
-  metadata: Partial<ResponseMetadata> = {},
-): StandardResponse<T> {
-  return {
-    success: true,
-    operation,
-    message,
-    data,
-    metadata: {
-      timestamp: new Date().toISOString(),
-      ...metadata,
-    },
-  };
-}
-
-/**
  * Helper function to create a standard error response
+ * Kept for error handling compatibility
  */
 export function createErrorResponse(
   operation: string,

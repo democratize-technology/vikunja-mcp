@@ -122,9 +122,10 @@ export {
   ErrorCode,
   type TaskResponseData,
   type StandardResponse,
-  type FilterExpression,
-  createStandardResponse
+  type FilterExpression
 } from './types/index';
+
+export { createStandardResponse } from './utils/response-factory';
 export * from './types/responses';
 export type { SavedFilter as VikunjaSavedFilter } from './types/vikunja';
 

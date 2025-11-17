@@ -274,7 +274,8 @@ export class BulkOperationProcessor {
           },
         );
 
-        response.success = false;
+        // AORP responses have different structure - success is in immediate.status
+        (response as any).immediate.status = 'error';
 
         return {
           content: [
@@ -486,7 +487,8 @@ export class BulkOperationProcessor {
     );
 
     if (failedTasks.length > 0) {
-      response.success = false;
+      // AORP responses have different structure - success is in immediate.status
+        (response as any).immediate.status = 'error';
     }
 
     return {

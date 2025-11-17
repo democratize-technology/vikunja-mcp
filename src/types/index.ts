@@ -30,18 +30,23 @@ export {
   type FilterStorage,
 } from './filters';
 
-// Export from responses
+// Export from responses (AORP-compatible)
 export {
   type ResponseMetadata,
-  type StandardResponse,
   type StandardErrorResponse,
   type TaskResponseData,
   type TaskResponseMetadata,
   type QualityIndicatorData,
   type QualityIndicatorFunction,
-  createStandardResponse,
   createErrorResponse,
 } from './responses';
+
+// Export createStandardResponse for backward compatibility during transition
+export { createStandardResponse } from '../utils/response-factory';
+
+// Legacy response type - DEPRECATED
+// Use AORP responses instead
+export type StandardResponse<T = unknown> = import('./index').AorpResponse<T>;
 
 // Export AORP types and interfaces
 export {
@@ -60,3 +65,6 @@ export {
   type QualityConfig,
   type AorpError
 } from '../aorp/types';
+
+// Export AORP factory for backwards compatibility during transition
+export { AorpResponseFactory } from '../aorp/factory';

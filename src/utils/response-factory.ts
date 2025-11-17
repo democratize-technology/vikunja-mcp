@@ -1,51 +1,37 @@
 /**
- * Simple response creation utilities
- * Clean, lightweight response formatting without over-engineering
+ * AORP Response Factory
+ * AI-Optimized Response Protocol - provides structured, AI-friendly responses
+ * with confidence scoring, next steps generation, and quality indicators.
  */
 
-import type { StandardResponse, ResponseMetadata } from '../types/responses';
+import type { ResponseMetadata } from '../types/responses';
 import type {
-  OptimizedResponse,
   Verbosity,
-  TransformerConfig,
-  TransformationResult,
   OptimizedTask,
-  Task
+  Task,
+  TransformerConfig,
+  TransformationResult
 } from '../transforms/index';
 import {
   defaultTaskTransformer,
-  defaultSizeCalculator,
   Verbosity as TransformVerbosity
 } from '../transforms/index';
-import { createStandardResponse as createBaseStandardResponse } from '../types/responses';
+import { AorpResponseFactory } from '../aorp/factory';
+import type { AorpFactoryOptions, AorpResponse, AorpFactoryResult } from '../types/index';
+import { createErrorResponse } from '../types/responses';
 
 /**
- * Enhanced response metadata with optimization info
+ * AORP-enabled response metadata
  */
-export interface EnhancedResponseMetadata extends ResponseMetadata {
-  /** Optimization metrics if enabled */
-  optimization?: {
+export interface AorpResponseMetadata extends ResponseMetadata {
+  /** AORP processing information */
+  aorp?: {
+    /** Processing time in ms */
+    processingTimeMs: number;
+    /** Transformation context */
+    operation: string;
     /** Verbosity level used */
-    verbosity: Verbosity;
-    /** Size reduction metrics */
-    sizeMetrics: {
-      originalSize: number;
-      optimizedSize: number;
-      reductionPercentage: number;
-    };
-    /** Field metrics */
-    fieldMetrics: {
-      fieldsIncluded: number;
-      totalFields: number;
-      inclusionPercentage: number;
-    };
-    /** Performance metrics */
-    performance: {
-      transformationTimeMs: number;
-      totalTimeMs: number;
-    };
-    /** Categories included */
-    categoriesIncluded: string[];
+    verbosity: string;
   };
 }
 
@@ -125,6 +111,44 @@ function convertToTask(data: unknown): Task {
 }
 
 /**
+ * Create an AORP response - the primary response creation function
+ */
+export function createAorpResponse<T>(
+  operation: string,
+  message: string,
+  data: T,
+  metadata: Partial<ResponseMetadata> = {},
+  options: {
+    verbosity?: Verbosity;
+    transformFields?: string[];
+    aorpOptions?: AorpFactoryOptions;
+  } = {}
+): AorpFactoryResult<T> {
+  const startTime = Date.now();
+
+  // Create AORP factory instance
+  const factory = new AorpResponseFactory(options.aorpOptions);
+
+  // Create AORP response directly from data
+  const result = factory.fromData(operation, data, true, message, {
+    includeDebug: false,
+    sessionId: metadata.sessionId as string,
+    ...options.aorpOptions
+  });
+
+  // Add additional metadata to the response
+  if (metadata && Object.keys(metadata).length > 0) {
+    Object.entries(metadata).forEach(([key, value]) => {
+      result.response.details.metadata[key] = value;
+    });
+  }
+
+  return result;
+}
+
+
+
+/**
  * Transform data with the specified verbosity
  */
 function transformData(data: unknown, verbosity: Verbosity, transformFields?: string[]): TransformationResult {
@@ -174,7 +198,149 @@ function transformData(data: unknown, verbosity: Verbosity, transformFields?: st
 }
 
 /**
- * Create a standard response with optional optimization
+ * Create AORP response for task data with specialized configuration
+ */
+export function createTaskAorpResponse(
+  operation: string,
+  message: string,
+  tasks: unknown,
+  metadata: Partial<ResponseMetadata> = {},
+  options: {
+    verbosity?: Verbosity;
+    aorpOptions?: AorpFactoryOptions;
+  } = {}
+): AorpFactoryResult<OptimizedTask | OptimizedTask[]> {
+  // Transform task data using the existing transformer
+  const transformerConfig = {
+    verbosity: options.verbosity || TransformVerbosity.STANDARD,
+    trackMetrics: false
+  };
+
+  let transformedData: OptimizedTask | OptimizedTask[];
+
+  if (Array.isArray(tasks)) {
+    const convertedTasks = tasks.map(item => convertToTask(item));
+    const result = defaultTaskTransformer.transformTasks(convertedTasks, transformerConfig);
+    transformedData = result.data as OptimizedTask[];
+  } else {
+    const convertedTask = convertToTask(tasks);
+    const result = defaultTaskTransformer.transformTask(convertedTask, transformerConfig);
+    transformedData = result.data as OptimizedTask;
+  }
+
+  // Create AORP response with transformed data
+  return createAorpResponse(operation, message, transformedData, metadata, {
+    verbosity: options.verbosity || TransformVerbosity.STANDARD,
+    aorpOptions: {
+      ...options.aorpOptions,
+      builderConfig: {
+        confidenceMethod: 'adaptive',
+        enableNextSteps: true,
+        enableQualityIndicators: true,
+        ...options.aorpOptions?.builderConfig
+      }
+    }
+  });
+}
+
+/**
+ * Create AORP error response
+ */
+export function createAorpErrorResponse(
+  operation: string,
+  error: Error | Record<string, unknown>,
+  options: AorpFactoryOptions = {}
+): AorpFactoryResult<null> {
+  const factory = new AorpResponseFactory(options);
+  return factory.fromError(operation, error, options);
+}
+
+/**
+ * Get default AORP factory instance
+ */
+export function getDefaultAorpFactory(): AorpResponseFactory {
+  return new AorpResponseFactory();
+}
+
+/**
+ * Create AORP response factory with custom configuration
+ */
+export function createAorpResponseFactory(options: AorpFactoryOptions = {}): AorpResponseFactory {
+  return new AorpResponseFactory(options);
+}
+
+// ============================================================================
+// LEGACY BACKWARD COMPATIBILITY FUNCTIONS - DEPRECATED
+// These functions are maintained for backward compatibility during transition
+// They now return AORP responses under the hood
+// ============================================================================
+
+/**
+ * Legacy createAorpEnabledFactory - DEPRECATED
+ * Returns a factory that creates AORP responses
+ */
+export function createAorpEnabledFactory() {
+  return {
+    createResponse: <T>(
+      operation: string,
+      message: string,
+      data: T,
+      metadata: Partial<ResponseMetadata> = {},
+      _options: any = {}
+    ) => {
+      return createAorpResponse(operation, message, data, metadata).response;
+    }
+  };
+}
+
+/**
+ * Legacy createOptimizedResponse - DEPRECATED
+ * Now returns AORP response
+ */
+export function createOptimizedResponse<T>(
+  operation: string,
+  message: string,
+  data: T,
+  metadata: Partial<ResponseMetadata> = {},
+  verbosity: Verbosity = TransformVerbosity.STANDARD
+) {
+  return createAorpResponse(operation, message, data, metadata, {
+    verbosity
+  }).response;
+}
+
+/**
+ * Legacy createTaskResponse - DEPRECATED
+ * Now returns AORP response
+ */
+export function createTaskResponse(
+  operation: string,
+  message: string,
+  tasks: unknown,
+  metadata: Partial<ResponseMetadata> = {},
+  verbosity: Verbosity = TransformVerbosity.STANDARD
+) {
+  return createTaskAorpResponse(operation, message, tasks, metadata, {
+    verbosity
+  }).response;
+}
+
+/**
+ * Legacy createMinimalResponse - DEPRECATED
+ * Now returns AORP response
+ */
+export function createMinimalResponse<T>(
+  operation: string,
+  message: string,
+  data: T,
+  metadata: Partial<ResponseMetadata> = {}
+) {
+  return createAorpResponse(operation, message, data, metadata).response;
+}
+
+/**
+ * Legacy createStandardResponse - DEPRECATED
+ * Now returns AORP response (maintains old API shape)
  */
 export function createStandardResponse<T>(
   operation: string,
@@ -186,212 +352,9 @@ export function createStandardResponse<T>(
     useOptimization?: boolean;
     transformFields?: string[];
   } = {}
-): StandardResponse<T> | OptimizedResponse<T> {
-  const startTime = Date.now();
-
-  // Determine if optimization should be used
-  const useOptimization = options.useOptimization ?? true;
-  const verbosity = options.verbosity ?? TransformVerbosity.STANDARD;
-
-  if (!useOptimization) {
-    // Create standard response without optimization
-    return createBaseStandardResponse(operation, message, data, metadata);
-  }
-
-  // Apply optimization
-  const optimizedResult = transformData(data, verbosity, options.transformFields);
-  const totalTime = Date.now() - startTime;
-
-  // Create optimized response
-  const optimizedResponse: OptimizedResponse<T> = {
-    success: true,
-    operation,
-    message,
-    data: optimizedResult.data as T,
-    metadata: {
-      timestamp: new Date().toISOString(),
-      count: Array.isArray(optimizedResult.data) ? optimizedResult.data.length : 1,
-      ...metadata,
-      optimization: {
-        verbosity,
-        sizeMetrics: {
-          originalSize: optimizedResult.metrics.originalSize,
-          optimizedSize: optimizedResult.metrics.optimizedSize,
-          reductionPercentage: optimizedResult.metrics.reductionPercentage
-        },
-        fieldMetrics: {
-          fieldsIncluded: optimizedResult.metrics.fieldsIncluded,
-          totalFields: optimizedResult.metrics.totalFields,
-          inclusionPercentage: optimizedResult.metrics.fieldInclusionPercentage
-        },
-        performance: {
-          transformationTimeMs: optimizedResult.metadata.processingTimeMs,
-          totalTimeMs: totalTime
-        },
-        categoriesIncluded: optimizedResult.metadata.categoriesIncluded
-      }
-    }
-  };
-
-  return optimizedResponse;
-}
-
-/**
- * Create optimized response for task data
- */
-export function createTaskResponse(
-  operation: string,
-  message: string,
-  tasks: unknown,
-  metadata: Partial<ResponseMetadata> = {},
-  verbosity: Verbosity = TransformVerbosity.STANDARD
-): OptimizedResponse<OptimizedTask | OptimizedTask[]> {
-  const startTime = Date.now();
-
-  // Transform task data
-  const transformerConfig: TransformerConfig = {
-    verbosity,
-    trackMetrics: false
-  };
-
-  let transformationResult: TransformationResult;
-
-  if (Array.isArray(tasks)) {
-    // Convert and validate array of tasks
-    const convertedTasks = tasks.map(item => convertToTask(item));
-    transformationResult = defaultTaskTransformer.transformTasks(convertedTasks, transformerConfig);
-  } else {
-    // Convert and validate single task
-    const convertedTask = convertToTask(tasks);
-    transformationResult = defaultTaskTransformer.transformTask(convertedTask, transformerConfig);
-  }
-
-  const totalTime = Date.now() - startTime;
-
-  // Calculate size metrics
-  const sizeMetrics = defaultSizeCalculator.calculateMetrics(transformationResult);
-
-  const response: OptimizedResponse<OptimizedTask | OptimizedTask[]> = {
-    success: true,
-    operation,
-    message,
-    data: transformationResult.data as OptimizedTask | OptimizedTask[],
-    metadata: {
-      timestamp: new Date().toISOString(),
-      count: Array.isArray(transformationResult.data) ? transformationResult.data.length : 1,
-      ...metadata,
-      optimization: {
-        verbosity,
-        sizeMetrics: {
-          originalSize: sizeMetrics.metrics.originalSize,
-          optimizedSize: sizeMetrics.metrics.optimizedSize,
-          reductionPercentage: sizeMetrics.metrics.reductionPercentage
-        },
-        fieldMetrics: {
-          fieldsIncluded: transformationResult.metrics.fieldsIncluded,
-          totalFields: transformationResult.metrics.totalFields,
-          inclusionPercentage: transformationResult.metrics.fieldInclusionPercentage
-        },
-        performance: {
-          transformationTimeMs: transformationResult.metadata.processingTimeMs,
-          totalTimeMs: totalTime
-        },
-        categoriesIncluded: transformationResult.metadata.categoriesIncluded
-      }
-    }
-  };
-
-  return response;
-}
-
-/**
- * Create a minimal response (no optimization)
- */
-export function createMinimalResponse<T>(
-  operation: string,
-  message: string,
-  data: T,
-  metadata: Partial<ResponseMetadata> = {}
-): StandardResponse<T> {
-  return createBaseStandardResponse(operation, message, data, metadata);
-}
-
-/**
- * Create an optimized response with default verbosity
- */
-export function createOptimizedResponse<T>(
-  operation: string,
-  message: string,
-  data: T,
-  metadata: Partial<ResponseMetadata> = {},
-  verbosity: Verbosity = TransformVerbosity.STANDARD
-): OptimizedResponse<T> {
-  return createStandardResponse(operation, message, data, metadata, {
-    verbosity,
-    useOptimization: true
-  }) as OptimizedResponse<T>;
-}
-
-/**
- * Configuration interface for AORP-enabled factory
- */
-export interface AorpFactoryConfig {
-  /** Whether to use optimization by default */
-  useOptimization?: boolean;
-  /** Default verbosity level for responses */
-  verbosity?: Verbosity;
-  /** Default fields to include in transformation */
-  transformFields?: string[];
-  /** Whether to use AORP (legacy compatibility) */
-  useAorp?: boolean;
-  /** AORP-specific options (legacy compatibility) */
-  aorpOptions?: {
-    builderConfig?: {
-      confidenceMethod?: string;
-      enableNextSteps?: boolean;
-      enableQualityIndicators?: boolean;
-      [key: string]: unknown;
-    };
-    [key: string]: unknown;
-  };
-}
-
-/**
- * Response factory interface with AORP capabilities
- */
-export interface AorpResponseFactory {
-  createResponse: <T>(
-    operation: string,
-    message: string,
-    data: T,
-    metadata?: Partial<ResponseMetadata>,
-    options?: Partial<AorpFactoryConfig>
-  ) => StandardResponse<T> | OptimizedResponse<T>;
-}
-
-/**
- * Stub function to replace AORP functionality
- * Returns a standard optimized response instead of AORP response
- */
-export function createAorpEnabledFactory(config: AorpFactoryConfig = {}): AorpResponseFactory {
-  return {
-    createResponse: <T>(
-      operation: string,
-      message: string,
-      data: T,
-      metadata: Partial<ResponseMetadata> = {},
-      options: Partial<AorpFactoryConfig> = {}
-    ): StandardResponse<T> | OptimizedResponse<T> => {
-      // Merge config with options, options take precedence
-      const finalOptions = {
-        ...config,
-        ...options,
-        useOptimization: options.useOptimization ?? config.useOptimization ?? true,
-        verbosity: options.verbosity ?? config.verbosity ?? TransformVerbosity.STANDARD
-      };
-
-      // Return standard optimized response
-      return createStandardResponse(operation, message, data, metadata, finalOptions);
-    }
-  };
+) {
+  // Always use AORP now
+  return createAorpResponse(operation, message, data, metadata, {
+    verbosity: options.verbosity || TransformVerbosity.STANDARD
+  }).response;
 }
