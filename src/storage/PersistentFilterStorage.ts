@@ -1,39 +1,81 @@
 /**
- * Persistent Filter Storage - Refactored to Use Modular Components
+ * Refactored PersistentFilterStorage - True Modular Architecture Implementation
  *
- * This implementation now delegates responsibilities to specialized modular components:
+ * This implementation properly delegates responsibilities to specialized components:
  * - SessionManager: Session lifecycle and access tracking
  * - StorageAdapterOrchestrator: Adapter management and coordination
  * - StorageHealthMonitor: Health monitoring and recovery
  * - StorageStatistics: Metrics collection and performance tracking
  *
- * Key architectural improvements:
- * - Eliminated God module anti-pattern
+ * Key improvements over ServiceContainer approach:
+ * - No circular dependencies
  * - True dependency injection with constructor injection
  * - Thread-safe operations with comprehensive mutex protection
- * - 100% backward API compatibility maintained
+ * - 100% backward API compatibility
  * - Proper error handling and graceful degradation
  */
 
 import { logger } from '../utils/logger';
 import { AsyncMutex } from '../utils/AsyncMutex';
 import type { FilterStorage, SavedFilter } from '../types/filters';
-import type { StorageSession } from './interfaces';
+import type { StorageSession, StorageAdapter } from './interfaces';
 
-// Import modular components
+// Import new modular components
 import { SessionManager } from './managers/SessionManager';
 import { StorageAdapterOrchestrator } from './orchestrators/StorageAdapterOrchestrator';
+import { type OrchestrationConfig } from './orchestrators/interfaces';
 import { StorageHealthMonitor } from './monitors/StorageHealthMonitor';
+import { type HealthMonitorConfig } from './monitors/interfaces/StorageHealthMonitor';
 import { StorageStatistics } from './statistics/StorageStatistics';
+import { type StorageStatisticsConfig } from './statistics/interfaces';
 
 /**
- * Refactored Persistent Filter Storage using Modular Components
+ * Component injection options for flexible dependency management
+ */
+export interface PersistentFilterStorageComponents {
+  /** Custom session manager instance */
+  sessionManager?: SessionManager;
+  /** Custom adapter orchestrator instance */
+  orchestrator?: StorageAdapterOrchestrator;
+  /** Custom health monitor instance */
+  healthMonitor?: StorageHealthMonitor;
+  /** Custom statistics collector instance */
+  statistics?: StorageStatistics;
+}
+
+/**
+ * Configuration options for the refactored storage
+ */
+export interface PersistentFilterStorageConfig {
+  /** Session management configuration */
+  session?: {
+    timeoutMs?: number;
+    cleanupIntervalMs?: number;
+    maxSessions?: number;
+  };
+  /** Adapter orchestration configuration */
+  orchestration?: OrchestrationConfig;
+  /** Health monitoring configuration */
+  health?: HealthMonitorConfig;
+  /** Statistics collection configuration */
+  statistics?: StorageStatisticsConfig;
+  /** Enable debug logging */
+  debugLogging?: boolean;
+}
+
+/**
+ * Initialization state for proper lifecycle management
+ */
+type InitializationState = 'uninitialized' | 'initializing' | 'ready' | 'error';
+
+/**
+ * Refactored PersistentFilterStorage using true modular architecture
  *
- * This implementation maintains 100% backward compatibility while using the new modular architecture.
- * All the complex responsibilities are now delegated to specialized components.
+ * This class maintains 100% backward compatibility while delegating
+ * responsibilities to specialized, production-ready components.
  */
 export class PersistentFilterStorage implements FilterStorage {
-  // Modular components
+  // Core components
   private sessionManager: SessionManager;
   private orchestrator: StorageAdapterOrchestrator;
   private healthMonitor: StorageHealthMonitor;
@@ -48,260 +90,138 @@ export class PersistentFilterStorage implements FilterStorage {
   private apiUrl: string | undefined;
 
   // Lifecycle management
-  private initialized = false;
+  private initState: InitializationState = 'uninitialized';
   private initError?: Error;
 
   /**
-   * Create a new persistent storage instance for a specific session
+   * Create a new refactored persistent storage instance
    *
    * @param sessionId Unique session identifier
    * @param userId Optional user ID for session association
    * @param apiUrl Optional API URL for session context
+   * @param components Optional injected components for testing/customization
+   * @param config Optional configuration for component behavior
    */
-  constructor(sessionId: string, userId?: string, apiUrl?: string) {
+  constructor(
+    sessionId: string,
+    userId?: string,
+    apiUrl?: string,
+    components: PersistentFilterStorageComponents = {},
+    config: PersistentFilterStorageConfig = {}
+  ) {
     this.sessionId = sessionId;
     this.userId = userId;
     this.apiUrl = apiUrl;
 
-    // Initialize modular components
-    this.sessionManager = new SessionManager();
-    this.orchestrator = new StorageAdapterOrchestrator();
-    this.healthMonitor = new StorageHealthMonitor();
-    this.statistics = new StorageStatistics();
+    // Dependency injection with defaults for backward compatibility
+    const sessionManagerConfig = {
+      sessionTimeoutMs: config.session?.timeoutMs || 300000, // 5 minutes default
+      cleanupIntervalMs: config.session?.cleanupIntervalMs || 60000, // 1 minute default
+      maxSessions: config.session?.maxSessions || 1000,
+      debugLogging: config.debugLogging || false,
+    };
 
-    logger.debug('PersistentFilterStorage created with modular components', {
-      sessionId,
-      userId,
-      apiUrl
-    });
+    this.sessionManager = components.sessionManager ?? new SessionManager(sessionManagerConfig);
+
+    this.orchestrator = components.orchestrator ?? new StorageAdapterOrchestrator(
+      config.orchestration
+    );
+
+    this.healthMonitor = components.healthMonitor ?? new StorageHealthMonitor(
+      config.health
+    );
+
+    this.statistics = components.statistics ?? new StorageStatistics();
+
+    if (config.debugLogging) {
+      logger.debug('PersistentFilterStorage created', {
+        sessionId,
+        userId,
+        apiUrl,
+        hasCustomComponents: Object.keys(components).length > 0
+      });
+    }
   }
 
   /**
    * Get session information (backward compatibility)
    */
   getSession(): StorageSession {
-    return {
+    // Return basic session info for compatibility
+    const session: StorageSession = {
       id: this.sessionId,
-      createdAt: new Date(),
+      createdAt: new Date(), // This will be updated after proper initialization
       lastAccessAt: new Date(),
-      ...(this.userId && { userId: this.userId }),
-      ...(this.apiUrl && { apiUrl: this.apiUrl })
     };
+
+    if (this.userId) {
+      session.userId = this.userId;
+    }
+
+    if (this.apiUrl) {
+      session.apiUrl = this.apiUrl;
+    }
+
+    return session;
   }
 
   /**
-   * Initialize all components
+   * Core CRUD operations - delegated to adapter with full instrumentation
    */
-  private async initialize(): Promise<void> {
-    if (this.initialized) {
-      return;
-    }
-
-    const release = await this.mutex.acquire();
-    try {
-      // Step 1: Create session
-      const sessionOptions: any = {
-        sessionId: this.sessionId,
-      };
-
-      if (this.userId) {
-        sessionOptions.userId = this.userId;
-      }
-
-      if (this.apiUrl) {
-        sessionOptions.apiUrl = this.apiUrl;
-      }
-
-      const session = await this.sessionManager.createSession(sessionOptions);
-
-      // Step 2: Initialize orchestrator
-      await this.orchestrator.initialize(session);
-
-      // Step 3: Get adapter and initialize other components
-      const adapter = await this.orchestrator.getAdapter();
-
-      // Step 4: Initialize statistics
-      await this.statistics.initialize({});
-
-      // Step 5: Start health monitoring
-      await this.healthMonitor.startMonitoring(adapter);
-
-      this.initialized = true;
-
-      logger.debug(`Persistent filter storage initialized for session ${this.sessionId}`, {
-        storageType: this.orchestrator.getStorageConfig().type,
-        sessionId: this.sessionId,
-      });
-    } catch (error) {
-      this.initialized = false;
-      this.initError = error instanceof Error ? error : new Error('Unknown initialization error');
-
-      logger.error('Failed to initialize persistent storage adapter', {
-        error: this.initError.message,
-        sessionId: this.sessionId,
-      });
-      throw this.initError;
-    } finally {
-      release();
-    }
-  }
-
-  /**
-   * Ensure storage is initialized and healthy
-   */
-  private async ensureInitialized(): Promise<void> {
-    if (!this.initialized) {
-      await this.initialize();
-    }
-
-    if (this.initError) {
-      throw this.initError;
-    }
-
-    // Perform health check
-    const healthCheck = await this.orchestrator.performHealthCheck();
-    if (!healthCheck.healthy) {
-      logger.warn('Storage adapter health check failed', {
-        error: healthCheck.error,
-        sessionId: this.sessionId,
-      });
-
-      // Try to reinitialize
-      try {
-        this.initialized = false;
-        await this.initialize();
-      } catch (reinitError) {
-        logger.error('Failed to reinitialize storage adapter', {
-          error: reinitError instanceof Error ? reinitError.message : 'Unknown error',
-          sessionId: this.sessionId,
-        });
-        throw new Error('Storage adapter is unhealthy and cannot be recovered');
-      }
-    }
-  }
-
-  /**
-   * Update last access time
-   */
-  private async updateAccessTime(): Promise<void> {
-    await this.sessionManager.updateAccessTime(this.sessionId);
-  }
-
-  /**
-   * Execute operation with instrumentation
-   */
-  private async executeWithInstrumentation<T>(
-    operationType: "create" | "update" | "delete" | "clear" | "read" | "batch_create" | "query",
-    operation: () => Promise<T>
-  ): Promise<T> {
-    const startTime = Date.now();
-    const release = await this.mutex.acquire();
-
-    try {
-      await this.ensureInitialized();
-      await this.updateAccessTime();
-
-      const result = await operation();
-
-      // Record successful operation
-      await this.statistics.recordOperation({
-        operationType,
-        success: true,
-        startTime,
-        endTime: Date.now(),
-        itemCount: Array.isArray(result) ? result.length : result ? 1 : 0,
-        storageType: 'persistent',
-        sessionId: this.sessionId
-      });
-
-      return result;
-    } catch (error) {
-      // Record failed operation
-      await this.statistics.recordOperation({
-        operationType,
-        success: false,
-        startTime,
-        endTime: Date.now(),
-        errorType: error instanceof Error ? error.constructor.name : 'Unknown',
-        storageType: 'persistent',
-        sessionId: this.sessionId
-      });
-
-      throw error;
-    } finally {
-      release();
-    }
-  }
-
-  // CRUD operations with backward compatibility
 
   async list(): Promise<SavedFilter[]> {
-    return this.executeWithInstrumentation('query', async () => {
-      const adapter = await this.orchestrator.getAdapter();
+    return this.executeWithInstrumentation('query', async (adapter: StorageAdapter) => {
       return await adapter.list();
     });
   }
 
   async get(id: string): Promise<SavedFilter | null> {
-    return this.executeWithInstrumentation('read', async () => {
-      const adapter = await this.orchestrator.getAdapter();
+    return this.executeWithInstrumentation('read', async (adapter: StorageAdapter) => {
       return await adapter.get(id);
-    });
+    }, { filterId: id });
   }
 
   async create(filter: Omit<SavedFilter, 'id' | 'created' | 'updated'>): Promise<SavedFilter> {
-    return this.executeWithInstrumentation('create', async () => {
-      const adapter = await this.orchestrator.getAdapter();
+    return this.executeWithInstrumentation('create', async (adapter: StorageAdapter) => {
       return await adapter.create(filter);
-    });
+    }, { filterName: filter.name });
   }
 
   async update(
     id: string,
-    filter: Partial<Omit<SavedFilter, 'id' | 'created' | 'updated'>>,
+    filter: Partial<Omit<SavedFilter, 'id' | 'created' | 'updated'>>
   ): Promise<SavedFilter> {
-    return this.executeWithInstrumentation('update', async () => {
-      const adapter = await this.orchestrator.getAdapter();
+    return this.executeWithInstrumentation('update', async (adapter: StorageAdapter) => {
       return await adapter.update(id, filter);
-    });
+    }, { filterId: id });
   }
 
   async delete(id: string): Promise<void> {
-    return this.executeWithInstrumentation('delete', async () => {
-      const adapter = await this.orchestrator.getAdapter();
-      await adapter.delete(id);
-    });
+    return this.executeWithInstrumentation('delete', async (adapter: StorageAdapter) => {
+      return await adapter.delete(id);
+    }, { filterId: id });
   }
 
   async findByName(name: string): Promise<SavedFilter | null> {
-    return this.executeWithInstrumentation('query', async () => {
-      const adapter = await this.orchestrator.getAdapter();
+    return this.executeWithInstrumentation('query', async (adapter: StorageAdapter) => {
       return await adapter.findByName(name);
-    });
+    }, { filterName: name });
   }
 
-  /**
-   * Clear all filters (useful for testing)
-   */
   async clear(): Promise<void> {
-    return this.executeWithInstrumentation('clear', async () => {
-      const adapter = await this.orchestrator.getAdapter();
-      await adapter.clear();
+    return this.executeWithInstrumentation('clear', async (adapter: StorageAdapter) => {
+      return await adapter.clear();
     });
   }
 
-  /**
-   * Get filters for a specific project
-   */
   async getByProject(projectId: number): Promise<SavedFilter[]> {
-    return this.executeWithInstrumentation('query', async () => {
-      const adapter = await this.orchestrator.getAdapter();
+    return this.executeWithInstrumentation('query', async (adapter: StorageAdapter) => {
       return await adapter.getByProject(projectId);
-    });
+    }, { projectId });
   }
 
   /**
-   * Get storage statistics (backward compatibility)
+   * Get comprehensive storage statistics (backward compatibility)
    */
   async getStats(): Promise<{
     filterCount: number;
@@ -314,7 +234,6 @@ export class PersistentFilterStorage implements FilterStorage {
     const release = await this.mutex.acquire();
     try {
       await this.ensureInitialized();
-      await this.updateAccessTime();
 
       // Get session information
       const session = await this.sessionManager.getSession(this.sessionId);
@@ -340,60 +259,16 @@ export class PersistentFilterStorage implements FilterStorage {
           adapterState: this.orchestrator.getAdapterStatus().state
         }
       };
-    } finally {
-      release();
-    }
-  }
-
-  /**
-   * Close the storage and clean up all resources
-   */
-  async close(): Promise<void> {
-    const release = await this.mutex.acquire();
-    try {
-      logger.debug(`Closing persistent filter storage for session ${this.sessionId}`);
-
-      // Close components in reverse initialization order
-      const closePromises = [
-        this.healthMonitor.stopMonitoring().catch(error => {
-          logger.warn('Error stopping health monitor', {
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
-        }),
-        this.statistics.close().catch(error => {
-          logger.warn('Error closing statistics', {
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
-        }),
-        this.orchestrator.close().catch(error => {
-          logger.warn('Error closing orchestrator', {
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
-        }),
-        this.sessionManager.removeSession(this.sessionId).catch(error => {
-          logger.warn('Error removing session', {
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
-        })
-      ];
-
-      await Promise.allSettled(closePromises);
-
-      this.initialized = false;
-
-      logger.debug(`Persistent filter storage closed for session ${this.sessionId}`);
     } catch (error) {
-      logger.warn('Error closing persistent filter storage', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        sessionId: this.sessionId,
-      });
+      this.logError('Failed to get storage statistics', error);
+      throw error;
     } finally {
       release();
     }
   }
 
   /**
-   * Perform health check on the storage adapter
+   * Perform comprehensive health check
    */
   async healthCheck(): Promise<{
     healthy: boolean;
@@ -402,19 +277,22 @@ export class PersistentFilterStorage implements FilterStorage {
   }> {
     const release = await this.mutex.acquire();
     try {
-      // If not initialized, try to initialize it first
-      if (!this.initialized) {
+      // If not initialized, try to initialize first
+      if (this.initState === 'uninitialized') {
         try {
           await this.initialize();
         } catch (error) {
-          return {
+          const result: any = {
             healthy: false,
-            error: `Failed to initialize storage: ${error instanceof Error ? error.message : 'Unknown error'}`,
             details: {
               sessionId: this.sessionId,
-              initialized: this.initialized,
-            },
+              initPhase: this.initState
+            }
           };
+
+          result.error = `Failed to initialize: ${error instanceof Error ? error.message : 'Unknown error'}`;
+
+          return result;
         }
       }
 
@@ -429,12 +307,12 @@ export class PersistentFilterStorage implements FilterStorage {
         healthy,
         details: {
           sessionId: this.sessionId,
-          initialized: this.initialized,
           sessionValid,
           adapterHealth: adapterHealth.healthy,
           healthCheck: healthCheck.healthy,
+          initPhase: this.initState,
           adapterState: this.orchestrator.getAdapterStatus().state
-        },
+        }
       };
 
       if (!healthy) {
@@ -457,7 +335,259 @@ export class PersistentFilterStorage implements FilterStorage {
         details: {
           sessionId: this.sessionId,
           unexpectedError: true
-        },
+        }
+      };
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Close the storage and clean up all resources
+   */
+  async close(): Promise<void> {
+    const release = await this.mutex.acquire();
+    try {
+      logger.debug('Closing PersistentFilterStorage', {
+        sessionId: this.sessionId,
+        initPhase: this.initState
+      });
+
+      // Close components in reverse initialization order
+      const closePromises = [
+        this.healthMonitor.stopMonitoring().catch((error: unknown) => {
+          logger.warn('Error stopping health monitor', {
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }),
+        this.statistics.close().catch((error: unknown) => {
+          logger.warn('Error closing statistics', {
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }),
+        this.orchestrator.close().catch((error: unknown) => {
+          logger.warn('Error closing orchestrator', {
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }),
+        this.sessionManager.removeSession(this.sessionId).catch((error: unknown) => {
+          logger.warn('Error removing session', {
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        })
+      ];
+
+      await Promise.allSettled(closePromises);
+
+      this.initState = 'uninitialized';
+
+      logger.debug('PersistentFilterStorage closed successfully', {
+        sessionId: this.sessionId
+      });
+    } catch (error) {
+      this.logError('Error during storage close', error);
+      throw error;
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Private helper methods
+   */
+
+  /**
+   * Initialize all components in proper sequence
+   */
+  private async initialize(): Promise<void> {
+    if (this.initState === 'initializing') {
+      // Wait for other initialization to complete
+      await this.waitForInitialization();
+      return;
+    }
+
+    if (this.initState === 'ready') {
+      return;
+    }
+
+    this.initState = 'initializing';
+    const release = await this.mutex.acquire();
+
+    try {
+      logger.debug('Initializing PersistentFilterStorage', {
+        sessionId: this.sessionId
+      });
+
+      // Step 1: Create session
+      const sessionOptions: any = {
+        sessionId: this.sessionId,
+      };
+
+      if (this.userId) {
+        sessionOptions.userId = this.userId;
+      }
+
+      if (this.apiUrl) {
+        sessionOptions.apiUrl = this.apiUrl;
+      }
+
+      const session = await this.sessionManager.createSession(sessionOptions);
+
+      // Step 2: Initialize orchestrator with session
+      await this.orchestrator.initialize(session);
+
+      // Step 3: Get adapter (triggers lazy initialization if needed)
+      const adapter = await this.orchestrator.getAdapter();
+
+      // Step 4: Initialize statistics
+      await this.statistics.initialize({});
+
+      // Step 5: Start health monitoring
+      await this.healthMonitor.startMonitoring(adapter);
+
+      this.initState = 'ready';
+
+      logger.info('PersistentFilterStorage initialized successfully', {
+        sessionId: this.sessionId,
+        storageType: this.orchestrator.getStorageConfig().type
+      });
+    } catch (error) {
+      this.initState = 'error';
+      this.initError = error instanceof Error ? error : new Error('Unknown initialization error');
+
+      logger.error('Failed to initialize PersistentFilterStorage', {
+        sessionId: this.sessionId,
+        error: this.initError.message
+      });
+
+      throw this.initError;
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Ensure storage is properly initialized
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (this.initState === 'ready') {
+      return;
+    }
+
+    if (this.initState === 'error') {
+      throw this.initError || new Error('Storage initialization failed');
+    }
+
+    await this.initialize();
+  }
+
+  /**
+   * Execute operation with full instrumentation and error handling
+   */
+  private async executeWithInstrumentation<T>(
+    operationType: 'create' | 'read' | 'update' | 'delete' | 'batch_create' | 'query' | 'clear',
+    operation: (adapter: StorageAdapter) => Promise<T>,
+    metadata: Record<string, unknown> = {}
+  ): Promise<T> {
+    const startTime = Date.now();
+    const release = await this.mutex.acquire();
+
+    try {
+      await this.ensureInitialized();
+
+      // Update session access time
+      await this.sessionManager.updateAccessTime(this.sessionId);
+
+      // Get adapter through orchestrator
+      const adapter = await this.orchestrator.getAdapter();
+
+      // Execute the operation
+      const result = await operation(adapter);
+
+      // Record successful operation
+      await this.statistics.recordOperation({
+        operationType,
+        success: true,
+        startTime,
+        endTime: Date.now(),
+        itemCount: Array.isArray(result) ? result.length : result ? 1 : 0,
+        storageType: 'persistent',
+        sessionId: this.sessionId
+      });
+
+      return result;
+    } catch (error) {
+      // Record failed operation
+      await this.statistics.recordOperation({
+        operationType,
+        success: false,
+        startTime,
+        endTime: Date.now(),
+        errorType: error instanceof Error ? error.constructor.name : 'Unknown',
+        storageType: 'persistent',
+        sessionId: this.sessionId
+      });
+
+      this.logError(`Operation ${operationType} failed`, error);
+      throw error;
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Wait for initialization to complete (for concurrent access)
+   */
+  private async waitForInitialization(): Promise<void> {
+    const maxWaitTime = 30000; // 30 seconds
+    const checkInterval = 100; // 100ms
+    let waited = 0;
+
+    while (this.initState === 'initializing' && waited < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      waited += checkInterval;
+    }
+
+    if (this.initState === 'initializing') {
+      throw new Error('Initialization timeout - please try again');
+    }
+  }
+
+  /**
+   * Log errors with context
+   */
+  private logError(message: string, error: unknown): void {
+    logger.error(message, {
+      sessionId: this.sessionId,
+      initPhase: this.initState,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      } : 'Unknown error'
+    });
+  }
+
+  /**
+   * Get advanced diagnostics (for debugging and monitoring)
+   */
+  async getDiagnostics(): Promise<{
+    sessionId: string;
+    initPhase: InitializationState;
+    sessionInfo: StorageSession | null;
+    adapterStatus: unknown;
+    healthStatus: unknown;
+    statistics: unknown;
+  }> {
+    const release = await this.mutex.acquire();
+    try {
+      return {
+        sessionId: this.sessionId,
+        initPhase: this.initState,
+        sessionInfo: await this.sessionManager.getSession(this.sessionId),
+        adapterStatus: this.orchestrator.getAdapterStatus(),
+        healthStatus: this.healthMonitor.getCurrentHealth(),
+        statistics: await this.statistics.getSnapshot()
       };
     } finally {
       release();
@@ -465,8 +595,8 @@ export class PersistentFilterStorage implements FilterStorage {
   }
 }
 
-// Export the refactored implementation for testing and future use
-export { RefactoredPersistentFilterStorage } from './RefactoredPersistentFilterStorage';
+// Type aliases for backward compatibility
+export type RefactoredPersistentFilterStorage = PersistentFilterStorage;
 
 /**
  * Backward compatibility: maintain the old manager interface if needed

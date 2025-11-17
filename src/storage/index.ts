@@ -13,7 +13,8 @@ import { loadStorageConfig } from './config';
 export { InMemoryFilterStorage, storageManager } from './FilterStorage';
 
 // New persistent storage exports
-export { PersistentFilterStorage, RefactoredPersistentFilterStorage, persistentStorageManager } from './PersistentFilterStorage';
+export { PersistentFilterStorage, persistentStorageManager } from './PersistentFilterStorage';
+export type { RefactoredPersistentFilterStorage } from './PersistentFilterStorage';
 
 // Storage interfaces and configuration
 export * from './interfaces';

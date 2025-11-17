@@ -283,15 +283,15 @@ describe('Modular Storage Architecture', () => {
     });
   });
 
-  describe('Integration: Refactored PersistentFilterStorage', () => {
+  describe('Integration: PersistentFilterStorage', () => {
     // This test will verify that the refactored PersistentFilterStorage
     // maintains the same API as the original
 
     it('should maintain backward compatibility', async () => {
-      // This test will fail until we implement the refactored version
-      const { RefactoredPersistentFilterStorage } = require('../../src/storage/PersistentFilterStorage');
+      // Test the consolidated PersistentFilterStorage implementation
+      const { PersistentFilterStorage } = require('../../src/storage/PersistentFilterStorage');
 
-      const storage = new RefactoredPersistentFilterStorage(session.id, session.userId, session.apiUrl, mockAdapter);
+      const storage = new PersistentFilterStorage(session.id, session.userId, session.apiUrl, mockAdapter);
 
       // Should implement FilterStorage interface
       expect(typeof storage.list).toBe('function');
@@ -309,11 +309,11 @@ describe('Modular Storage Architecture', () => {
     });
 
     it('should orchestrate services correctly', async () => {
-      // This test will verify that the refactored version properly delegates
+      // This test will verify that the consolidated version properly delegates
       // to the appropriate service classes
-      const { RefactoredPersistentFilterStorage } = require('../../src/storage/PersistentFilterStorage');
+      const { PersistentFilterStorage } = require('../../src/storage/PersistentFilterStorage');
 
-      const storage = new RefactoredPersistentFilterStorage(session.id, session.userId, session.apiUrl, mockAdapter);
+      const storage = new PersistentFilterStorage(session.id, session.userId, session.apiUrl, mockAdapter);
 
       // Should delegate to StorageService for CRUD operations
       mockAdapter.create.mockResolvedValue({
