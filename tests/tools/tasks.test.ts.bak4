@@ -490,7 +490,7 @@ describe('Tasks Tool', () => {
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
       expect(response.message).toBe('Task created successfully');
-      expect(taskData.task).toBeDefined();
+      expect(response.data.task).toBeDefined();
     });
 
     it('should handle non-Error failures during label assignment', async () => {
@@ -541,8 +541,8 @@ describe('Tasks Tool', () => {
       );
 
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(taskData.task.repeat_after).toBe(1);
-      expect(taskData.task.repeat_mode).toBe('day');
+      expect(response.data.task.repeat_after).toBe(1);
+      expect(response.data.task.repeat_mode).toBe('day');
     });
 
     it('should validate repeatAfter is non-negative', async () => {
@@ -586,14 +586,14 @@ describe('Tasks Tool', () => {
 
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse, 'get-task');
-      expect(taskData.task.hex_color).toBe('#FF0000');
-      expect(taskData.task.labels[0].hex_color).toBe('#00FF00');
-      expect(taskData.task.assignees[0].email).toBe('user1@test.com');
-      expect(taskData.task.attachments).toHaveLength(1);
-      expect(taskData.task.attachments[0].file_name).toBe('test.pdf');
-      expect(taskData.task.created_by).toBe(1);
-      expect(taskData.task.created).toBe('2024-01-01T00:00:00Z');
-      expect(taskData.task.updated).toBe('2024-01-02T00:00:00Z');
+      expect(response.data.task.hex_color).toBe('#FF0000');
+      expect(response.data.task.labels[0].hex_color).toBe('#00FF00');
+      expect(response.data.task.assignees[0].email).toBe('user1@test.com');
+      expect(response.data.task.attachments).toHaveLength(1);
+      expect(response.data.task.attachments[0].file_name).toBe('test.pdf');
+      expect(response.data.task.created_by).toBe(1);
+      expect(response.data.task.created).toBe('2024-01-01T00:00:00Z');
+      expect(response.data.task.updated).toBe('2024-01-02T00:00:00Z');
     });
     it('should get a task by ID', async () => {
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
@@ -604,8 +604,8 @@ describe('Tasks Tool', () => {
 
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
-      expect(taskData.task).toBeDefined();
-      expect(taskData.task.id).toBe(1);
+      expect(response.data.task).toBeDefined();
+      expect(response.data.task.id).toBe(1);
     });
 
     it('should handle task not found', async () => {
@@ -655,7 +655,7 @@ describe('Tasks Tool', () => {
         expect.objectContaining({ done: false })
       );
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(taskData.task.done).toBe(false);
+      expect(response.data.task.done).toBe(false);
     });
 
     it('should handle invalid done values', async () => {
@@ -684,7 +684,7 @@ describe('Tasks Tool', () => {
 
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
-      expect(taskData.task).toBeDefined();
+      expect(response.data.task).toBeDefined();
     });
 
     it('should update a task with all optional fields', async () => {
@@ -719,7 +719,7 @@ describe('Tasks Tool', () => {
 
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
-      expect(taskData.task).toBeDefined();
+      expect(response.data.task).toBeDefined();
     });
 
     it('should handle assignee updates with diff logic', async () => {
@@ -804,9 +804,9 @@ describe('Tasks Tool', () => {
 
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
-      expect(taskData.task.description).toBe('Important description');
-      expect(taskData.task.priority).toBe(4);
-      expect(taskData.task.done).toBe(true);
+      expect(response.data.task.description).toBe('Important description');
+      expect(response.data.task.priority).toBe(4);
+      expect(response.data.task.done).toBe(true);
     });
 
     it('should handle label updates', async () => {
@@ -941,10 +941,10 @@ describe('Tasks Tool', () => {
       );
 
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(metadata.affectedFields).toContain('repeatAfter');
-      expect(metadata.affectedFields).toContain('repeatMode');
-      expect(metadata.previousState.repeat_after).toBe(1 * 24 * 60 * 60);
-      expect(metadata.previousState.repeat_mode).toBe(0);
+      expect(response.metadata.affectedFields).toContain('repeatAfter');
+      expect(response.metadata.affectedFields).toContain('repeatMode');
+      expect(response.metadata.previousState.repeat_after).toBe(1 * 24 * 60 * 60);
+      expect(response.metadata.previousState.repeat_mode).toBe(0);
     });
 
     it('should track recurring fields in previousState', async () => {
@@ -963,8 +963,8 @@ describe('Tasks Tool', () => {
       });
 
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(metadata.previousState).toHaveProperty('repeat_after', 1);
-      expect(metadata.previousState).toHaveProperty('repeat_mode', 'day');
+      expect(response.metadata.previousState).toHaveProperty('repeat_after', 1);
+      expect(response.metadata.previousState).toHaveProperty('repeat_mode', 'day');
     });
   });
 
@@ -980,7 +980,7 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse);
       expectAorpSuccess(aorpResponse, 'delete-task');
       expect(response.message).toBe('Task "Test Task" deleted successfully');
-      expect(taskData.task).toBeDefined();
+      expect(response.data.task).toBeDefined();
     });
 
     it('should handle deletion errors', async () => {
@@ -1004,7 +1004,7 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse);
       expectAorpSuccess(aorpResponse, 'delete-task');
       expect(response.message).toBe('Task 1 deleted successfully');
-      expect(taskData.task).toBeUndefined();
+      expect(response.data.task).toBeUndefined();
     });
 
     it('should handle non-Error API errors in delete', async () => {
@@ -1199,7 +1199,7 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse, 'get');
       expect(response.message).toBe('Task has 2 assignee(s)');
       expect(response.task.assignees).toHaveLength(2);
-      expect(metadata.count).toBe(2);
+      expect(response.metadata.count).toBe(2);
     });
 
     it('should handle task with no assignees', async () => {
@@ -1217,7 +1217,7 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse);
       expect(response.message).toBe('Task has 0 assignee(s)');
       expect(response.task.assignees).toHaveLength(0);
-      expect(metadata.count).toBe(0);
+      expect(response.metadata.count).toBe(0);
     });
 
     it('should validate task ID is required', async () => {
@@ -1295,7 +1295,7 @@ describe('Tasks Tool', () => {
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
       expectAorpSuccess(aorpResponse, 'list');
-      expect(metadata.count).toBe(1);
+      expect(response.metadata.count).toBe(1);
       expect(response.comments).toHaveLength(1);
     });
 
@@ -1395,8 +1395,8 @@ describe('Tasks Tool', () => {
 
       expectAorpSuccess(aorpResponse);
       expectAorpSuccess(aorpResponse, 'list-tasks');
-      expect(metadata.count).toBe(0);
-      expect(tasksData.tasks).toEqual([]);
+      expect(response.metadata.count).toBe(0);
+      expect(response.data.tasks).toEqual([]);
     });
 
     it('should handle undefined optional fields', async () => {
@@ -1415,7 +1415,7 @@ describe('Tasks Tool', () => {
       const aorpResponse = JSON.parse(result.content[0].text);
       expect(response).toBeDefined();
       expectAorpSuccess(aorpResponse);
-      expect(taskData.task.id).toBe(1);
+      expect(response.data.task.id).toBe(1);
     });
   });
 
@@ -1467,9 +1467,9 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse);
       expectAorpSuccess(aorpResponse, 'update-task');
       expect(response.message).toBe('Successfully updated 3 tasks');
-      expect(tasksData.tasks).toHaveLength(3);
-      expect(metadata.affectedFields).toEqual(['done']);
-      expect(metadata.count).toBe(3);
+      expect(response.data.tasks).toHaveLength(3);
+      expect(response.metadata.affectedFields).toEqual(['done']);
+      expect(response.metadata.count).toBe(3);
     });
 
     it('should handle string "false" value for done field in bulk update', async () => {
@@ -1712,9 +1712,9 @@ describe('Tasks Tool', () => {
       // Verify successful response
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
-      expect(tasksData.tasks).toHaveLength(2);
-      expect(tasksData.tasks[0].priority).toBe(5);
-      expect(tasksData.tasks[1].priority).toBe(5);
+      expect(response.data.tasks).toHaveLength(2);
+      expect(response.data.tasks[0].priority).toBe(5);
+      expect(response.data.tasks[1].priority).toBe(5);
     });
 
     it('should detect and fix bulk update failures when API returns unchanged values', async () => {
@@ -1761,11 +1761,11 @@ describe('Tasks Tool', () => {
       // Parse response and verify tasks have been updated via fallback
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
-      expect(tasksData.tasks).toHaveLength(2);
+      expect(response.data.tasks).toHaveLength(2);
       
       // Verify that the returned tasks now show the UPDATED priority values
-      const updatedTask1 = tasksData.tasks.find(t => t.id === 371);
-      const updatedTask2 = tasksData.tasks.find(t => t.id === 372);
+      const updatedTask1 = response.data.tasks.find(t => t.id === 371);
+      const updatedTask2 = response.data.tasks.find(t => t.id === 372);
       
       expect(updatedTask1.priority).toBe(5); // Updated to 5
       expect(updatedTask2.priority).toBe(5); // Updated to 5
@@ -1797,7 +1797,7 @@ describe('Tasks Tool', () => {
 
       expect(mockClient.tasks.updateTask).toHaveBeenCalledTimes(2);
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(tasksData.tasks.every(t => t.done === true)).toBe(true);
+      expect(response.data.tasks.every(t => t.done === true)).toBe(true);
     });
 
     it('should detect bulk update failures for due_date field', async () => {
@@ -1827,7 +1827,7 @@ describe('Tasks Tool', () => {
 
       expect(mockClient.tasks.updateTask).toHaveBeenCalledTimes(2);
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(tasksData.tasks.every(t => t.due_date === newDueDate)).toBe(true);
+      expect(response.data.tasks.every(t => t.due_date === newDueDate)).toBe(true);
     });
 
     it('should detect bulk update failures for project_id field', async () => {
@@ -1856,7 +1856,7 @@ describe('Tasks Tool', () => {
 
       expect(mockClient.tasks.updateTask).toHaveBeenCalledTimes(2);
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(tasksData.tasks.every(t => t.project_id === 5)).toBe(true);
+      expect(response.data.tasks.every(t => t.project_id === 5)).toBe(true);
     });
 
     it('should validate recurring fields in bulk update', async () => {
@@ -1901,7 +1901,7 @@ describe('Tasks Tool', () => {
       });
 
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(metadata.affectedFields).toContain('repeat_after');
+      expect(response.metadata.affectedFields).toContain('repeat_after');
     });
 
     it('should validate max tasks limit', async () => {
@@ -2026,8 +2026,8 @@ describe('Tasks Tool', () => {
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
       expect(response.message).toContain('Successfully updated 3 tasks');
-      expect(tasksData.tasks).toHaveLength(3);
-      expect(metadata.fetchErrors).toBeUndefined();
+      expect(response.data.tasks).toHaveLength(3);
+      expect(response.metadata.fetchErrors).toBeUndefined();
     });
 
     it('should handle bulk update for assignees field', async () => {
@@ -2226,7 +2226,7 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse);
       expect(response.message).toContain('Successfully updated 2 tasks');
       // New batch processing system doesn't have the same fetch failure behavior
-      expect(metadata.fetchErrors).toBeUndefined();
+      expect(response.metadata.fetchErrors).toBeUndefined();
     });
 
     it('should handle generic errors in bulk update', async () => {
@@ -2275,8 +2275,8 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse);
       expectAorpSuccess(aorpResponse, 'delete-task');
       expect(response.message).toBe('Successfully deleted 3 tasks');
-      expect(metadata.count).toBe(3);
-      expect(metadata.previousState).toHaveLength(3);
+      expect(response.metadata.count).toBe(3);
+      expect(response.metadata.previousState).toHaveLength(3);
     });
 
     it('should validate required fields for bulk delete', async () => {
@@ -2319,9 +2319,9 @@ describe('Tasks Tool', () => {
       expect(response.message).toContain(
         'Bulk delete partially completed. Successfully deleted 2 tasks',
       );
-      expect(metadata.count).toBe(2);
-      expect(metadata.failedCount).toBe(1);
-      expect(metadata.failedIds).toEqual([3]);
+      expect(response.metadata.count).toBe(2);
+      expect(response.metadata.failedCount).toBe(1);
+      expect(response.metadata.failedIds).toEqual([3]);
 
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledTimes(3);
     });
@@ -2366,7 +2366,7 @@ describe('Tasks Tool', () => {
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
       // Previous state might be populated depending on whether getTask succeeded first
-      expect(metadata.previousState).toBeDefined();
+      expect(response.metadata.previousState).toBeDefined();
     });
   });
 
@@ -2403,8 +2403,8 @@ describe('Tasks Tool', () => {
       expect(result.content[0].text).toContain('Successfully created 3 tasks');
 
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(tasksData.tasks).toHaveLength(3);
-      expect(metadata.count).toBe(3);
+      expect(response.data.tasks).toHaveLength(3);
+      expect(response.metadata.count).toBe(3);
     });
 
     it('should require projectId', async () => {
@@ -2490,10 +2490,10 @@ describe('Tasks Tool', () => {
       expect(result.content[0].text).toContain('Successfully created 2 tasks, 1 failed');
 
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(tasksData.tasks).toHaveLength(2);
-      expect(metadata.failedCount).toBe(1);
-      expect(metadata.failures).toHaveLength(1);
-      expect(metadata.failures[0]).toEqual({
+      expect(response.data.tasks).toHaveLength(2);
+      expect(response.metadata.failedCount).toBe(1);
+      expect(response.metadata.failures).toHaveLength(1);
+      expect(response.metadata.failures[0]).toEqual({
         index: 1,
         error: 'Failed to create task 2',
       });
@@ -2545,8 +2545,8 @@ describe('Tasks Tool', () => {
       });
 
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(tasksData.tasks[0].labels).toHaveLength(2);
-      expect(tasksData.tasks[0].assignees).toHaveLength(2);
+      expect(response.data.tasks[0].labels).toHaveLength(2);
+      expect(response.data.tasks[0].assignees).toHaveLength(2);
     });
 
     it('should clean up task if labels/assignees fail', async () => {

@@ -941,10 +941,10 @@ describe('Tasks Tool', () => {
       );
 
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(metadata.affectedFields).toContain('repeatAfter');
-      expect(metadata.affectedFields).toContain('repeatMode');
-      expect(metadata.previousState.repeat_after).toBe(1 * 24 * 60 * 60);
-      expect(metadata.previousState.repeat_mode).toBe(0);
+      expect(response.metadata.affectedFields).toContain('repeatAfter');
+      expect(response.metadata.affectedFields).toContain('repeatMode');
+      expect(response.metadata.previousState.repeat_after).toBe(1 * 24 * 60 * 60);
+      expect(response.metadata.previousState.repeat_mode).toBe(0);
     });
 
     it('should track recurring fields in previousState', async () => {
@@ -963,8 +963,8 @@ describe('Tasks Tool', () => {
       });
 
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(metadata.previousState).toHaveProperty('repeat_after', 1);
-      expect(metadata.previousState).toHaveProperty('repeat_mode', 'day');
+      expect(response.metadata.previousState).toHaveProperty('repeat_after', 1);
+      expect(response.metadata.previousState).toHaveProperty('repeat_mode', 'day');
     });
   });
 
@@ -1199,7 +1199,7 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse, 'get');
       expect(response.message).toBe('Task has 2 assignee(s)');
       expect(response.task.assignees).toHaveLength(2);
-      expect(metadata.count).toBe(2);
+      expect(response.metadata.count).toBe(2);
     });
 
     it('should handle task with no assignees', async () => {
@@ -1217,7 +1217,7 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse);
       expect(response.message).toBe('Task has 0 assignee(s)');
       expect(response.task.assignees).toHaveLength(0);
-      expect(metadata.count).toBe(0);
+      expect(response.metadata.count).toBe(0);
     });
 
     it('should validate task ID is required', async () => {
@@ -1295,7 +1295,7 @@ describe('Tasks Tool', () => {
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
       expectAorpSuccess(aorpResponse, 'list');
-      expect(metadata.count).toBe(1);
+      expect(response.metadata.count).toBe(1);
       expect(response.comments).toHaveLength(1);
     });
 
@@ -1395,7 +1395,7 @@ describe('Tasks Tool', () => {
 
       expectAorpSuccess(aorpResponse);
       expectAorpSuccess(aorpResponse, 'list-tasks');
-      expect(metadata.count).toBe(0);
+      expect(response.metadata.count).toBe(0);
       expect(tasksData.tasks).toEqual([]);
     });
 
@@ -1468,8 +1468,8 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse, 'update-task');
       expect(response.message).toBe('Successfully updated 3 tasks');
       expect(tasksData.tasks).toHaveLength(3);
-      expect(metadata.affectedFields).toEqual(['done']);
-      expect(metadata.count).toBe(3);
+      expect(response.metadata.affectedFields).toEqual(['done']);
+      expect(response.metadata.count).toBe(3);
     });
 
     it('should handle string "false" value for done field in bulk update', async () => {
@@ -1901,7 +1901,7 @@ describe('Tasks Tool', () => {
       });
 
       const aorpResponse = JSON.parse(result.content[0].text);
-      expect(metadata.affectedFields).toContain('repeat_after');
+      expect(response.metadata.affectedFields).toContain('repeat_after');
     });
 
     it('should validate max tasks limit', async () => {
@@ -2027,7 +2027,7 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse);
       expect(response.message).toContain('Successfully updated 3 tasks');
       expect(tasksData.tasks).toHaveLength(3);
-      expect(metadata.fetchErrors).toBeUndefined();
+      expect(response.metadata.fetchErrors).toBeUndefined();
     });
 
     it('should handle bulk update for assignees field', async () => {
@@ -2226,7 +2226,7 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse);
       expect(response.message).toContain('Successfully updated 2 tasks');
       // New batch processing system doesn't have the same fetch failure behavior
-      expect(metadata.fetchErrors).toBeUndefined();
+      expect(response.metadata.fetchErrors).toBeUndefined();
     });
 
     it('should handle generic errors in bulk update', async () => {
@@ -2275,8 +2275,8 @@ describe('Tasks Tool', () => {
       expectAorpSuccess(aorpResponse);
       expectAorpSuccess(aorpResponse, 'delete-task');
       expect(response.message).toBe('Successfully deleted 3 tasks');
-      expect(metadata.count).toBe(3);
-      expect(metadata.previousState).toHaveLength(3);
+      expect(response.metadata.count).toBe(3);
+      expect(response.metadata.previousState).toHaveLength(3);
     });
 
     it('should validate required fields for bulk delete', async () => {
@@ -2319,9 +2319,9 @@ describe('Tasks Tool', () => {
       expect(response.message).toContain(
         'Bulk delete partially completed. Successfully deleted 2 tasks',
       );
-      expect(metadata.count).toBe(2);
-      expect(metadata.failedCount).toBe(1);
-      expect(metadata.failedIds).toEqual([3]);
+      expect(response.metadata.count).toBe(2);
+      expect(response.metadata.failedCount).toBe(1);
+      expect(response.metadata.failedIds).toEqual([3]);
 
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledTimes(3);
     });
@@ -2366,7 +2366,7 @@ describe('Tasks Tool', () => {
       const aorpResponse = JSON.parse(result.content[0].text);
       expectAorpSuccess(aorpResponse);
       // Previous state might be populated depending on whether getTask succeeded first
-      expect(metadata.previousState).toBeDefined();
+      expect(response.metadata.previousState).toBeDefined();
     });
   });
 
@@ -2404,7 +2404,7 @@ describe('Tasks Tool', () => {
 
       const aorpResponse = JSON.parse(result.content[0].text);
       expect(tasksData.tasks).toHaveLength(3);
-      expect(metadata.count).toBe(3);
+      expect(response.metadata.count).toBe(3);
     });
 
     it('should require projectId', async () => {
@@ -2491,9 +2491,9 @@ describe('Tasks Tool', () => {
 
       const aorpResponse = JSON.parse(result.content[0].text);
       expect(tasksData.tasks).toHaveLength(2);
-      expect(metadata.failedCount).toBe(1);
-      expect(metadata.failures).toHaveLength(1);
-      expect(metadata.failures[0]).toEqual({
+      expect(response.metadata.failedCount).toBe(1);
+      expect(response.metadata.failures).toHaveLength(1);
+      expect(response.metadata.failures[0]).toEqual({
         index: 1,
         error: 'Failed to create task 2',
       });

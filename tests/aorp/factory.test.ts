@@ -4,12 +4,40 @@
  */
 
 import { AorpResponseFactory } from '../../src/aorp/factory';
-import type { OptimizedResponse } from '../../src/transforms/index';
+// Legacy OptimizedResponse interface for testing conversion functionality
+interface LegacyOptimizedResponse<T> {
+  success: boolean;
+  operation: string;
+  message: string;
+  data: T;
+  metadata: {
+    timestamp: string;
+    count?: number;
+    optimization?: {
+      verbosity: string;
+      sizeMetrics: {
+        originalSize: number;
+        optimizedSize: number;
+        reductionPercentage: number;
+      };
+      fieldMetrics: {
+        fieldsIncluded: number;
+        totalFields: number;
+        inclusionPercentage: number;
+      };
+      performance: {
+        transformationTimeMs: number;
+        totalTimeMs: number;
+      };
+      categoriesIncluded: string[];
+    };
+  };
+}
 import type { Verbosity } from '../../src/transforms/base';
 
 describe('AorpResponseFactory', () => {
   let factory: AorpResponseFactory;
-  let mockOptimizedResponse: OptimizedResponse<any>;
+  let mockOptimizedResponse: LegacyOptimizedResponse<any>;
 
   beforeEach(() => {
     factory = new AorpResponseFactory();
