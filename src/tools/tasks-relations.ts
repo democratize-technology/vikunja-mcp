@@ -8,6 +8,7 @@ import { MCPError, ErrorCode } from '../types/index';
 import type { StandardTaskResponse } from '../types/index';
 import { getClientFromContext } from '../client';
 import { logger } from '../utils/logger';
+import { wrapToolError } from '../utils/error-handler';
 import type { RelationKind } from 'node-vikunja';
 
 /**
@@ -131,13 +132,7 @@ export async function handleRelationSubcommands(
           ],
         };
       } catch (error) {
-        if (error instanceof MCPError) {
-          throw error;
-        }
-        throw new MCPError(
-          ErrorCode.API_ERROR,
-          `Failed to create task relation: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        throw wrapToolError(error, 'vikunja_tasks_relations', 'create task relation', `${args.id}-${args.otherTaskId}`);
       }
     }
 
@@ -201,13 +196,7 @@ export async function handleRelationSubcommands(
           ],
         };
       } catch (error) {
-        if (error instanceof MCPError) {
-          throw error;
-        }
-        throw new MCPError(
-          ErrorCode.API_ERROR,
-          `Failed to remove task relation: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        throw wrapToolError(error, 'vikunja_tasks_relations', 'remove task relation', `${args.id}-${args.otherTaskId}`);
       }
     }
 
@@ -246,13 +235,7 @@ export async function handleRelationSubcommands(
           ],
         };
       } catch (error) {
-        if (error instanceof MCPError) {
-          throw error;
-        }
-        throw new MCPError(
-          ErrorCode.API_ERROR,
-          `Failed to get task relations: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        throw wrapToolError(error, 'vikunja_tasks_relations', 'get task relations', args.id);
       }
     }
 

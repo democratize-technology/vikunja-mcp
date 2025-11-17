@@ -9,6 +9,7 @@ import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getClientFromContext } from '../client';
+import { wrapToolError } from '../utils/error-handler';
 import type { Team } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 
@@ -58,9 +59,9 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
       }
 
       const client = await getClientFromContext() as TypedVikunjaClient;
+      const subcommand = args.subcommand || 'list';
 
       try {
-        const subcommand = args.subcommand || 'list';
 
         switch (subcommand) {
           case 'list': {
@@ -238,13 +239,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
             );
         }
       } catch (error) {
-        if (error instanceof MCPError) {
-          throw error;
-        }
-        throw new MCPError(
-          ErrorCode.INTERNAL_ERROR,
-          `Team operation error: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        throw wrapToolError(error, 'vikunja_teams', `${subcommand} team`, args.id);
       }
     },
   );

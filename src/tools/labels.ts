@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
+import { wrapToolError } from '../utils/error-handler';
 import { getClientFromContext } from '../client';
 import type { Label } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
@@ -205,28 +206,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
             );
         }
       } catch (error) {
-        const errorResponse = error as Error & {
-          response?: { status: number; data?: { message?: string } };
-        };
-        if (errorResponse.response?.status === 404) {
-          throw new MCPError(ErrorCode.NOT_FOUND, `Label not found`);
-        }
-        if (errorResponse.response?.status === 403) {
-          throw new MCPError(
-            ErrorCode.PERMISSION_DENIED,
-            'You do not have permission to perform this action',
-          );
-        }
-        if (errorResponse.response?.status === 400) {
-          throw new MCPError(
-            ErrorCode.VALIDATION_ERROR,
-            errorResponse.response?.data?.message || 'Invalid request',
-          );
-        }
-        throw new MCPError(
-          ErrorCode.INTERNAL_ERROR,
-          `Failed to ${subcommand} label: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        throw wrapToolError(error, 'vikunja_labels', `${subcommand} label`, args.id);
       }
     },
   );
