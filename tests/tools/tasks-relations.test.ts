@@ -87,20 +87,23 @@ const mockClient = {
 
 // Helper to create a mock server
 function createMockServer(): McpServer & { executeTool: (name: string, args: unknown) => Promise<unknown> } {
-  const handlers = new Map<string, Function>();
-  return {
-    tool: jest.fn((name: string, schema: unknown, handler: Function) => {
-      handlers.set(name, handler);
+  const registeredTools = new Map<string, any>();
+
+  const mockServer = {
+    tool: jest.fn((name: string, description: string, schema: any, handler: any) => {
+      registeredTools.set(name, handler);
     }),
     // Helper to execute a tool
     executeTool: async (name: string, args: unknown) => {
-      const handler = handlers.get(name);
+      const handler = registeredTools.get(name);
       if (!handler) {
         throw new Error(`Tool ${name} not registered`);
       }
       return handler(args);
     },
-  } as unknown as McpServer & { executeTool: (name: string, args: unknown) => Promise<unknown> };
+  };
+
+  return mockServer as unknown as McpServer & { executeTool: (name: string, args: unknown) => Promise<unknown> };
 }
 
 describe('Task Relations Tool', () => {

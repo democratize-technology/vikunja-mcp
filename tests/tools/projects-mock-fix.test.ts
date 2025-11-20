@@ -90,7 +90,7 @@ describe('Projects Tool Mock Fixes', () => {
 
     // Setup mock server
     mockServer = {
-      tool: jest.fn((name, schema, handler) => {
+      tool: jest.fn((name, description, schema, handler) => {
         toolHandler = handler;
       }),
     } as MockServer;
