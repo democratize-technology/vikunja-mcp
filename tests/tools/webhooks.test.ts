@@ -14,6 +14,7 @@ import { MCPError, ErrorCode } from '../../src/types';
 import { getClientFromContext } from '../../src/client';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 import type { Webhook } from '../../src/types/vikunja';
+import { parseMarkdown } from '../utils/markdown';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
@@ -620,12 +621,11 @@ describe('Webhooks Tool', () => {
           events: ['task.created', 'task.updated', 'task.deleted'],
         }),
       });
-      expect(result.content[0].text).toContain('"operation": "update"');
-      expect(result.content[0].text).toContain('Webhook events updated successfully');
-
-      // Parse the response to check affectedFields properly
-      const response = JSON.parse(result.content[0].text);
-      expect(response.metadata.affectedFields).toEqual(['events']);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('update');
+      expect(markdown).toContain('Webhook events updated successfully');
     });
 
     it('should throw error when events are missing', async () => {
@@ -866,13 +866,12 @@ describe('Webhooks Tool', () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
       const result = await mockHandler({ subcommand: 'list-events' });
-      const response = JSON.parse(result.content[0].text);
-
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('list-events');
-      expect(response.events).toContain('task.created');
-      expect(response.events).toContain('project.created');
-      expect(response.events.length).toBeGreaterThan(0);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-events');
+      expect(markdown).toContain('task.created');
+      expect(markdown).toContain('project.created');
     });
 
     it('should use default events when API returns 401/403/404', async () => {
@@ -887,13 +886,13 @@ describe('Webhooks Tool', () => {
       });
 
       const result = await mockHandler({ subcommand: 'list-events' });
-      const response = JSON.parse(result.content[0].text);
-
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('list-events');
-      expect(response.events).toContain('task.created');
-      expect(response.events).toContain('project.created');
-      expect(response.events).toContain('team.created');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-events');
+      expect(markdown).toContain('task.created');
+      expect(markdown).toContain('project.created');
+      expect(markdown).toContain('team.created');
     });
 
     it('should use default events when events API returns other errors', async () => {
@@ -908,13 +907,12 @@ describe('Webhooks Tool', () => {
       });
 
       const result = await mockHandler({ subcommand: 'list-events' });
-      const response = JSON.parse(result.content[0].text);
-
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('list-events');
-      expect(response.events).toContain('task.created');
-      expect(response.events).toContain('project.created');
-      expect(response.events.length).toBeGreaterThan(0);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-events');
+      expect(markdown).toContain('task.created');
+      expect(markdown).toContain('project.created');
     });
   });
 

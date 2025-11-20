@@ -5,6 +5,7 @@ import { registerTeamsTool } from '../../src/tools/teams';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { Team } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Import the function we're mocking
 import { getClientFromContext } from '../../src/client';
@@ -152,16 +153,11 @@ describe('Teams Tool', () => {
 
       expect(mockClient.teams.getTeams).toHaveBeenCalledWith({});
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.operation).toBe('list-teams');
-      expect(parsed.message).toBe('Retrieved 2 teams');
-      expect(parsed.data).toEqual({ teams: mockTeams });
-      expect(parsed.metadata).toMatchObject({
-        timestamp: expect.any(String),
-        count: 2,
-        params: {},
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-teams');
+      expect(markdown).toContain('Retrieved 2 teams');
     });
 
     it('should support pagination parameters', async () => {
@@ -212,15 +208,11 @@ describe('Teams Tool', () => {
         description: 'Test team description',
       });
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.operation).toBe('create-team');
-      expect(parsed.message).toBe('Team "Test Team" created successfully');
-      expect(parsed.data).toEqual({ team: mockTeam });
-      expect(parsed.metadata).toMatchObject({
-        timestamp: expect.any(String),
-        affectedFields: ['name', 'description'],
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-team');
+      expect(markdown).toContain('Team "Test Team" created successfully');
     });
 
     it('should require team name', async () => {
@@ -297,15 +289,11 @@ describe('Teams Tool', () => {
       const result = await callTool('delete', { id: 1 });
 
       expect(mockClient.teams.deleteTeam).toHaveBeenCalledWith(1);
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.operation).toBe('delete-team');
-      expect(parsed.message).toBe('Team deleted successfully');
-      expect(parsed.data).toEqual({ message: mockResponse.message });
-      expect(parsed.metadata).toMatchObject({
-        timestamp: expect.any(String),
-        teamId: 1,
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('delete-team');
+      expect(markdown).toContain('Team deleted successfully');
     });
 
     it('should handle string ID', async () => {
@@ -315,9 +303,10 @@ describe('Teams Tool', () => {
       const result = await callTool('delete', { id: '5' });
 
       expect(mockClient.teams.deleteTeam).toHaveBeenCalledWith(5);
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.metadata.teamId).toBe(5);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('delete-team');
     });
 
     it('should handle team not found error', async () => {
@@ -350,11 +339,11 @@ describe('Teams Tool', () => {
         },
       });
 
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.operation).toBe('delete-team');
-      expect(parsed.message).toBe('Team deleted successfully');
-      expect(parsed.data).toEqual({ message: mockResponse.message });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('delete-team');
+      expect(markdown).toContain('Team deleted successfully');
     });
 
     it('should handle API error in fallback method', async () => {
@@ -387,8 +376,9 @@ describe('Teams Tool', () => {
       const result = await callTool('delete', { id: 1 });
 
       expect(global.fetch).toHaveBeenCalled();
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
   });
 
@@ -450,16 +440,11 @@ describe('Teams Tool', () => {
       const result = await callTool();
 
       expect(mockClient.teams.getTeams).toHaveBeenCalled();
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.operation).toBe('list-teams');
-      expect(parsed.message).toBe('Retrieved 1 team');
-      expect(parsed.data).toEqual({ teams: [mockTeam] });
-      expect(parsed.metadata).toMatchObject({
-        timestamp: expect.any(String),
-        count: 1,
-        params: {},
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-teams');
+      expect(markdown).toContain('Retrieved 1 team');
     });
   });
 

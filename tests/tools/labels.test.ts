@@ -9,6 +9,7 @@ import { registerLabelsTool } from '../../src/tools/labels';
 import { MCPError, ErrorCode } from '../../src/types';
 import { getClientFromContext } from '../../src/client';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Mock the modules
 jest.mock('../../src/client', () => ({
@@ -150,18 +151,11 @@ describe('Labels Tool', () => {
       const result = await mockHandler({});
 
       expect(mockClient.labels.getLabels).toHaveBeenCalledWith({});
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'list-labels',
-        message: 'Retrieved 2 labels',
-        data: { labels: mockLabels },
-        metadata: {
-          count: 2,
-          params: {},
-        },
-      });
-      expect(response.metadata.timestamp).toBeDefined();
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-labels');
+      expect(markdown).toContain('Retrieved 2 labels');
     });
 
     it('should list all labels without parameters', async () => {
@@ -174,18 +168,11 @@ describe('Labels Tool', () => {
       const result = await mockHandler({ subcommand: 'list' });
 
       expect(mockClient.labels.getLabels).toHaveBeenCalledWith({});
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'list-labels',
-        message: 'Retrieved 2 labels',
-        data: { labels: mockLabels },
-        metadata: {
-          count: 2,
-          params: {},
-        },
-      });
-      expect(response.metadata.timestamp).toBeDefined();
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-labels');
+      expect(markdown).toContain('Retrieved 2 labels');
     });
 
     it('should list labels with pagination', async () => {
@@ -202,17 +189,11 @@ describe('Labels Tool', () => {
         page: 2,
         per_page: 10,
       });
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'list-labels',
-        message: 'Retrieved 1 label',
-        data: { labels: mockLabels },
-        metadata: {
-          count: 1,
-          params: { page: 2, per_page: 10 },
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-labels');
+      expect(markdown).toContain('Retrieved 1 label');
     });
 
     it('should list labels with search', async () => {
@@ -227,17 +208,11 @@ describe('Labels Tool', () => {
       expect(mockClient.labels.getLabels).toHaveBeenCalledWith({
         s: 'sec',
       });
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'list-labels',
-        message: 'Retrieved 1 label',
-        data: { labels: mockLabels },
-        metadata: {
-          count: 1,
-          params: { s: 'sec' },
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-labels');
+      expect(markdown).toContain('Retrieved 1 label');
     });
   });
 
@@ -274,15 +249,11 @@ describe('Labels Tool', () => {
       });
 
       expect(mockClient.labels.getLabel).toHaveBeenCalledWith(1);
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'get-label',
-        message: 'Retrieved label "Bug"',
-        data: { label: mockLabel },
-        metadata: {},
-      });
-      expect(response.metadata.timestamp).toBeDefined();
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-label');
+      expect(markdown).toContain('Retrieved label "Bug"');
     });
 
     it('should throw NOT_FOUND error when label does not exist', async () => {
@@ -323,17 +294,11 @@ describe('Labels Tool', () => {
       expect(mockClient.labels.createLabel).toHaveBeenCalledWith({
         title: 'New Label',
       });
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'create-label',
-        message: 'Label "New Label" created successfully',
-        data: { label: mockLabel },
-        metadata: {
-          affectedFields: ['title'],
-        },
-      });
-      expect(response.metadata.timestamp).toBeDefined();
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-label');
+      expect(markdown).toContain('Label "New Label" created successfully');
     });
 
     it('should create a label with all fields', async () => {
@@ -357,16 +322,11 @@ describe('Labels Tool', () => {
         description: 'Priority tasks',
         hex_color: '#ff0000',
       });
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'create-label',
-        message: 'Label "Priority" created successfully',
-        data: { label: mockLabel },
-        metadata: {
-          affectedFields: ['title', 'description', 'hex_color'],
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-label');
+      expect(markdown).toContain('Label "Priority" created successfully');
     });
 
     it('should validate hex color format', async () => {
@@ -438,17 +398,11 @@ describe('Labels Tool', () => {
       expect(mockClient.labels.updateLabel).toHaveBeenCalledWith(1, {
         title: 'Updated Label',
       });
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'update-label',
-        message: 'Label "Updated Label" updated successfully',
-        data: { label: mockLabel },
-        metadata: {
-          affectedFields: ['title'],
-        },
-      });
-      expect(response.metadata.timestamp).toBeDefined();
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('update-label');
+      expect(markdown).toContain('Label "Updated Label" updated successfully');
     });
 
     it('should update all label fields', async () => {
@@ -473,16 +427,11 @@ describe('Labels Tool', () => {
         description: 'New description',
         hex_color: '#0000ff',
       });
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'update-label',
-        message: 'Label "Complete Update" updated successfully',
-        data: { label: mockLabel },
-        metadata: {
-          affectedFields: ['title', 'description', 'hex_color'],
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('update-label');
+      expect(markdown).toContain('Label "Complete Update" updated successfully');
     });
 
     it('should allow clearing description', async () => {
@@ -502,16 +451,11 @@ describe('Labels Tool', () => {
       expect(mockClient.labels.updateLabel).toHaveBeenCalledWith(1, {
         description: '',
       });
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'update-label',
-        message: 'Label "Label" updated successfully',
-        data: { label: mockLabel },
-        metadata: {
-          affectedFields: ['description'],
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('update-label');
+      expect(markdown).toContain('Label "Label" updated successfully');
     });
 
     it('should throw FORBIDDEN error when lacking permissions', async () => {
@@ -550,15 +494,11 @@ describe('Labels Tool', () => {
       });
 
       expect(mockClient.labels.deleteLabel).toHaveBeenCalledWith(1);
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'delete-label',
-        message: 'Label deleted successfully',
-        data: { result: mockMessage },
-        metadata: {},
-      });
-      expect(response.metadata.timestamp).toBeDefined();
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('delete-label');
+      expect(markdown).toContain('Label deleted successfully');
     });
 
     it('should throw NOT_FOUND error when label does not exist', async () => {

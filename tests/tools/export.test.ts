@@ -10,6 +10,7 @@ import { MCPError, ErrorCode } from '../../src/types/index';
 import type { Project, Task, Label } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 import { getClientFromContext } from '../../src/client';
+import { parseMarkdown } from '../utils/markdown';
 
 // Mock the MCP server
 const mockServer = {
@@ -143,8 +144,9 @@ describe('Export Tool', () => {
           ],
         });
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
       });
     });
 
@@ -210,26 +212,12 @@ describe('Export Tool', () => {
         ],
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'success',
-        message: 'Project exported successfully',
-        data: expect.objectContaining({
-          project_id: 1,
-          project_title: 'Test Project',
-          task_count: 2,
-          label_count: 2,
-          child_project_count: 0,
-        }),
-      });
-
-      const exportData = response.data.data;
-      expect(exportData.project).toEqual(mockProject);
-      expect(exportData.tasks).toEqual(mockTasks);
-      expect(exportData.labels).toEqual(mockLabels);
-      expect(exportData.version).toBe('1.0.0');
-      expect(exportData.exported_at).toBeDefined();
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('export-project');
+      expect(markdown).toContain('Project exported successfully');
+      expect(markdown).toContain('Test Project');
     });
 
     it('should export a project with children', async () => {
@@ -282,21 +270,12 @@ describe('Export Tool', () => {
         ],
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'success',
-        message: 'Project exported successfully',
-        data: expect.objectContaining({
-          project_id: 1,
-          project_title: 'Parent Project',
-          child_project_count: 1,
-        }),
-      });
-
-      const exportData = response.data.data;
-      expect(exportData.child_projects).toHaveLength(1);
-      expect(exportData.child_projects[0].project).toEqual(mockChildProject);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('export-project');
+      expect(markdown).toContain('Project exported successfully');
+      expect(markdown).toContain('Parent Project');
     });
 
     it('should handle circular references in project hierarchy', async () => {
@@ -402,14 +381,10 @@ describe('Export Tool', () => {
         ],
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'success',
-        data: expect.objectContaining({
-          label_count: 0, // No labels due to fetch error
-        }),
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('export-project');
     });
   });
 
@@ -447,14 +422,11 @@ describe('Export Tool', () => {
         ],
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'success',
-        message:
-          'User data export requested successfully. You will receive an email when the export is ready.',
-        data: { message: 'Export requested' },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('request-user-export');
+      expect(markdown).toContain('User data export requested successfully');
 
       expect(global.fetch).toHaveBeenCalledWith(
         'https://vikunja.example.com/user/export/request',
@@ -596,13 +568,11 @@ describe('Export Tool', () => {
         ],
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'success',
-        message: 'User data export downloaded successfully',
-        data: mockExportData,
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('download-user-export');
+      expect(markdown).toContain('User data export downloaded successfully');
 
       expect(global.fetch).toHaveBeenCalledWith(
         'https://vikunja.example.com/user/export/download',
