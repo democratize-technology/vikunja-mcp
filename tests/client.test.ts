@@ -169,7 +169,7 @@ describe('Async-Only Client Context Operations', () => {
       await clientContext.setClientFactory(mockVikunjaClientFactory);
       await clientContext.clearClientFactory();
 
-      await expect(clientContext.getClient()).rejects.toThrow('No client factory available');
+      await expect(clientContext.getClient()).rejects.toThrow('Authentication required');
     });
 
     it('should check factory availability asynchronously', async () => {
@@ -245,7 +245,7 @@ describe('Async-Only Client Context Operations', () => {
       await setGlobalClientFactory(mockVikunjaClientFactory);
       await clearGlobalClientFactory();
 
-      await expect(getClientFromContext()).rejects.toThrow('No client factory available');
+      await expect(getClientFromContext()).rejects.toThrow('Authentication required');
     });
 
     it('should maintain singleton behavior across global operations', async () => {

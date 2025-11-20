@@ -10,7 +10,7 @@ import type {
 } from './types/node-vikunja-extended';
 import { isVikunjaClientConstructor } from './types/node-vikunja-extended';
 import { VikunjaClientFactory } from './client/VikunjaClientFactory';
-import { AsyncMutex } from './utils/AsyncMutex';
+import { Mutex } from 'async-mutex';
 import { createAuthRequiredError, createInternalError } from './utils/error-handler';
 
 export { VikunjaClientFactory } from './client/VikunjaClientFactory';
@@ -22,9 +22,9 @@ export { VikunjaClientFactory } from './client/VikunjaClientFactory';
  */
 class ClientContext {
   private static instance: ClientContext | null = null;
-  private static instanceMutex = new AsyncMutex();
+  private static instanceMutex = new Mutex();
   private clientFactory: VikunjaClientFactory | null = null;
-  private factoryMutex = new AsyncMutex();
+  private factoryMutex = new Mutex();
 
   private constructor() {}
 

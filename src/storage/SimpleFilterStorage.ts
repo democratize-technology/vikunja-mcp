@@ -8,7 +8,7 @@
  */
 
 import { logger } from '../utils/logger';
-import { AsyncMutex } from '../utils/AsyncMutex';
+import { Mutex } from 'async-mutex';
 import type { FilterStorage, SavedFilter } from '../types/filters';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -28,7 +28,7 @@ interface StorageSession {
  */
 export class SimpleFilterStorage implements FilterStorage {
   private filters: Map<string, SavedFilter> = new Map();
-  private mutex = new AsyncMutex();
+  private mutex = new Mutex();
   private session: StorageSession;
 
   constructor(sessionId: string, userId?: string, apiUrl?: string) {
@@ -236,7 +236,7 @@ export class SimpleFilterStorage implements FilterStorage {
 export class FilterStorageManager {
   private storageInstances = new Map<string, SimpleFilterStorage>();
   private cleanupInterval: NodeJS.Timeout | null = null;
-  private mutex = new AsyncMutex();
+  private mutex = new Mutex();
 
   // Clean up sessions after 1 hour
   private readonly CLEANUP_INTERVAL_MS = 60 * 60 * 1000;

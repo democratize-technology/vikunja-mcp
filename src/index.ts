@@ -144,7 +144,6 @@ export * from './utils/error-handler';
 export * from './utils/auth-error-handler';
 export * from './utils/retry';
 export * from './utils/validation';
-export * from './utils/AsyncMutex';
 
 // Export Zod-based filter utilities (replaces custom parser/tokenizer/validator)
 export {
