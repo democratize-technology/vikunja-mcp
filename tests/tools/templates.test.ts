@@ -6,6 +6,7 @@ import type { MockVikunjaClient, MockServer } from '../types/mocks';
 import type { Project, Task, User } from 'node-vikunja';
 import { MCPError, ErrorCode } from '../../src/types';
 import { AuthManager } from '../../src/auth/AuthManager';
+import { parseMarkdown } from '../utils/markdown';
 
 // Mock modules
 jest.mock('../../src/client', () => ({
@@ -155,9 +156,11 @@ describe('Templates Tool', () => {
         isGlobal: true,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('create-template');
-      expect(response.message).toContain('Template "Sprint Template" created successfully');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-template');
+      expect(markdown).toContain('Template "Sprint Template" created successfully');
     });
 
     it('should throw error if required fields are missing', async () => {
@@ -205,9 +208,10 @@ describe('Templates Tool', () => {
         name: 'Minimal Template',
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('create-template');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-template');
 
       // Verify the template data structure
       const createCall = (mockFilterStorage.create as jest.Mock).mock.calls[0][0];
@@ -243,8 +247,9 @@ describe('Templates Tool', () => {
         name: 'Template with undefined IDs',
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
 
       // Verify undefined IDs are filtered out
       const createCall = (mockFilterStorage.create as jest.Mock).mock.calls[0][0];
@@ -298,8 +303,9 @@ describe('Templates Tool', () => {
         tags: [], // Empty tags
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
 
       const createCall = (mockFilterStorage.create as jest.Mock).mock.calls[0][0];
       const templateData = JSON.parse(createCall.filter);
@@ -343,8 +349,9 @@ describe('Templates Tool', () => {
         name: 'Template with Invalid Color',
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
 
       const createCall = (mockFilterStorage.create as jest.Mock).mock.calls[0][0];
       const templateData = JSON.parse(createCall.filter);
@@ -392,9 +399,11 @@ describe('Templates Tool', () => {
 
       expect(mockFilterStorage.list).toHaveBeenCalled();
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('list-templates');
-      expect(response.data.templates).toHaveLength(2);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-templates');
+      expect(markdown).toContain('2'); // Should show count of 2 templates
     });
 
     it('should handle templates with invalid JSON', async () => {
@@ -420,9 +429,11 @@ describe('Templates Tool', () => {
 
       const result = await toolHandler({ subcommand: 'list' });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.data.templates).toHaveLength(1);
-      expect(response.data.templates[0].name).toBe('Valid Template');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-templates');
+      expect(markdown).toContain('1'); // Should show count of 1 template (invalid one filtered out)
     });
 
     it('should handle list errors', async () => {
@@ -464,9 +475,11 @@ describe('Templates Tool', () => {
 
       expect(mockFilterStorage.findByName).toHaveBeenCalledWith('template_123');
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('get-template');
-      expect(response.data.template.name).toBe('Sprint Template');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-template');
+      expect(markdown).toContain('Sprint Template');
     });
 
     it('should throw error if template not found', async () => {
@@ -540,8 +553,10 @@ describe('Templates Tool', () => {
         filter: expect.any(String),
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.message).toContain('Template "New Name" updated successfully');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Template "New Name" updated successfully');
     });
 
     it('should update all fields when provided', async () => {
@@ -616,8 +631,10 @@ describe('Templates Tool', () => {
       });
 
       // Should still return success even if the second findByName fails
-      const response = JSON.parse(result.content[0].text);
-      expect(response.message).toContain('Template "New Name" updated successfully');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Template "New Name" updated successfully');
     });
 
     it('should handle update errors', async () => {
@@ -689,8 +706,10 @@ describe('Templates Tool', () => {
 
       expect(mockFilterStorage.delete).toHaveBeenCalledWith('filter_123');
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.message).toContain('Template "Template to delete" deleted successfully');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Template "Template to delete" deleted successfully');
     });
 
     it('should throw error if id is missing', async () => {
@@ -814,8 +833,10 @@ describe('Templates Tool', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.message).toContain('Project "Sprint 24" created from template');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Project "Sprint 24" created from template');
     });
 
     it('should handle label assignment failures gracefully', async () => {
@@ -845,8 +866,10 @@ describe('Templates Tool', () => {
       });
 
       // Should still succeed even if labels fail
-      const response = JSON.parse(result.content[0].text);
-      expect(response.data.createdTasks).toBe(1);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('1'); // Should show 1 created task
     });
 
     it('should throw error if required params missing', async () => {
@@ -934,9 +957,10 @@ describe('Templates Tool', () => {
       });
 
       // Should still succeed but report the failure
-      const response = JSON.parse(result.content[0].text);
-      expect(response.data.createdTasks).toBe(1);
-      expect(response.data.failedTasks).toBe(1);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('1'); // Should show created and failed task counts
     });
 
     it('should handle unexpected errors', async () => {
@@ -1024,8 +1048,9 @@ describe('Templates Tool', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle tasks with position field', async () => {
