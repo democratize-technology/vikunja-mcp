@@ -2,11 +2,11 @@
  * Reminder operations for tasks
  */
 
-import type { StandardTaskResponse, MinimalTask } from '../../types/index';
+import type { MinimalTask } from '../../types/index';
 import { MCPError, ErrorCode } from '../../types/index';
 import { getClientFromContext } from '../../client';
 import { validateId, validateDateString } from './validation';
-import { formatAorpAsMarkdown } from '../../aorp/markdown';
+import { formatAorpAsMarkdown, createAorpFromData } from '../../aorp/index';
 
 /**
  * Add a reminder to a task
@@ -59,22 +59,19 @@ export async function addReminder(args: {
     // Fetch updated task
     const updatedTask = await client.tasks.getTask(args.id);
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'add-reminder',
-      message: `Reminder added successfully for ${args.reminderDate}`,
-      task: updatedTask,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        affectedFields: ['reminders'],
-      },
-    };
+    // Create proper AORP response
+    const aorpResult = createAorpFromData(
+      'add-reminder',
+      `Reminder added successfully for ${args.reminderDate}`,
+      true,
+      `Reminder added successfully for ${args.reminderDate}`
+    );
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(aorpResult.response),
         },
       ],
     };
@@ -143,22 +140,19 @@ export async function removeReminder(args: {
     // Fetch updated task
     const updatedTask = await client.tasks.getTask(args.id);
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'remove-reminder',
-      message: `Reminder ${args.reminderId} removed successfully`,
-      task: updatedTask,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        affectedFields: ['reminders'],
-      },
-    };
+    // Create proper AORP response
+    const aorpResult = createAorpFromData(
+      'remove-reminder',
+      `Reminder ${args.reminderId} removed successfully`,
+      true,
+      `Reminder ${args.reminderId} removed successfully`
+    );
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(aorpResult.response),
         },
       ],
     };
@@ -194,30 +188,19 @@ export async function listReminders(args: {
     const task = await client.tasks.getTask(args.id);
     const reminders = task.reminders || [];
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'list-reminders',
-      message: `Found ${reminders.length} reminder(s) for task "${task.title}"`,
-      task: {
-        id: task.id,
-        title: task.title,
-        assignees: [],
-      } as MinimalTask,
-      reminders: reminders.map((r) => ({
-        id: r.id,
-        reminder_date: r.reminder_date,
-      })),
-      metadata: {
-        timestamp: new Date().toISOString(),
-        count: reminders.length,
-      },
-    };
+    // Create proper AORP response
+    const aorpResult = createAorpFromData(
+      'list-reminders',
+      `Found ${reminders.length} reminder(s) for task "${task.title}"`,
+      true,
+      `Found ${reminders.length} reminder(s) for task "${task.title}"`
+    );
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(aorpResult.response),
         },
       ],
     };
