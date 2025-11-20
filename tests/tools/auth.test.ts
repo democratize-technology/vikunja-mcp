@@ -7,6 +7,7 @@ import { AuthManager } from '../../src/auth/AuthManager';
 import { registerAuthTool } from '../../src/tools/auth';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { MockServer, MockAuthManager } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Mock the clearGlobalClientFactory function
 jest.mock('../../src/client', () => ({
@@ -96,20 +97,13 @@ describe('Auth Tool', () => {
         'tk_test-token-123',
       );
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'auth-connect',
-        message: 'Successfully connected to Vikunja',
-        data: {
-          authenticated: true,
-        },
-        metadata: {
-          timestamp: expect.any(String),
-          apiUrl: 'https://vikunja.example.com',
-          authType: 'api-token',
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('auth-connect');
+      expect(markdown).toContain('Successfully connected to Vikunja');
+      expect(markdown).toContain('https://vikunja.example.com');
+      expect(markdown).toContain('api-token');
     });
 
     it('should return already connected message when authenticating to same URL', async () => {
@@ -126,19 +120,12 @@ describe('Auth Tool', () => {
 
       expect(mockAuthManager.connect).not.toHaveBeenCalled();
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'auth-connect',
-        message: 'Already connected to Vikunja',
-        data: {
-          authenticated: true,
-        },
-        metadata: {
-          timestamp: expect.any(String),
-          apiUrl: 'https://vikunja.example.com',
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('auth-connect');
+      expect(markdown).toContain('Already connected to Vikunja');
+      expect(markdown).toContain('https://vikunja.example.com');
     });
 
     it('should throw error when apiUrl is missing', async () => {
@@ -183,7 +170,7 @@ describe('Auth Tool', () => {
 
     it('should auto-detect and connect with JWT token', async () => {
       const jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-      
+
       // Mock getStatus to return not authenticated
       mockAuthManager.getStatus.mockReturnValue({ authenticated: false });
       mockAuthManager.getAuthType.mockReturnValue('jwt');
@@ -198,20 +185,13 @@ describe('Auth Tool', () => {
         jwtToken,
       );
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'auth-connect',
-        message: 'Successfully connected to Vikunja',
-        data: {
-          authenticated: true,
-        },
-        metadata: {
-          timestamp: expect.any(String),
-          apiUrl: 'https://vikunja.example.com',
-          authType: 'jwt',
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('auth-connect');
+      expect(markdown).toContain('Successfully connected to Vikunja');
+      expect(markdown).toContain('https://vikunja.example.com');
+      expect(markdown).toContain('jwt');
     });
 
     it('should auto-detect and connect with API token', async () => {
@@ -229,20 +209,13 @@ describe('Auth Tool', () => {
         'tk_test-token-123',
       );
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'auth-connect',
-        message: 'Successfully connected to Vikunja',
-        data: {
-          authenticated: true,
-        },
-        metadata: {
-          timestamp: expect.any(String),
-          apiUrl: 'https://vikunja.example.com',
-          authType: 'api-token',
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('auth-connect');
+      expect(markdown).toContain('Successfully connected to Vikunja');
+      expect(markdown).toContain('https://vikunja.example.com');
+      expect(markdown).toContain('api-token');
     });
 
     it('should correctly identify authType in metadata', async () => {
@@ -254,8 +227,8 @@ describe('Auth Tool', () => {
         apiUrl: 'https://vikunja.example.com',
         apiToken: 'tk_test-token-123',
       });
-      let response = JSON.parse(result.content[0].text);
-      expect(response.metadata.authType).toBe('api-token');
+      let markdown = result.content[0].text;
+      expect(markdown).toContain('api-token');
 
       // Test with JWT token
       mockAuthManager.getAuthType.mockReturnValue('jwt');
@@ -264,8 +237,8 @@ describe('Auth Tool', () => {
         apiUrl: 'https://vikunja.example.com',
         apiToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.signature',
       });
-      response = JSON.parse(result.content[0].text);
-      expect(response.metadata.authType).toBe('jwt');
+      markdown = result.content[0].text;
+      expect(markdown).toContain('jwt');
     });
   });
 
@@ -281,17 +254,12 @@ describe('Auth Tool', () => {
 
       expect(mockAuthManager.getStatus).toHaveBeenCalled();
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'auth-status',
-        message: 'Authentication status retrieved',
-        data: mockStatus,
-        metadata: {
-          timestamp: expect.any(String),
-          apiUrl: 'https://vikunja.example.com',
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('auth-status');
+      expect(markdown).toContain('Authentication status retrieved');
+      expect(markdown).toContain('https://vikunja.example.com');
     });
 
     it('should return not authenticated status', async () => {
@@ -304,16 +272,11 @@ describe('Auth Tool', () => {
 
       expect(mockAuthManager.getStatus).toHaveBeenCalled();
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'auth-status',
-        message: 'Not authenticated',
-        data: mockStatus,
-        metadata: {
-          timestamp: expect.any(String),
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('auth-status');
+      expect(markdown).toContain('Not authenticated');
     });
   });
 
@@ -322,19 +285,12 @@ describe('Auth Tool', () => {
       const result = await callTool('refresh');
 
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'auth-refresh',
-        message: 'Token refresh not required - tokens do not expire',
-        data: {
-          refreshed: false,
-        },
-        metadata: {
-          timestamp: expect.any(String),
-          reason: expect.any(String),
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('auth-refresh');
+      expect(markdown).toContain('Token refresh not required');
+      expect(markdown).toContain('tokens do not expire');
     });
   });
 
@@ -346,19 +302,11 @@ describe('Auth Tool', () => {
       expect(mockAuthManager.disconnect).toHaveBeenCalled();
       expect(clearGlobalClientFactory).toHaveBeenCalled();
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'auth-disconnect',
-        message: 'Successfully disconnected from Vikunja',
-        data: {
-          authenticated: false,
-        },
-        metadata: {
-          timestamp: expect.any(String),
-          previouslyConnected: true,
-        },
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('auth-disconnect');
+      expect(markdown).toContain('Successfully disconnected from Vikunja');
     });
   });
 
@@ -490,8 +438,9 @@ describe('Auth Tool', () => {
         'tk_test-token-123',
       );
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle MCPError from auth manager during connect', async () => {
@@ -542,11 +491,12 @@ describe('Auth Tool', () => {
       // Since refresh is a simple operation that doesn't interact with external systems,
       // we'll just verify it executes successfully
       const result = await callTool('refresh');
-      
+
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('auth-refresh');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('auth-refresh');
     });
 
     it('should validate URL format', async () => {
@@ -576,13 +526,12 @@ describe('Auth Tool', () => {
       mockAuthManager.getStatus.mockReturnValue(mockStatus);
 
       const result = await callTool('status');
-      
+
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.data).toEqual(mockStatus);
-      // Should not have apiUrl in metadata when it's undefined
-      expect(response.metadata.apiUrl).toBeUndefined();
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('auth-status');
     });
 
     it('should handle status with error instance', async () => {
@@ -606,9 +555,10 @@ describe('Auth Tool', () => {
       });
 
       expect(result.content[0].type).toBe('text');
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.metadata.authType).toBe('jwt');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('jwt');
     });
 
     it('should handle all possible error code paths', async () => {

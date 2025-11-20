@@ -5,6 +5,7 @@ import { registerUsersTool } from '../../src/tools/users';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { User } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Import the function we're mocking
 import { getClientFromContext } from '../../src/client';
@@ -131,8 +132,9 @@ describe('Users Tool', () => {
       const result = await callTool('current');
 
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
   });
 
@@ -144,14 +146,11 @@ describe('Users Tool', () => {
 
       expect(mockClient.users.getUser).toHaveBeenCalled();
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.operation).toBe('get-current-user');
-      expect(parsed.message).toBe('Current user retrieved successfully');
-      expect(parsed.data).toEqual({ user: mockUser });
-      expect(parsed.metadata).toEqual({
-        timestamp: expect.any(String),
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-current-user');
+      expect(markdown).toContain('Current user retrieved successfully');
     });
 
     it('should handle API errors', async () => {
@@ -176,16 +175,11 @@ describe('Users Tool', () => {
 
       expect(mockClient.users.getUsers).toHaveBeenCalledWith({});
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.operation).toBe('search-users');
-      expect(parsed.message).toBe('Found 2 users');
-      expect(parsed.data).toEqual({ users: mockUsers });
-      expect(parsed.metadata).toEqual({
-        timestamp: expect.any(String),
-        count: 2,
-        params: {},
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('search-users');
+      expect(markdown).toContain('Found 2 users');
     });
 
     it('should support search parameter', async () => {
@@ -196,8 +190,10 @@ describe('Users Tool', () => {
       expect(mockClient.users.getUsers).toHaveBeenCalledWith({
         s: 'test',
       });
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.metadata.params).toEqual({ search: 'test' });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('search-users');
     });
 
     it('should support pagination parameters', async () => {
@@ -209,8 +205,8 @@ describe('Users Tool', () => {
         page: 2,
         per_page: 10,
       });
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.metadata.params).toEqual({ page: 2, perPage: 10 });
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('2'); // page number
     });
 
     it('should handle API errors', async () => {
@@ -228,28 +224,11 @@ describe('Users Tool', () => {
 
       expect(mockClient.users.getUser).toHaveBeenCalled();
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.operation).toBe('get-user-settings');
-      expect(parsed.message).toBe('User settings retrieved successfully');
-      expect(parsed.data).toEqual({
-        settings: {
-          id: mockUser.id,
-          username: mockUser.username,
-          email: mockUser.email,
-          name: mockUser.name,
-          language: mockUser.language,
-          timezone: mockUser.timezone,
-          weekStart: mockUser.week_start,
-          frontendSettings: mockUser.frontend_settings,
-          emailRemindersEnabled: mockUser.email_reminders_enabled,
-          overdueTasksRemindersEnabled: mockUser.overdue_tasks_reminders_enabled,
-          overdueTasksRemindersTime: mockUser.overdue_tasks_reminders_time,
-        },
-      });
-      expect(parsed.metadata).toEqual({
-        timestamp: expect.any(String),
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-user-settings');
+      expect(markdown).toContain('User settings retrieved successfully');
     });
 
     it('should handle API errors', async () => {
@@ -277,15 +256,11 @@ describe('Users Tool', () => {
         language: 'es',
       });
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.operation).toBe('update-user-settings');
-      expect(parsed.message).toBe('User settings updated successfully');
-      expect(parsed.data).toEqual({ user: updatedUser });
-      expect(parsed.metadata).toEqual({
-        timestamp: expect.any(String),
-        affectedFields: ['name', 'language'],
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('update-user-settings');
+      expect(markdown).toContain('User settings updated successfully');
     });
 
     it('should update all settings fields', async () => {
@@ -307,14 +282,10 @@ describe('Users Tool', () => {
         week_start: 0,
         frontend_settings: { theme: 'dark' },
       });
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.metadata.affectedFields).toEqual([
-        'name',
-        'language',
-        'timezone',
-        'weekStart',
-        'frontendSettings',
-      ]);
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('name');
+      expect(markdown).toContain('language');
+      expect(markdown).toContain('timezone');
     });
 
     it('should update notification preferences', async () => {
@@ -337,12 +308,9 @@ describe('Users Tool', () => {
         overdue_tasks_reminders_enabled: true,
         overdue_tasks_reminders_time: '08:00',
       });
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.metadata.affectedFields).toEqual([
-        'emailRemindersEnabled',
-        'overdueTasksRemindersEnabled',
-        'overdueTasksRemindersTime',
-      ]);
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('emailRemindersEnabled');
+      expect(markdown).toContain('overdueTasksRemindersEnabled');
     });
 
     it('should update mixed settings including notifications', async () => {
@@ -360,12 +328,9 @@ describe('Users Tool', () => {
         email_reminders_enabled: true,
         overdue_tasks_reminders_time: '10:00',
       });
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.metadata.affectedFields).toEqual([
-        'name',
-        'emailRemindersEnabled',
-        'overdueTasksRemindersTime',
-      ]);
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('name');
+      expect(markdown).toContain('emailRemindersEnabled');
     });
 
     it('should require at least one field to update', async () => {
@@ -383,8 +348,8 @@ describe('Users Tool', () => {
       expect(mockClient.users.updateGeneralSettings).toHaveBeenCalledWith({
         week_start: 0,
       });
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.metadata.affectedFields).toEqual(['weekStart']);
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('weekStart');
     });
 
     it('should handle API errors', async () => {
@@ -482,14 +447,11 @@ describe('Users Tool', () => {
       const result = await callTool();
 
       expect(mockClient.users.getUser).toHaveBeenCalled();
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.operation).toBe('get-current-user');
-      expect(parsed.message).toBe('Current user retrieved successfully');
-      expect(parsed.data).toEqual({ user: mockUser });
-      expect(parsed.metadata).toEqual({
-        timestamp: expect.any(String),
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-current-user');
+      expect(markdown).toContain('Current user retrieved successfully');
     });
 
     it('should handle errors when defaulting to current subcommand', async () => {

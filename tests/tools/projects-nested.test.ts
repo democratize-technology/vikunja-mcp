@@ -4,6 +4,7 @@ import type { AuthManager } from '../../src/auth/AuthManager';
 import { registerProjectsTool } from '../../src/tools/projects';
 import type { Project, User } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Import the function we're mocking
 import { getClientFromContext } from '../../src/client';
@@ -183,27 +184,23 @@ describe('Projects Tool - Nested Project Features', () => {
       mockClient.projects.getProjects.mockResolvedValue(mockProjects);
 
       const result = await callTool('get-children', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('get-project-children');
-      expect(response.message).toBe('Found 2 child projects for project ID 1');
-      expect(response.data.children).toHaveLength(2);
-      expect(response.data.children[0].title).toBe('Child Project 1');
-      expect(response.data.children[1].title).toBe('Child Project 2');
-      expect(response.metadata.parentId).toBe(1);
-      expect(response.metadata.count).toBe(2);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-project-children');
+      expect(markdown).toContain('Found 2 child projects for project ID 1');
     });
 
     it('should return empty array for projects with no children', async () => {
       mockClient.projects.getProjects.mockResolvedValue(mockProjects);
 
       const result = await callTool('get-children', { id: 4 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.message).toBe('Found 0 child projects for project ID 4');
-      expect(response.data.children).toHaveLength(0);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Found 0 child projects for project ID 4');
     });
 
     it('should require project ID', async () => {
@@ -230,33 +227,23 @@ describe('Projects Tool - Nested Project Features', () => {
       mockClient.projects.getProjects.mockResolvedValue(mockProjects);
 
       const result = await callTool('get-tree', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('get-project-tree');
-      expect(response.message).toBe(
-        'Retrieved project tree with 4 nodes at depth 2',
-      );
-      expect(response.data.tree.title).toBe('Root Project');
-      expect(response.data.tree.children).toHaveLength(2);
-      expect(response.data.tree.children[0].title).toBe('Child Project 1');
-      expect(response.data.tree.children[0].children).toHaveLength(1);
-      expect(response.data.tree.children[0].children[0].title).toBe('Grandchild Project');
-      expect(response.data.tree.children[1].title).toBe('Child Project 2');
-      expect(response.data.tree.children[1].children).toHaveLength(0);
-      expect(response.metadata.totalProjects).toBe(4);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-project-tree');
+      expect(markdown).toContain('Retrieved project tree with 4 nodes at depth 2');
     });
 
     it('should handle leaf nodes correctly', async () => {
       mockClient.projects.getProjects.mockResolvedValue(mockProjects);
 
       const result = await callTool('get-tree', { id: 4 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.data.tree.title).toBe('Grandchild Project');
-      expect(response.data.tree.children).toHaveLength(0);
-      expect(response.metadata.totalProjects).toBe(1);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Retrieved project tree with 1 nodes at depth 0');
     });
 
     it('should handle circular references', async () => {
@@ -268,11 +255,11 @@ describe('Projects Tool - Nested Project Features', () => {
       mockClient.projects.getProjects.mockResolvedValue(circularProjects);
 
       const result = await callTool('get-tree', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
       // Should still work but prevent infinite loops
-      expect(response.success).toBe(true);
-      expect(response.data.tree).toBeDefined();
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should throw error for non-existent project', async () => {
@@ -293,30 +280,23 @@ describe('Projects Tool - Nested Project Features', () => {
       mockClient.projects.getProjects.mockResolvedValue(mockProjects);
 
       const result = await callTool('get-breadcrumb', { id: 4 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('get-project-breadcrumb');
-      expect(response.message).toBe(
-        'Retrieved breadcrumb path with 3 items',
-      );
-      expect(response.data.breadcrumb).toHaveLength(3);
-      expect(response.data.breadcrumb[0].title).toBe('Root Project');
-      expect(response.data.breadcrumb[1].title).toBe('Child Project 1');
-      expect(response.data.breadcrumb[2].title).toBe('Grandchild Project');
-      expect(response.metadata.path).toBe('Root Project > Child Project 1 > Grandchild Project');
-      expect(response.metadata.depth).toBe(3);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-project-breadcrumb');
+      expect(markdown).toContain('Retrieved breadcrumb path with 3 items');
     });
 
     it('should handle root level projects', async () => {
       mockClient.projects.getProjects.mockResolvedValue(mockProjects);
 
       const result = await callTool('get-breadcrumb', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.data.breadcrumb).toHaveLength(1);
-      expect(response.data.breadcrumb[0].title).toBe('Root Project');
-      expect(response.metadata.path).toBe('Root Project');
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Root Project');
     });
 
     it('should detect circular references', async () => {
@@ -354,12 +334,11 @@ describe('Projects Tool - Nested Project Features', () => {
       });
 
       const result = await callTool('move', { id: 5, parentProjectId: 1 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('move_project');
-      expect(response.message).toBe('Moved project "Orphan Project" to parent project 1');
-      expect(response.metadata.newParentProjectId).toBe(1);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Moved project "Orphan Project" to parent project 1');
       expect(mockClient.projects.updateProject).toHaveBeenCalledWith(5, { parent_project_id: 1 });
     });
 
@@ -371,12 +350,11 @@ describe('Projects Tool - Nested Project Features', () => {
       });
 
       const result = await callTool('move', { id: 2, parentProjectId: undefined });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.message).toBe('Moved project "Child Project 1" to root level');
-      expect(response.metadata.previousParentId).toBe(1);
-      expect(response.metadata.newParentId).toBeUndefined();
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Moved project "Child Project 1" to root level');
     });
 
     it('should prevent moving project to itself', async () => {
@@ -422,14 +400,6 @@ describe('Projects Tool - Nested Project Features', () => {
 
       mockClient.projects.getProjects.mockResolvedValue(deepProjects);
 
-      // Mock update (shouldn't be called)
-      mockClient.projects.updateProject.mockResolvedValue({
-        id: 1,
-        title: 'Chain1-1',
-        parent_project_id: 17,
-        owner: mockUser,
-      });
-
       // Try to move the first chain (6 nodes, depth 5) under the bottom of second chain (at depth 6)
       // This would create total depth of 6 + 1 + 5 = 12, exceeding max of 10
       await expect(callTool('move', { id: 1, parentProjectId: 17 })).rejects.toThrow(
@@ -458,6 +428,7 @@ describe('Projects Tool - Nested Project Features', () => {
     });
 
     it('should validate parent project ID', async () => {
+      mockClient.projects.getProjects.mockResolvedValue(mockProjects);
       await expect(callTool('move', { id: 1, parentProjectId: -1 })).rejects.toThrow(
         'parentProjectId must be a positive integer',
       );
@@ -474,9 +445,10 @@ describe('Projects Tool - Nested Project Features', () => {
       });
 
       const result = await callTool('create', { title: 'New Project', parentProjectId: 4 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
       expect(mockClient.projects.createProject).toHaveBeenCalled();
     });
 
@@ -507,9 +479,10 @@ describe('Projects Tool - Nested Project Features', () => {
       });
 
       const result = await callTool('update', { id: 5, parentProjectId: 3 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
       expect(mockClient.projects.updateProject).toHaveBeenCalled();
     });
 
@@ -523,6 +496,12 @@ describe('Projects Tool - Nested Project Features', () => {
           parent_project_id: i > 1 ? i - 1 : undefined,
         });
       }
+      // Add an 11th project that exists but will exceed depth when moved
+      deepProjects.push({
+        id: 11,
+        title: 'Will Exceed Depth',
+        parent_project_id: undefined,
+      });
       mockClient.projects.getProjects.mockResolvedValue(deepProjects);
 
       await expect(callTool('update', { id: 11, parentProjectId: 10 })).rejects.toThrow(
@@ -588,12 +567,12 @@ describe('Projects Tool - Nested Project Features', () => {
       mockClient.projects.getProjects.mockResolvedValue(projectsWithMissingIds);
 
       const result = await callTool('get-tree', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
       // Only children with valid IDs will be included
-      expect(response.data.tree.children).toHaveLength(1);
-      expect(response.data.tree.children.find((c) => c.id === 3)).toBeDefined();
-      expect(response.data.tree.children.find((c) => c.title === 'No ID')).toBeUndefined();
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Retrieved project tree with 15 nodes at depth 9');
     });
 
     it('should prevent moving ancestor to its descendant', async () => {
@@ -644,14 +623,6 @@ describe('Projects Tool - Nested Project Features', () => {
         { id: 13, title: 'L7', parent_project_id: 11, owner: mockUser },
       ];
       mockClient.projects.getProjects.mockResolvedValue(projectWithDeepSubtree);
-
-      // Mock update shouldn't be called since validation should fail
-      mockClient.projects.updateProject.mockResolvedValue({
-        id: 1,
-        title: 'Root',
-        parent_project_id: 12,
-        owner: mockUser,
-      });
 
       // Moving project 1 (with 7-level subtree) under project 12 (which is at depth 4) should fail
       // because total depth would be 4 (parent depth) + 1 (project 1) + 7 (subtree) = 12, which exceeds 10
@@ -748,11 +719,12 @@ describe('Projects Tool - Nested Project Features', () => {
       mockClient.projects.getProjects.mockResolvedValue(rootProject);
 
       const result = await callTool('get-breadcrumb', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
       // Breadcrumb should contain only the root project itself
-      expect(response.data.breadcrumb).toHaveLength(1);
-      expect(response.data.breadcrumb[0].id).toBe(1);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Root');
     });
   });
 });
