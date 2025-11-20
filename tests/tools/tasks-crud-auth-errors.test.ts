@@ -25,15 +25,23 @@ jest.mock('../../src/utils/logger', () => ({
   },
 }));
 
-// Mock retry utility to speed up tests
-jest.mock('../../src/utils/retry', () => ({
-  withRetry: jest.fn().mockImplementation((fn) => fn()),
-  RETRY_CONFIG: {
-    AUTH_ERRORS: {
-      maxRetries: 3,
+// Mock retry utility to speed up tests but preserve circuit breaker registry
+jest.mock('../../src/utils/retry', () => {
+  const actual = jest.requireActual('../../src/utils/retry');
+  return {
+    withRetry: jest.fn().mockImplementation((fn) => fn()),
+    RETRY_CONFIG: {
+      AUTH_ERRORS: {
+        maxRetries: 3,
+      },
     },
-  },
-}));
+    // Preserve the real circuit breaker registry for test isolation
+    circuitBreakerRegistry: actual.circuitBreakerRegistry,
+  };
+});
+
+// Import circuit breaker registry after mock setup
+import { circuitBreakerRegistry } from '../../src/utils/retry';
 
 describe('Tasks CRUD - Authentication Error Handling', () => {
   let mockClient: MockVikunjaClient;
@@ -52,8 +60,12 @@ describe('Tasks CRUD - Authentication Error Handling', () => {
     return error;
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+
+    // Reset circuit breakers to prevent state leakage between tests
+    // This prevents "CircuitBreakerOpenError" from affecting subsequent tests
+    await circuitBreakerRegistry.resetAll();
 
     // Setup mock client with all required methods
     mockClient = {

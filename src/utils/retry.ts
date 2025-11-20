@@ -124,11 +124,10 @@ class CircuitBreakerRegistry {
     return stats;
   }
 
-  resetAll(): void {
+  async resetAll(): Promise<void> {
     this.circuitBreakers.forEach(breaker => breaker.open());
-    setTimeout(() => {
-      this.circuitBreakers.forEach(breaker => breaker.close());
-    }, 100);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    this.circuitBreakers.forEach(breaker => breaker.close());
     logger.info('All circuit breakers reset');
   }
 
