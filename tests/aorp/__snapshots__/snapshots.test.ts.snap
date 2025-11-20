@@ -1,0 +1,130 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`AORP Formatting - Snapshot Tests formatAorpAsMarkdown() snapshots should format comprehensive success AORP consistently: comprehensive-success-aorp 1`] = `
+"## ✅ Success | Confidence: 92%
+
+**Key Insight**: Complex multi-entity operation completed successfully
+**Session ID**: \`sess_abc123\`
+
+### 🎯 Next Steps
+1. Review the operation results
+2. Validate all entity relationships
+3. Check system performance metrics
+4. Update relevant documentation
+
+### 💡 Recommendations
+**Primary**: Monitor system behavior for any anomalies
+- Consider implementing additional monitoring
+- Plan for scalability improvements
+
+### 🔄 Workflow Guidance
+The operation has completed successfully. Review the detailed results for any areas that may need additional attention.
+
+### 📊 Quality Indicators
+- **Completeness**: 98%
+- **Reliability**: 95%
+- **Urgency**: 🟡 Medium
+- **Performance**: 88%
+- **Data Integrity**: 100%
+
+### 📋 Details
+**Summary**: Successfully processed and updated multiple related entities with full data validation.
+**Timestamp**: 2024-11-20T17:30:00.000Z
+**Operation**: complex-batch-update
+**Entities Affected**: 15
+**Processing Time**: 2.1s"
+`;
+
+exports[`AORP Formatting - Snapshot Tests formatAorpAsMarkdown() snapshots should format error AORP consistently: error-aorp 1`] = `
+"## ❌ Error | Confidence: 65%
+
+**Key Insight**: Operation failed due to validation errors
+**Session ID**: \`sess_def456\`
+
+### 🎯 Next Steps
+1. Review input validation rules
+2. Correct data format issues
+3. Retry the operation with corrected data
+
+### 💡 Recommendations
+**Primary**: Implement stricter client-side validation
+- Add more descriptive error messages
+- Provide examples of correct data format
+
+### 🔄 Workflow Guidance
+The operation encountered validation errors. Please review the error details and correct the input data before retrying.
+
+### 📊 Quality Indicators
+- **Completeness**: 15%
+- **Reliability**: 25%
+- **Urgency**: 🟠 High
+- **Performance**: 10%
+- **Data Integrity**: 5%
+
+### 📋 Details
+**Summary**: Validation failed due to malformed input data. Please ensure all required fields are properly formatted.
+**Timestamp**: 2024-11-20T17:35:00.000Z
+**Operation**: entity-validation
+**Validation Errors**: 3
+**Error Details**: Missing required fields and invalid data format"
+`;
+
+exports[`AORP Formatting - Snapshot Tests formatAorpAsMarkdown() snapshots should format minimal success AORP consistently: minimal-success-aorp 1`] = `
+"## ✅ Success | Confidence: 95%
+
+**Key Insight**: Operation completed successfully
+
+### 🎯 Next Steps
+1. Verify the result
+
+### 💡 Recommendations
+**Primary**: Check system status
+
+### 🔄 Workflow Guidance
+Monitor for any issues
+
+### 📊 Quality Indicators
+- **Completeness**: 90%
+- **Reliability**: 95%
+- **Urgency**: 🟢 Low
+
+### 📋 Details
+**Summary**: Simple operation completed successfully
+**Timestamp**: 2024-11-20T17:30:00.000Z
+**Operation**: simple-operation"
+`;
+
+exports[`AORP Formatting - Snapshot Tests formatAorpAsMarkdown() snapshots should format partial status AORP consistently: partial-aorp 1`] = `
+"## ⚠️ Partial | Confidence: 78%
+
+**Key Insight**: Operation completed with some warnings
+**Session ID**: \`sess_ghi789\`
+
+### 🎯 Next Steps
+1. Review warning messages
+2. Verify affected data integrity
+3. Address any remaining issues
+
+### 💡 Recommendations
+**Primary**: Investigate and resolve the warnings
+- Implement preventive measures
+- Update monitoring to detect similar issues
+
+### 🔄 Workflow Guidance
+The operation completed but with warnings. Please review the details and take corrective action if needed.
+
+### 📊 Quality Indicators
+- **Completeness**: 92%
+- **Reliability**: 88%
+- **Urgency**: 🟡 Medium
+- **Performance**: 75%
+- **Data Integrity**: 98%
+
+### 📋 Details
+**Summary**: Operation successful with 2 warnings. Data integrity maintained, but some non-critical issues require attention.
+**Timestamp**: 2024-11-20T17:40:00.000Z
+**Operation**: data-sync
+**Warnings**: 2
+**Items Processed**: 150
+**Items Affected**: 2"
+`;
