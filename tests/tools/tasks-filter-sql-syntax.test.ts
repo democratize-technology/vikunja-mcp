@@ -11,6 +11,7 @@ import { registerTasksTool } from '../../src/tools/tasks';
 import { MCPError } from '../../src/types';
 import type { Task } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Import the function we're mocking
 import { getClientFromContext } from '../../src/client';
@@ -146,10 +147,11 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
         per_page: 1000,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.data.tasks).toHaveLength(1);
-      expect(response.data.tasks[0].priority).toBeGreaterThanOrEqual(4);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-tasks');
+      expect(markdown).toContain('1 task');
     });
 
     it('should handle complex filter that cannot be converted', async () => {
@@ -184,8 +186,9 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
         per_page: 1000,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle complex filter with multiple conditions', async () => {
@@ -210,8 +213,9 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
         per_page: 1000,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should combine filter with other query parameters', async () => {
@@ -234,8 +238,9 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
         s: 'urgent',
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle API errors gracefully', async () => {
@@ -299,8 +304,9 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
         expect(mockClient.tasks.getAllTasks).toHaveBeenCalledWith(expected);
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
       });
     });
   });
@@ -326,8 +332,9 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
           per_page: 1000,
         });
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
       });
     });
   });

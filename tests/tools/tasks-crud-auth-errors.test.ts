@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { createTask, getTask, updateTask, deleteTask } from '../../src/tools/tasks/crud';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { MockVikunjaClient } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Mock the client module
 jest.mock('../../src/client', () => ({
@@ -444,9 +445,10 @@ describe('Tasks CRUD - Authentication Error Handling', () => {
       expect(mockClient.tasks.updateTaskLabels).not.toHaveBeenCalled();
       // Verify no deleteTask call was made since there's no ID
       expect(mockClient.tasks.deleteTask).not.toHaveBeenCalled();
-      
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle updateTask with task having no assignees field', async () => {

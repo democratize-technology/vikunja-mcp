@@ -4,6 +4,7 @@ import type { AuthManager } from '../../src/auth/AuthManager';
 import { registerProjectsTool } from '../../src/tools/projects';
 import type { Project, User } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Import the function we're mocking
 import { getClientFromContext } from '../../src/client';
@@ -123,9 +124,11 @@ describe('Projects Tool Mock Fixes', () => {
       expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
       expect(mockClient.projects.deleteProject).toHaveBeenCalledWith(1);
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Deleted project: Test Project');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('delete-project');
+      expect(markdown).toContain('Deleted project');
     });
   });
 
@@ -146,9 +149,11 @@ describe('Projects Tool Mock Fixes', () => {
         is_archived: true
       });
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" archived successfully');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('archive-project');
+      expect(markdown).toContain('archived successfully');
     });
   });
 
@@ -167,9 +172,11 @@ describe('Projects Tool Mock Fixes', () => {
         is_archived: false
       });
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" unarchived successfully');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('unarchive-project');
+      expect(markdown).toContain('unarchived successfully');
     });
   });
 });

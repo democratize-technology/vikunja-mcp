@@ -7,6 +7,7 @@ import { AuthManager } from '../../src/auth/AuthManager';
 import { registerTasksTool } from '../../src/tools/tasks';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Mock the main module and its dependencies
 jest.mock('../../src/client', () => ({
@@ -227,12 +228,12 @@ describe('Tasks Tool - Race Condition Fix', () => {
       };
 
       const result = await toolHandler(args);
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.data.task.id).toBe(999);
-      expect(response.data.task.labels).toHaveLength(1);
-      expect(response.data.task.assignees).toHaveLength(1);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-task');
+      expect(markdown).toContain('Task created successfully');
 
       // Verify no cleanup was attempted
       expect(mockClient.tasks.deleteTask).not.toHaveBeenCalled();

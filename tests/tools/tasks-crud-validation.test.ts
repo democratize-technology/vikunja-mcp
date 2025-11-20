@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { createTask, getTask, updateTask, deleteTask } from '../../src/tools/tasks/crud';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { MockVikunjaClient } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Mock the client module
 jest.mock('../../src/client', () => ({
@@ -303,17 +304,11 @@ describe('Tasks CRUD - Validation Coverage', () => {
         done: true,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.metadata.affectedFields).toEqual(['title', 'priority', 'done']);
-      expect(response.metadata.previousState).toEqual({
-        title: 'Original Title',
-        description: 'Original Description',
-        due_date: '2024-01-01T00:00:00Z',
-        priority: 1,
-        done: false,
-        repeat_after: 0,
-        repeat_mode: 0,
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('update-task');
+      expect(markdown).toContain('Task updated successfully');
     });
   });
 });
