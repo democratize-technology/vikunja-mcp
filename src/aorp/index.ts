@@ -17,3 +17,6 @@ export {
   createAorpFromData,
   createAorpFromError
 } from './factory';
+
+// Export Markdown formatter
+export { formatAorpAsMarkdown, escapeMarkdown } from './markdown';
