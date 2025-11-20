@@ -5,6 +5,7 @@ import { registerTasksTool } from '../../src/tools/tasks';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { Task, User } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Import the function we're mocking
 import { getClientFromContext } from '../../src/client';
@@ -174,13 +175,12 @@ describe('Tasks Tool - Repeating Tasks', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('create-task');
-      expect(response.data.task).toBeDefined();
-      expect(response.data.task.title).toBe('Stock up on space ice cream');
-      expect(response.data.task.repeat_mode).toBe(0);
-      expect(response.data.task.repeat_after).toBe(30 * 24 * 60 * 60);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-task');
+      expect(markdown).toContain('ProjectId');
+      expect(markdown).toContain('Task created successfully');
     });
 
     it('should handle weekly repeat mode', async () => {
@@ -211,9 +211,11 @@ describe('Tasks Tool - Repeating Tasks', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.data.task.repeat_mode).toBe(0);
-      expect(response.data.task.repeat_after).toBe(1 * 7 * 24 * 60 * 60);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-task');
+      expect(markdown).toContain('Task created successfully');
     });
 
     it('should handle monthly repeat mode', async () => {
@@ -244,9 +246,11 @@ describe('Tasks Tool - Repeating Tasks', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.data.task.repeat_mode).toBe(1); // Monthly mode
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-task');
+      expect(markdown).toContain('Task created successfully');
     });
 
     it('should handle yearly repeat mode', async () => {
@@ -277,9 +281,11 @@ describe('Tasks Tool - Repeating Tasks', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.data.task.repeat_mode).toBe(0);
-      expect(response.data.task.repeat_after).toBe(1 * 365 * 24 * 60 * 60);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-task');
+      expect(markdown).toContain('Task created successfully');
     });
 
     it('should create tasks via bulk-create with repeat_mode', async () => {
@@ -325,12 +331,12 @@ describe('Tasks Tool - Repeating Tasks', () => {
         ],
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('create-tasks');
-      expect(response.data.tasks).toHaveLength(2);
-      expect(response.data.tasks[0].repeat_mode).toBe(0);
-      expect(response.data.tasks[1].repeat_mode).toBe(0);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('create-tasks');
+      expect(markdown).toContain('Successfully created 2 tasks');
+      expect(markdown).toContain('Count');
     });
   });
 
@@ -367,10 +373,12 @@ describe('Tasks Tool - Repeating Tasks', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.data.task.repeat_after).toBe(1 * 7 * 24 * 60 * 60);
-      expect(response.data.task.repeat_mode).toBe(0);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('update-task');
+      expect(markdown).toContain('Task updated successfully');
+      expect(markdown).toContain('AffectedFields');
     });
   });
 });

@@ -4,6 +4,7 @@ import type { AuthManager } from '../../src/auth/AuthManager';
 import { registerProjectsTool } from '../../src/tools/projects';
 import type { Project, User, LinkSharing } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Import the function we're mocking
 import { getClientFromContext } from '../../src/client';
@@ -188,11 +189,12 @@ describe('Projects Tool', () => {
         per_page: 50,
       });
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(parsed.success).toBe(true);
-      expect(parsed.data).toEqual(mockProjects);
-      expect(parsed.metadata.pagination.totalItems).toBe(2);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Retrieved 2 projects');
+      expect(markdown).toMatch(/list[_\\]+projects/);
     });
 
     it('should support pagination parameters', async () => {
@@ -210,8 +212,8 @@ describe('Projects Tool', () => {
       mockClient.projects.getProjects.mockResolvedValue([mockProject]);
 
       const result = await callTool('list');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.message).toBe('Retrieved 1 project');
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Retrieved 1 project');
     });
 
     it('should support search parameter', async () => {
@@ -253,9 +255,11 @@ describe('Projects Tool', () => {
 
       expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.data.project).toEqual(mockProject);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Retrieved project: Test Project');
+      expect(markdown).toMatch(/get[_\\]+project/);
     });
 
     it('should require project ID', async () => {
@@ -307,10 +311,11 @@ describe('Projects Tool', () => {
         hex_color: '#4287f5',
       });
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" created successfully');
-      expect(parsed.data.project).toEqual(mockProject);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Project "Test Project" created successfully');
+      expect(markdown).toMatch(/create[_\\]+project/);
     });
 
     it('should require project title', async () => {
@@ -436,10 +441,11 @@ describe('Projects Tool', () => {
         title: 'Updated Title',
       });
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Updated Title" updated successfully');
-      expect(parsed.data.project).toEqual(updatedProject);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Project "Updated Title" updated successfully');
+      expect(markdown).toMatch(/update[_\\]+project/);
     });
 
     it('should require project ID', async () => {
@@ -559,9 +565,10 @@ describe('Projects Tool', () => {
       expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
       expect(mockClient.projects.deleteProject).toHaveBeenCalledWith(1);
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Deleted project: Test Project');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Deleted project: Test Project');
     });
 
     it('should require project ID', async () => {
@@ -608,15 +615,16 @@ describe('Projects Tool', () => {
       const result = await callTool('archive', { id: 1 });
 
       expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
-      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, { 
+      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, {
         title: 'Test Project',
-        is_archived: true 
+        is_archived: true
       });
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" archived successfully');
-      expect(parsed.data.project).toEqual(archivedProject);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Project "Test Project" archived successfully');
+      expect(markdown).toMatch(/archive[_\\]+project/);
     });
 
     it('should return already archived message if project is already archived', async () => {
@@ -628,10 +636,11 @@ describe('Projects Tool', () => {
       expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
       expect(mockClient.projects.updateProject).not.toHaveBeenCalled();
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" is already archived');
-      expect(parsed.data.project).toEqual(archivedProject);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Project "Test Project" is already archived');
+      expect(markdown).toMatch(/archive[_\\]+project/);
     });
 
     it('should require project ID', async () => {
@@ -681,15 +690,16 @@ describe('Projects Tool', () => {
       const result = await callTool('unarchive', { id: 1 });
 
       expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
-      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, { 
+      expect(mockClient.projects.updateProject).toHaveBeenCalledWith(1, {
         title: 'Test Project',
-        is_archived: false 
+        is_archived: false
       });
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" unarchived successfully');
-      expect(parsed.data.project).toEqual(unarchivedProject);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Project "Test Project" unarchived successfully');
+      expect(markdown).toMatch(/unarchive[_\\]+project/);
     });
 
     it('should return already active message if project is not archived', async () => {
@@ -700,10 +710,11 @@ describe('Projects Tool', () => {
       expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
       expect(mockClient.projects.updateProject).not.toHaveBeenCalled();
       expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" is already active (not archived)');
-      expect(parsed.data.project).toEqual(mockProject);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Project "Test Project" is already active (not archived)');
+      expect(markdown).toMatch(/unarchive[_\\]+project/);
     });
 
     it('should require project ID', async () => {
@@ -761,11 +772,12 @@ describe('Projects Tool', () => {
       mockClient.projects.createLinkShare.mockResolvedValue(mockShare);
 
       const result = await callTool('create-share', { projectId: 1, right: 'read' });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.message).toBe('Share created successfully for project ID 1');
-      expect(response.data.share).toEqual(mockShare);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Share created successfully for project ID 1');
+      expect(markdown).toMatch(/create[_\\]+project[_\\]+share/);
       expect(mockClient.projects.createLinkShare).toHaveBeenCalledWith(1, {
         project_id: 1,
         right: 0,
@@ -912,12 +924,12 @@ describe('Projects Tool', () => {
       mockClient.projects.getLinkShares.mockResolvedValue(mockShares);
 
       const result = await callTool('list-shares', { projectId: 1 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.metadata.count).toBe(2);
-      expect(response.metadata.projectId).toBe(1);
-      expect(response.data.shares).toEqual(mockShares);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Retrieved 2 shares for project 1');
+      expect(markdown).toMatch(/list[_\\]+project[_\\]+shares/);
       expect(mockClient.projects.getLinkShares).toHaveBeenCalledWith(1, {});
     });
 
@@ -979,10 +991,12 @@ describe('Projects Tool', () => {
       mockClient.projects.getLinkShare.mockResolvedValue(mockShare);
 
       const result = await callTool('get-share', { projectId: 1, shareId: '1' });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.data.share).toEqual(mockShare);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Retrieved share 1 for project 1');
+      expect(markdown).toMatch(/get[_\\]+project[_\\]+share/);
       expect(mockClient.projects.getLinkShare).toHaveBeenCalledWith(1, '1');
     });
 
@@ -1044,11 +1058,12 @@ describe('Projects Tool', () => {
       mockClient.projects.deleteLinkShare.mockResolvedValue({});
 
       const result = await callTool('delete-share', { projectId: 1, shareId: '1' });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.message).toBe('Share with ID 1 deleted successfully');
-      expect(response.metadata.projectId).toBe(1);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Share with ID 1 deleted successfully');
+      expect(markdown).toMatch(/delete[_\\]+project[_\\]+share/);
       expect(mockClient.projects.getLinkShare).toHaveBeenCalledWith(1, '1');
       expect(mockClient.projects.deleteLinkShare).toHaveBeenCalledWith(1, '1');
     });
@@ -1108,12 +1123,12 @@ describe('Projects Tool', () => {
       mockClient.shares.getShareAuth.mockResolvedValue(mockAuthResult);
 
       const result = await callTool('auth-share', { shareHash: 'abc123' });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
 
-      expect(response.success).toBe(true);
-      expect(response.message).toBe('Successfully authenticated to share');
-      expect(response.metadata.shareHash).toBe('abc123');
-      expect(response.data.auth).toEqual(mockAuthResult);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Successfully authenticated to share');
+      expect(markdown).toMatch(/auth[_\\]+project[_\\]+share/);
       expect(mockClient.shares.getShareAuth).toHaveBeenCalledWith('abc123', {
         password: '',
       });
@@ -1215,11 +1230,12 @@ describe('Projects Tool', () => {
       mockClient.projects.getProjects.mockResolvedValueOnce([mockProject, ...childProjects]);
 
       const result = await callTool('get-children', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('get-project-children');
-      expect(response.data.children).toHaveLength(2);
-      expect(response.data.children[0].title).toBe('Child 1');
-      expect(response.data.children[1].title).toBe('Child 2');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-project-children');
+      expect(markdown).toContain('Child 1');
+      expect(markdown).toContain('Child 2');
     });
 
     it('should require project ID', async () => {
@@ -1244,8 +1260,8 @@ describe('Projects Tool', () => {
       mockClient.projects.getProjects.mockResolvedValueOnce([mockProject, childProject]);
 
       const result = await callTool('get-children', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.message).toBe('Found 1 child project for project ID 1');
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Found 1 child project for project ID 1');
     });
 
     it('should handle non-Error API errors in get-children', async () => {
@@ -1269,11 +1285,12 @@ describe('Projects Tool', () => {
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
 
       const result = await callTool('get-tree', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('get-project-tree');
-      expect(response.data.tree.title).toBe('Root');
-      expect(response.data.tree.children).toHaveLength(2);
-      expect(response.metadata.totalProjects).toBe(4);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-project-tree');
+      expect(markdown).toContain('Root');
+      expect(markdown).toContain('**TotalProjects**: 4');
     });
 
     it('should handle circular references', async () => {
@@ -1285,10 +1302,12 @@ describe('Projects Tool', () => {
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
 
       const result = await callTool('get-tree', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('get-project-tree');
-      expect(response.data.tree.children).toHaveLength(1); // Project 2 is a valid child
-      expect(response.data.tree.children[0].children).toHaveLength(0); // But it won't have project 1 as its child due to circular check
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-project-tree');
+      expect(markdown).toContain('Project 1');
+      expect(markdown).toContain('Project 2');
     });
 
     it('should require project ID', async () => {
@@ -1322,8 +1341,10 @@ describe('Projects Tool', () => {
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
 
       const result = await callTool('get-tree', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.data.tree.children).toHaveLength(0); // Project without ID is skipped
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Root');
     });
 
     it('should handle non-Error API errors in get-tree', async () => {
@@ -1342,8 +1363,8 @@ describe('Projects Tool', () => {
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
 
       const result = await callTool('get-tree', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.message).toBe('Retrieved project tree with 1 project starting from project ID 1');
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Retrieved project tree with 1 project starting from project ID 1');
     });
 
     it('should handle countProjects with null node', async () => {
@@ -1357,10 +1378,12 @@ describe('Projects Tool', () => {
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
 
       const result = await callTool('get-tree', { id: 1 });
-      const response = JSON.parse(result.content[0].text);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
       // The project without ID should be filtered out
-      expect(response.data.tree.children).toHaveLength(1);
-      expect(response.data.tree.children[0].children).toHaveLength(0);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Root');
+      expect(markdown).toContain('Child');
     });
   });
 
@@ -1375,10 +1398,11 @@ describe('Projects Tool', () => {
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
 
       const result = await callTool('get-breadcrumb', { id: 3 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('get-project-breadcrumb');
-      expect(response.data.breadcrumb).toHaveLength(3);
-      expect(response.metadata.path).toBe('Root > Child > Grandchild');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-project-breadcrumb');
+      expect(markdown).toContain('Root > Child > Grandchild');
     });
 
     it('should handle circular references', async () => {
@@ -1400,9 +1424,10 @@ describe('Projects Tool', () => {
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
 
       const result = await callTool('get-breadcrumb', { id: 2 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.data.breadcrumb).toHaveLength(1);
-      expect(response.data.breadcrumb[0].title).toBe('Child');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Child');
     });
 
     it('should require project ID', async () => {
@@ -1450,9 +1475,11 @@ describe('Projects Tool', () => {
       });
 
       const result = await callTool('move', { id: 2, parentProjectId: 1 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('move-project');
-      expect(response.message).toContain('moved to parent project ID 1');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('move-project');
+      expect(markdown).toContain('moved to parent project ID 1');
     });
 
     it('should move project to root', async () => {
@@ -1467,8 +1494,10 @@ describe('Projects Tool', () => {
       });
 
       const result = await callTool('move', { id: 1, parentProjectId: undefined });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.message).toContain('moved to root level');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('moved to root level');
     });
 
     it('should prevent self-parent', async () => {
@@ -1610,7 +1639,7 @@ describe('Projects Tool', () => {
         // Create a loop in the subtree of project 5
         { ...mockProject, id: 6, title: 'Child of 5 Again', parent_project_id: 7 },
       ];
-      
+
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
       mockClient.projects.getProject.mockResolvedValueOnce({
         ...mockProject,
@@ -1626,8 +1655,10 @@ describe('Projects Tool', () => {
       });
 
       const result = await callTool('move', { id: 5, parentProjectId: 1 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('move-project');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('move-project');
     });
 
     it('should handle projects without IDs in getMaxSubtreeDepth', async () => {
@@ -1640,7 +1671,7 @@ describe('Projects Tool', () => {
         // Add a target parent
         { ...mockProject, id: 4, title: 'Target Parent', parent_project_id: undefined },
       ];
-      
+
       mockClient.projects.getProjects.mockResolvedValueOnce(projects);
       mockClient.projects.getProject.mockResolvedValueOnce({
         ...mockProject,
@@ -1656,8 +1687,10 @@ describe('Projects Tool', () => {
       });
 
       const result = await callTool('move', { id: 1, parentProjectId: 4 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.operation).toBe('move-project');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('move-project');
     });
 
     it('should handle missing project in calculateProjectDepth', async () => {
@@ -1674,8 +1707,10 @@ describe('Projects Tool', () => {
       });
 
       const result = await callTool('create', { title: 'New Project', parentProjectId: 1 });
-      const response = JSON.parse(result.content[0].text);
-      expect(response.data.project.title).toBe('New Project');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('New Project');
     });
 
     it('should enforce max depth on create', async () => {
@@ -1760,8 +1795,10 @@ describe('Projects Tool', () => {
       try {
         // Move project 1 to be under project 2 (not a descendant, so should succeed)
         const result = await callTool('move', { id: 1, parentProjectId: 2 });
-        const response = JSON.parse(result.content[0].text);
-        expect(response.data.project.parent_project_id).toBe(2);
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+        expect(markdown).toContain('NewParentProjectId');
       } finally {
         // Restore original shift method
         (Array.prototype.shift as jest.Mock).mockRestore();

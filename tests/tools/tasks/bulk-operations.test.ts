@@ -8,6 +8,7 @@ import { getClientFromContext } from '../../../src/client';
 import { MCPError, ErrorCode } from '../../../src/types';
 import { isAuthenticationError } from '../../../src/utils/auth-error-handler';
 import { withRetry } from '../../../src/utils/retry';
+import { parseMarkdown } from '../../utils/markdown';
 
 jest.mock('../../../src/client');
 jest.mock('../../../src/utils/auth-error-handler');
@@ -186,15 +187,12 @@ describe('Bulk operations', () => {
           value: true,
         });
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response).toMatchObject({
-          success: true,
-          operation: 'update-task',
-          message: 'Successfully updated 2 tasks',
-          data: {
-            tasks: mockTasks,
-          },
-        });
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+        expect(markdown).toContain('Successfully updated 2 tasks');
+        expect(markdown).toContain('**Operation**: update-task');
+        expect(markdown).toContain('**Count**: 2');
       });
 
       it('should handle successful bulk update with message response', async () => {
@@ -203,17 +201,18 @@ describe('Bulk operations', () => {
           { id: 1, title: 'Task 1', done: true },
           { id: 2, title: 'Task 2', done: true },
         ];
-        
+
         mockClient.tasks.bulkUpdateTasks.mockResolvedValue(mockMessage);
         mockClient.tasks.getTask.mockResolvedValueOnce(mockTasks[0]).mockResolvedValueOnce(mockTasks[1]);
 
         const result = await bulkUpdateTasks({ taskIds: [1, 2], field: 'done', value: true });
 
         expect(mockClient.tasks.getTask).toHaveBeenCalledTimes(2);
-        
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
-        expect(response.data.tasks).toHaveLength(2);
+
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+        expect(markdown).toContain('**Count**: 2');
       });
 
       it('should handle repeat_mode conversion', async () => {
@@ -234,7 +233,7 @@ describe('Bulk operations', () => {
       it('should fallback to individual updates when bulk API fails', async () => {
         const bulkError = new Error('Bulk API not available');
         const mockTask = { id: 1, title: 'Task 1', done: true };
-        
+
         mockClient.tasks.bulkUpdateTasks.mockRejectedValue(bulkError);
         mockClient.tasks.getTask.mockResolvedValue({ id: 1, title: 'Task 1', done: false });
         mockClient.tasks.updateTask.mockResolvedValue(mockTask);
@@ -245,14 +244,15 @@ describe('Bulk operations', () => {
           done: true,
         }));
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
       });
 
       it('should handle assignees field in fallback mode', async () => {
         const bulkError = new Error('Bulk API failed');
         const mockTask = { id: 1, title: 'Task 1', assignees: [] };
-        
+
         mockClient.tasks.bulkUpdateTasks.mockRejectedValue(bulkError);
         mockClient.tasks.getTask
           .mockResolvedValueOnce({ id: 1, title: 'Task 1', assignees: [] })
@@ -267,8 +267,9 @@ describe('Bulk operations', () => {
           user_ids: [1],
         });
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
       });
 
       it('should handle authentication errors in assignee operations', async () => {
@@ -355,7 +356,7 @@ describe('Bulk operations', () => {
           { id: 1, title: 'Task 1' },
           { id: 2, title: 'Task 2' },
         ];
-        
+
         mockClient.tasks.getTask.mockResolvedValueOnce(mockTasks[0]).mockResolvedValueOnce(mockTasks[1]);
         mockClient.tasks.deleteTask.mockResolvedValue({});
 
@@ -365,22 +366,18 @@ describe('Bulk operations', () => {
         expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);
         expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(2);
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response).toMatchObject({
-          success: true,
-          operation: 'delete-task',
-          message: 'Successfully deleted 2 tasks',
-          metadata: {
-            count: 2,
-            previousState: mockTasks,
-          },
-        });
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+        expect(markdown).toContain('Successfully deleted 2 tasks');
+        expect(markdown).toContain('**Operation**: delete-task');
+        expect(markdown).toContain('**Count**: 2');
       });
 
       it('should handle partial deletion success', async () => {
         const mockTasks = [{ id: 1, title: 'Task 1' }, { id: 2, title: 'Task 2' }];
         const deleteError = new Error('Delete failed');
-        
+
         mockClient.tasks.getTask.mockResolvedValueOnce(mockTasks[0]).mockResolvedValueOnce(mockTasks[1]);
         mockClient.tasks.deleteTask
           .mockResolvedValueOnce({})
@@ -388,10 +385,12 @@ describe('Bulk operations', () => {
 
         const result = await bulkDeleteTasks({ taskIds: [1, 2] });
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(false);
-        expect(response.message).toContain('Bulk delete partially completed');
-        expect(response.metadata.failedIds).toEqual([2]);
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        // Partial success sets status to 'error' in AORP
+        expect(parsed.hasHeading(2, /Error/)).toBe(true);
+        expect(markdown).toContain('Bulk delete partially completed');
+        expect(markdown).toContain('**FailedIds**:');
       });
 
       it('should handle complete deletion failure', async () => {
@@ -481,13 +480,13 @@ describe('Bulk operations', () => {
     describe('Success scenarios', () => {
       it('should create tasks successfully', async () => {
         const mockTask = { id: 1, title: 'Test Task', project_id: 1 };
-        
+
         mockClient.tasks.createTask.mockResolvedValue(mockTask);
         mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
-        const result = await bulkCreateTasks({ 
-          projectId: 1, 
-          tasks: [{ title: 'Test Task' }] 
+        const result = await bulkCreateTasks({
+          projectId: 1,
+          tasks: [{ title: 'Test Task' }]
         });
 
         expect(mockClient.tasks.createTask).toHaveBeenCalledWith(1, expect.objectContaining({
@@ -495,24 +494,17 @@ describe('Bulk operations', () => {
           project_id: 1,
         }));
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response).toMatchObject({
-          success: true,
-          operation: 'create-tasks',
-          message: 'Successfully created 1 tasks',
-        });
-        expect(response.data.tasks).toHaveLength(1);
-        expect(response.data.tasks[0]).toMatchObject({
-          id: 1,
-        });
-        // Check that the task has the expected title or project_id if present
-        expect(response.data.tasks[0].id).toBe(1);
-        expect(response.data.tasks[0].title).toBeDefined();
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+        expect(markdown).toContain('Successfully created 1 tasks');
+        expect(markdown).toContain('**Operation**: create-tasks');
+        expect(markdown).toContain('**Count**: 1');
       });
 
       it('should handle labels and assignees', async () => {
         const mockTask = { id: 1, title: 'Test Task', project_id: 1 };
-        
+
         mockClient.tasks.createTask.mockResolvedValue(mockTask);
         mockClient.tasks.updateTaskLabels.mockResolvedValue({});
         mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue({});
@@ -522,13 +514,13 @@ describe('Bulk operations', () => {
           assignees: [{ id: 1 }],
         });
 
-        const result = await bulkCreateTasks({ 
-          projectId: 1, 
-          tasks: [{ 
+        const result = await bulkCreateTasks({
+          projectId: 1,
+          tasks: [{
             title: 'Test Task',
             labels: [1],
             assignees: [1],
-          }] 
+          }]
         });
 
         expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(1, {
@@ -538,8 +530,9 @@ describe('Bulk operations', () => {
           user_ids: [1],
         });
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(true);
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
       });
 
       it('should handle authentication errors in assignee operations during create', async () => {
@@ -565,24 +558,26 @@ describe('Bulk operations', () => {
       it('should handle partial create success', async () => {
         const mockTask = { id: 1, title: 'Test Task', project_id: 1 };
         const createError = new Error('Create failed');
-        
+
         mockClient.tasks.createTask
           .mockResolvedValueOnce(mockTask)
           .mockRejectedValueOnce(createError);
         mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
-        const result = await bulkCreateTasks({ 
-          projectId: 1, 
+        const result = await bulkCreateTasks({
+          projectId: 1,
           tasks: [
             { title: 'Test Task 1' },
             { title: 'Test Task 2' },
-          ] 
+          ]
         });
 
-        const response = JSON.parse(result.content[0].text);
-        expect(response.success).toBe(false);
-        expect(response.message).toContain('Bulk create partially completed');
-        expect(response.metadata.failedCount).toBe(1);
+        const markdown = result.content[0].text;
+        const parsed = parseMarkdown(markdown);
+        // Partial success sets status to 'error' in AORP
+        expect(parsed.hasHeading(2, /Error/)).toBe(true);
+        expect(markdown).toContain('Bulk create partially completed');
+        expect(markdown).toContain('**FailedCount**:');
       });
 
       it('should handle complete create failure', async () => {
@@ -656,7 +651,7 @@ describe('Bulk operations', () => {
     it('should process large numbers of tasks in batches', async () => {
       const taskIds = Array.from({ length: 25 }, (_, i) => i + 1);
       const mockTasks = taskIds.map(id => ({ id, title: `Task ${id}`, done: true }));
-      
+
       mockClient.tasks.bulkUpdateTasks.mockResolvedValue(mockTasks);
 
       const result = await bulkUpdateTasks({ taskIds, field: 'done', value: true });
@@ -667,8 +662,8 @@ describe('Bulk operations', () => {
         value: true,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.metadata.count).toBe(25);
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('**Count**: 25');
     });
   });
 });

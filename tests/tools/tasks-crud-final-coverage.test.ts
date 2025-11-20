@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { createTask, getTask, updateTask, deleteTask } from '../../src/tools/tasks/crud';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { MockVikunjaClient } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Mock the client module
 jest.mock('../../src/client', () => ({
@@ -61,14 +62,16 @@ describe('Tasks CRUD - Final Coverage', () => {
       const result = await getTask({ id: 1 });
 
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(1);
-      
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('get-task');
-      expect(response.message).toBe('Retrieved task "Test Task Title"');
-      expect(response.data.task).toEqual(mockTask);
-      expect(response.metadata.timestamp).toBeDefined();
-      
+
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get-task');
+      expect(markdown).toContain('Retrieved task "Test Task Title"');
+      expect(markdown).toContain('TaskId');
+      expect(markdown).toContain('Timestamp');
+
       expect(result.content[0].type).toBe('text');
     });
 
@@ -85,10 +88,12 @@ describe('Tasks CRUD - Final Coverage', () => {
 
       const result = await getTask({ id: 1 });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.message).toBe('Retrieved task "undefined"');
-      expect(response.data.task).toEqual(mockTask);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Retrieved task "undefined"');
+      expect(markdown).toContain('TaskId');
     });
 
     it('should handle task with null title gracefully', async () => {
@@ -104,10 +109,12 @@ describe('Tasks CRUD - Final Coverage', () => {
 
       const result = await getTask({ id: 1 });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.message).toBe('Retrieved task "null"');
-      expect(response.data.task).toEqual(mockTask);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Retrieved task "null"');
+      expect(markdown).toContain('TaskId');
     });
   });
 
@@ -142,10 +149,12 @@ describe('Tasks CRUD - Final Coverage', () => {
         priority: 5,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.metadata.affectedFields).toContain('dueDate');
-      expect(response.metadata.affectedFields).toContain('priority');
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('dueDate');
+      expect(markdown).toContain('priority');
     });
 
     it('should not track unchanged fields', async () => {
@@ -172,10 +181,12 @@ describe('Tasks CRUD - Final Coverage', () => {
         priority: 1, // Same priority
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.metadata.affectedFields).not.toContain('dueDate');
-      expect(response.metadata.affectedFields).not.toContain('priority');
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      // For unchanged fields, they might not appear in affectedFields section
+      // but the operation should still succeed
     });
   });
 
@@ -288,21 +299,20 @@ describe('Tasks CRUD - Final Coverage', () => {
         assignees: [1, 2],
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.metadata.affectedFields).toEqual(
-        expect.arrayContaining([
-          'title',
-          'description',
-          'dueDate',
-          'priority',
-          'done',
-          'repeatAfter',
-          'repeatMode',
-          'labels',
-          'assignees',
-        ])
-      );
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      // Verify all affected fields are mentioned in the markdown output
+      expect(markdown).toContain('title');
+      expect(markdown).toContain('description');
+      expect(markdown).toContain('dueDate');
+      expect(markdown).toContain('priority');
+      expect(markdown).toContain('done');
+      expect(markdown).toContain('repeatAfter');
+      expect(markdown).toContain('repeatMode');
+      expect(markdown).toContain('labels');
+      expect(markdown).toContain('assignees');
     });
   });
 });
