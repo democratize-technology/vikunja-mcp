@@ -171,7 +171,12 @@ export function formatAorpAsMarkdown(aorp: AorpResponse): string {
   if (additionalMetadata.length > 0) {
     additionalMetadata.forEach(([key, value]) => {
       const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      lines.push(`**${escapeMarkdown(formattedKey)}**: ${escapeMarkdown(String(value))}`);
+      // Format operation field as kebab-case for markdown compatibility
+      // SECURITY: operation is system-controlled (AORP response), not user input
+      const formattedValue = key === 'operation'
+        ? String(value || '').replace(/_/g, '-')
+        : escapeMarkdown(String(value));
+      lines.push(`**${escapeMarkdown(formattedKey)}**: ${formattedValue}`);
     });
   }
 

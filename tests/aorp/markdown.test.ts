@@ -582,7 +582,7 @@ describe('AORP Markdown Formatter', () => {
         });
         const markdown = formatAorpAsMarkdown(aorp);
         expect(markdown).toContain('**Timestamp**: 2024-01-15T10:30:00Z');
-        expect(markdown).toContain('**Operation**: create\\_task');
+        expect(markdown).toContain('**Operation**: create-task');
         expect(markdown).toContain('**User Id**: user-123');
       });
 
@@ -727,7 +727,101 @@ describe('AORP Markdown Formatter', () => {
           },
         });
         const markdown = formatAorpAsMarkdown(aorp);
-        expect(markdown).toContain('**Operation**: \\*\\*critical\\*\\*');
+        // Operation field is system-controlled, converted to kebab-case, not escaped
+        expect(markdown).toContain('**Operation**: **critical**');
+      });
+    });
+
+    describe('formatAorpAsMarkdown - operation field edge cases', () => {
+      it('should handle null operation gracefully', () => {
+        const aorp = createBaseAorpResponse({
+          details: {
+            summary: 'Test',
+            data: {},
+            metadata: {
+              timestamp: '2024-01-15T10:30:00Z',
+              operation: null as unknown as string,
+            },
+          },
+        });
+        const result = formatAorpAsMarkdown(aorp);
+        expect(result).toContain('**Operation**: ');
+      });
+
+      it('should handle undefined operation gracefully', () => {
+        const aorp = createBaseAorpResponse({
+          details: {
+            summary: 'Test',
+            data: {},
+            metadata: {
+              timestamp: '2024-01-15T10:30:00Z',
+              operation: undefined as unknown as string,
+            },
+          },
+        });
+        const result = formatAorpAsMarkdown(aorp);
+        expect(result).toContain('**Operation**: ');
+      });
+
+      it('should handle already-formatted kebab-case operation (idempotent)', () => {
+        const aorp = createBaseAorpResponse({
+          details: {
+            summary: 'Test',
+            data: {},
+            metadata: {
+              timestamp: '2024-01-15T10:30:00Z',
+              operation: 'delete-project',
+            },
+          },
+        });
+        const result = formatAorpAsMarkdown(aorp);
+        expect(result).toContain('**Operation**: delete-project');
+      });
+
+      it('should handle double underscores in operation', () => {
+        const aorp = createBaseAorpResponse({
+          details: {
+            summary: 'Test',
+            data: {},
+            metadata: {
+              timestamp: '2024-01-15T10:30:00Z',
+              operation: 'delete__project',
+            },
+          },
+        });
+        const result = formatAorpAsMarkdown(aorp);
+        expect(result).toContain('**Operation**: delete--project');
+      });
+
+      it('should handle empty string operation', () => {
+        const aorp = createBaseAorpResponse({
+          details: {
+            summary: 'Test',
+            data: {},
+            metadata: {
+              timestamp: '2024-01-15T10:30:00Z',
+              operation: '',
+            },
+          },
+        });
+        const result = formatAorpAsMarkdown(aorp);
+        expect(result).toContain('**Operation**: ');
+      });
+
+      it('should NOT escape operation field (system-controlled)', () => {
+        const aorp = createBaseAorpResponse({
+          details: {
+            summary: 'Test',
+            data: {},
+            metadata: {
+              timestamp: '2024-01-15T10:30:00Z',
+              operation: 'delete_project',
+            },
+          },
+        });
+        const result = formatAorpAsMarkdown(aorp);
+        expect(result).not.toContain('\\_');
+        expect(result).toContain('delete-project');
       });
     });
 
