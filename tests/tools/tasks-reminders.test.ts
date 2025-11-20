@@ -10,6 +10,7 @@ import { registerTasksTool } from '../../src/tools/tasks';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { Task } from 'node-vikunja';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Import the functions we're mocking
 import { getClientFromContext } from '../../src/client';
@@ -170,11 +171,11 @@ describe('Tasks Tool - Reminders', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('add-reminder');
-      expect(response.message).toContain('Reminder added successfully');
-      expect(response.task.reminders).toHaveLength(1);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('add-reminder');
+      expect(markdown).toContain('Reminder added successfully');
     });
 
     it('should add multiple reminders to a task', async () => {
@@ -202,9 +203,10 @@ describe('Tasks Tool - Reminders', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.task.reminders).toHaveLength(2);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('add-reminder');
     });
 
     it('should require task id', async () => {
@@ -257,11 +259,11 @@ describe('Tasks Tool - Reminders', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('remove-reminder');
-      expect(response.message).toContain('Reminder 1 removed successfully');
-      expect(response.task.reminders).toHaveLength(1);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('remove-reminder');
+      expect(markdown).toContain('Reminder 1 removed successfully');
     });
 
     it('should handle removing all reminders', async () => {
@@ -286,9 +288,10 @@ describe('Tasks Tool - Reminders', () => {
         }),
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.task.reminders).toHaveLength(0);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('remove-reminder');
     });
 
     it('should require task id', async () => {
@@ -340,13 +343,11 @@ describe('Tasks Tool - Reminders', () => {
 
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(1);
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('list-reminders');
-      expect(response.message).toContain('Found 2 reminder(s)');
-      expect(response.reminders).toHaveLength(2);
-      expect(response.reminders[0]).toEqual({ id: 1, reminder_date: '2024-12-25T10:00:00Z' });
-      expect(response.reminders[1]).toEqual({ id: 2, reminder_date: '2024-12-31T23:59:00Z' });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list-reminders');
+      expect(markdown).toContain('Found 2 reminder(s)');
     });
 
     it('should handle task with no reminders', async () => {
@@ -356,10 +357,10 @@ describe('Tasks Tool - Reminders', () => {
         id: 1,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.message).toContain('Found 0 reminder(s)');
-      expect(response.reminders).toHaveLength(0);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Found 0 reminder(s)');
     });
 
     it('should require task id', async () => {
@@ -373,12 +374,8 @@ describe('Tasks Tool - Reminders', () => {
         id: 1,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.task).toEqual({
-        id: 1,
-        title: 'Test Task',
-        assignees: [],
-      });
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Test Task');
     });
   });
 

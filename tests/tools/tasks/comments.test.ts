@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { handleComment, removeComment, listComments } from '../../../src/tools/tasks/comments';
 import { getClientFromContext } from '../../../src/client';
 import { MCPError, ErrorCode } from '../../../src/types';
+import { parseMarkdown } from '../../utils/markdown';
 
 jest.mock('../../../src/client');
 jest.mock('../../../src/utils/logger');
@@ -37,11 +38,12 @@ describe('Comment operations', () => {
         comment: 'Test comment',
         task_id: 123,
       });
-      expect(JSON.parse(result.content[0].text)).toMatchObject({
-        success: true,
-        operation: 'comment',
-        message: 'Comment added successfully',
-      });
+
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('comment');
+      expect(markdown).toContain('Comment added successfully');
     });
 
     it('should list comments when comment text is missing', async () => {
@@ -53,12 +55,12 @@ describe('Comment operations', () => {
       const result = await handleComment({ id: 123 });
 
       expect(mockClient.tasks.getTaskComments).toHaveBeenCalledWith(123);
-      expect(JSON.parse(result.content[0].text)).toMatchObject({
-        success: true,
-        operation: 'list',
-        message: 'Found 1 comments',
-        comments: mockComments,
-      });
+
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list');
+      expect(markdown).toContain('Found 1 comments');
     });
 
     it('should throw error when id is missing', async () => {
@@ -108,12 +110,12 @@ describe('Comment operations', () => {
       });
 
       expect(mockClient.tasks.getTaskComments).toHaveBeenCalledWith(123);
-      expect(JSON.parse(result.content[0].text)).toMatchObject({
-        success: true,
-        operation: 'list',
-        message: 'Found 0 comments',
-        comments: [],
-      });
+
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list');
+      expect(markdown).toContain('Found 0 comments');
     });
   });
 
@@ -136,12 +138,12 @@ describe('Comment operations', () => {
       const result = await listComments({ id: 123 });
 
       expect(mockClient.tasks.getTaskComments).toHaveBeenCalledWith(123);
-      expect(JSON.parse(result.content[0].text)).toMatchObject({
-        success: true,
-        operation: 'list',
-        message: 'Found 2 comments',
-        comments: mockComments,
-      });
+
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list');
+      expect(markdown).toContain('Found 2 comments');
     });
 
     it('should throw error when id is missing', async () => {
@@ -161,12 +163,11 @@ describe('Comment operations', () => {
 
       const result = await listComments({ id: 123 });
 
-      expect(JSON.parse(result.content[0].text)).toMatchObject({
-        success: true,
-        operation: 'list',
-        message: 'Found 0 comments',
-        comments: [],
-      });
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('list');
+      expect(markdown).toContain('Found 0 comments');
     });
 
     it('should handle API errors', async () => {

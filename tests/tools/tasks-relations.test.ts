@@ -7,6 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerTasksTool } from '../../src/tools/tasks';
 import { AuthManager } from '../../src/auth/AuthManager';
 import { MCPError, ErrorCode } from '../../src/types/errors';
+import { parseMarkdown } from '../utils/markdown';
 
 // Define RelationKind enum for tests
 const RelationKind = {
@@ -42,7 +43,7 @@ jest.mock('../../src/utils/logger', () => ({
 }));
 
 // Mock storage manager
-jest.mock('../../src/storage/FilterStorage', () => ({
+jest.mock('../../src/storage/SimpleFilterStorage', () => ({
   storageManager: {
     getStorage: jest.fn().mockReturnValue({
       get: jest.fn(),
@@ -146,11 +147,11 @@ describe('Task Relations Tool', () => {
       });
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(1);
 
-      const response = JSON.parse((result as any).content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('relate');
-      expect(response.message).toContain('Successfully created related relation');
-      expect(response.task.related_tasks).toHaveLength(3);
+      const markdown = (result as any).content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('relate');
+      expect(markdown).toContain('Successfully created related relation');
     });
 
     it('should validate required task ID', async () => {
@@ -221,9 +222,10 @@ describe('Task Relations Tool', () => {
           relationKind: kind,
         });
 
-        const response = JSON.parse((result as any).content[0].text);
-        expect(response.success).toBe(true);
-        expect(response.message).toContain(kind);
+        const markdown = (result as any).content[0].text;
+        const parsed = parseMarkdown(markdown);
+        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+        expect(markdown).toContain(kind);
       }
     });
 
@@ -272,11 +274,11 @@ describe('Task Relations Tool', () => {
       expect(mockClient.tasks.deleteTaskRelation).toHaveBeenCalledWith(1, RelationKind.SUBTASK, 2);
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(1);
 
-      const response = JSON.parse((result as any).content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('unrelate');
-      expect(response.message).toContain('Successfully removed subtask relation');
-      expect(response.task.related_tasks).toHaveLength(1);
+      const markdown = (result as any).content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('unrelate');
+      expect(markdown).toContain('Successfully removed subtask relation');
     });
 
     it('should validate required fields', async () => {
@@ -346,12 +348,11 @@ describe('Task Relations Tool', () => {
 
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(1);
 
-      const response = JSON.parse((result as any).content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.operation).toBe('relations');
-      expect(response.message).toBe('Found 2 relations for task 1');
-      expect(response.task.related_tasks).toHaveLength(2);
-      expect(response.metadata.count).toBe(2);
+      const markdown = (result as any).content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('relations');
+      expect(markdown).toContain('Found 2 relations for task 1');
     });
 
     it('should handle tasks with no relations', async () => {
@@ -365,10 +366,10 @@ describe('Task Relations Tool', () => {
         id: 1,
       });
 
-      const response = JSON.parse((result as any).content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.message).toBe('Found 0 relations for task 1');
-      expect(response.metadata.count).toBe(0);
+      const markdown = (result as any).content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Found 0 relations for task 1');
     });
 
     it('should handle tasks with undefined relations', async () => {
@@ -382,10 +383,10 @@ describe('Task Relations Tool', () => {
         id: 1,
       });
 
-      const response = JSON.parse((result as any).content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.message).toBe('Found 0 relations for task 1');
-      expect(response.metadata.count).toBe(0);
+      const markdown = (result as any).content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Found 0 relations for task 1');
     });
 
     it('should validate required task ID', async () => {

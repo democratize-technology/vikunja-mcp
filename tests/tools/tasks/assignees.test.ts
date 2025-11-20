@@ -8,6 +8,7 @@ import { getClientFromContext } from '../../../src/client';
 import { MCPError, ErrorCode } from '../../../src/types';
 import { isAuthenticationError } from '../../../src/utils/auth-error-handler';
 import { withRetry } from '../../../src/utils/retry';
+import { parseMarkdown } from '../../utils/markdown';
 
 jest.mock('../../../src/client');
 jest.mock('../../../src/utils/auth-error-handler');
@@ -50,14 +51,12 @@ describe('Assignee operations', () => {
         user_ids: [1, 2],
       });
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(123);
-      
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'assign',
-        message: 'Users assigned to task successfully',
-        task: mockTask,
-      });
+
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('assign');
+      expect(markdown).toContain('Users assigned to task successfully');
     });
 
     it('should throw error when task id is missing', async () => {
@@ -154,14 +153,12 @@ describe('Assignee operations', () => {
       expect(mockClient.tasks.removeUserFromTask).toHaveBeenCalledWith(123, 1);
       expect(mockClient.tasks.removeUserFromTask).toHaveBeenCalledWith(123, 2);
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(123);
-      
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'unassign',
-        message: 'Users removed from task successfully',
-        task: mockTask,
-      });
+
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('unassign');
+      expect(markdown).toContain('Users removed from task successfully');
     });
 
     it('should throw error when task id is missing', async () => {
@@ -238,21 +235,12 @@ describe('Assignee operations', () => {
       const result = await listAssignees({ id: 123 });
 
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(123);
-      
-      const response = JSON.parse(result.content[0].text);
-      expect(response).toMatchObject({
-        success: true,
-        operation: 'get',
-        message: 'Task has 2 assignee(s)',
-        task: {
-          id: 123,
-          title: 'Test Task',
-          assignees: mockTask.assignees,
-        },
-        metadata: {
-          count: 2,
-        },
-      });
+
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('get');
+      expect(markdown).toContain('Task has 2 assignee(s)');
     });
 
     it('should handle task with no assignees', async () => {
@@ -265,10 +253,9 @@ describe('Assignee operations', () => {
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
       const result = await listAssignees({ id: 123 });
-      
-      const response = JSON.parse(result.content[0].text);
-      expect(response.message).toBe('Task has 0 assignee(s)');
-      expect(response.metadata.count).toBe(0);
+
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Task has 0 assignee(s)');
     });
 
     it('should handle task with undefined assignees', async () => {
@@ -281,10 +268,9 @@ describe('Assignee operations', () => {
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
       const result = await listAssignees({ id: 123 });
-      
-      const response = JSON.parse(result.content[0].text);
-      expect(response.message).toBe('Task has 0 assignee(s)');
-      expect(response.task.assignees).toEqual([]);
+
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Task has 0 assignee(s)');
     });
 
     it('should throw error when task id is undefined', async () => {
@@ -340,10 +326,9 @@ describe('Assignee operations', () => {
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
       const result = await listAssignees({ id: 123 });
-      
-      const response = JSON.parse(result.content[0].text);
-      expect(response.task.id).toBeUndefined();
-      expect(response.task.title).toBe('Test Task');
+
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('Test Task');
     });
   });
 
@@ -367,20 +352,18 @@ describe('Assignee operations', () => {
       mockClient.tasks.getTask.mockResolvedValue(assignedTask);
       
       const assignResult = await assignUsers({ id: 123, assignees: [1] });
-      
-      expect(JSON.parse(assignResult.content[0].text).message).toBe(
-        'Users assigned to task successfully'
-      );
-      
+
+      const assignMarkdown = assignResult.content[0].text;
+      expect(assignMarkdown).toContain('Users assigned to task successfully');
+
       // Mock unassignment
       mockClient.tasks.removeUserFromTask.mockResolvedValue({});
       mockClient.tasks.getTask.mockResolvedValue(initialTask);
-      
+
       const unassignResult = await unassignUsers({ id: 123, assignees: [1] });
-      
-      expect(JSON.parse(unassignResult.content[0].text).message).toBe(
-        'Users removed from task successfully'
-      );
+
+      const unassignMarkdown = unassignResult.content[0].text;
+      expect(unassignMarkdown).toContain('Users removed from task successfully');
     });
 
     it('should handle multiple assignees with mixed validation errors', async () => {

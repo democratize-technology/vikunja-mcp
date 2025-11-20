@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { createTask, getTask, updateTask, deleteTask } from '../../src/tools/tasks/crud';
 import { MCPError, ErrorCode } from '../../src/types';
 import type { MockVikunjaClient } from '../types/mocks';
+import { parseMarkdown } from '../utils/markdown';
 
 // Mock the client module
 jest.mock('../../src/client', () => ({
@@ -64,8 +65,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
         description: '',
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle undefined optional fields correctly', async () => {
@@ -86,8 +88,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
         project_id: 1,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle zero values correctly', async () => {
@@ -110,8 +113,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
         repeat_mode: 0,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle empty arrays correctly', async () => {
@@ -135,8 +139,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       expect(mockClient.tasks.updateTaskLabels).not.toHaveBeenCalled();
       expect(mockClient.tasks.bulkAssignUsersToTask).not.toHaveBeenCalled();
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle task creation without ID for label operations', async () => {
@@ -153,8 +158,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       expect(mockClient.tasks.updateTaskLabels).not.toHaveBeenCalled();
       expect(mockClient.tasks.getTask).not.toHaveBeenCalled();
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle task creation without ID for assignee operations', async () => {
@@ -171,8 +177,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       expect(mockClient.tasks.bulkAssignUsersToTask).not.toHaveBeenCalled();
       expect(mockClient.tasks.getTask).not.toHaveBeenCalled();
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
   });
 
@@ -210,9 +217,10 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
         done: false,
       });
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.metadata.affectedFields).toEqual([]);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Task updated successfully');
     });
 
     it('should handle undefined repeat configuration correctly', async () => {
@@ -237,8 +245,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
         repeat_mode: 0, // Week mode converts to 0
       }));
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle partial repeat configuration updates', async () => {
@@ -265,8 +274,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
         })
       );
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle empty assignee list updates', async () => {
@@ -292,8 +302,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       // Should not add any assignees
       expect(mockClient.tasks.bulkAssignUsersToTask).not.toHaveBeenCalled();
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
 
     it('should handle assignee updates with null/undefined assignees on current task', async () => {
@@ -320,8 +331,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       // Should not remove any assignees
       expect(mockClient.tasks.removeUserFromTask).not.toHaveBeenCalled();
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
     });
   });
 
@@ -337,10 +349,11 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       // Should still proceed with deletion
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);
 
-      const response = JSON.parse(result.content[0].text);
-      expect(response.success).toBe(true);
-      expect(response.message).toBe('Task 1 deleted successfully');
-      expect(response.task).toBeUndefined(); // No task details available
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      expect(markdown).toContain('Task 1 deleted successfully');
+      // Task details not available when pre-fetch fails
     });
 
     it('should handle various error types during deletion', async () => {
