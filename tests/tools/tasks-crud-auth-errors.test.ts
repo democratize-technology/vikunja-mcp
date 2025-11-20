@@ -460,7 +460,8 @@ describe('Tasks CRUD - Authentication Error Handling', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
 
     it('should handle updateTask with task having no assignees field', async () => {

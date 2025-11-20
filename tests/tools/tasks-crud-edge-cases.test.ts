@@ -67,7 +67,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
 
     it('should handle undefined optional fields correctly', async () => {
@@ -90,7 +91,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
 
     it('should handle zero values correctly', async () => {
@@ -115,7 +117,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
 
     it('should handle empty arrays correctly', async () => {
@@ -141,7 +144,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
 
     it('should handle task creation without ID for label operations', async () => {
@@ -160,7 +164,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
 
     it('should handle task creation without ID for assignee operations', async () => {
@@ -179,7 +184,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
   });
 
@@ -219,7 +225,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Task updated successfully');
     });
 
@@ -247,7 +254,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
 
     it('should handle partial repeat configuration updates', async () => {
@@ -276,7 +284,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
 
     it('should handle empty assignee list updates', async () => {
@@ -304,7 +313,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
 
     it('should handle assignee updates with null/undefined assignees on current task', async () => {
@@ -333,7 +343,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
   });
 
@@ -351,7 +362,8 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Task 1 deleted successfully');
       // Task details not available when pre-fetch fails
     });

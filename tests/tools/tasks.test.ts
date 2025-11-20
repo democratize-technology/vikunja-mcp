@@ -199,7 +199,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-            expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+            const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list-tasks');
       expect(markdown).toContain('**Count**: 1');
       // Task data not in markdown - filtered server-side
@@ -232,7 +233,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-            expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+            const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list-tasks');
       expect(markdown).toContain('Count');
       expect(markdown).toContain('Count');
@@ -260,7 +262,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-            expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+            const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list-tasks');
       expect(markdown).toContain('Count');
     });
@@ -336,7 +339,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-            expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);    });
+            const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');    });
 
     it('should create a task with all optional fields', async () => {
       const fullTask = {
@@ -489,7 +493,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);    });
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');    });
 
     it('should handle non-Error failures during label assignment', async () => {
       mockClient.tasks.createTask.mockResolvedValue({ ...mockTask, id: 1 });
@@ -583,7 +588,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('get-task');
     });
     it('should get a task by ID', async () => {
@@ -595,7 +601,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Retrieved task');
     });
 
@@ -675,7 +682,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('updated');
     });
 
@@ -711,7 +719,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);    });
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');    });
 
     it('should handle assignee updates with diff logic', async () => {
       const taskWithAssignees = {
@@ -795,7 +804,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
 
     it('should handle label updates', async () => {
@@ -963,7 +973,8 @@ describe('Tasks Tool', () => {
       expect(mockClient.tasks.deleteTask).toHaveBeenCalledWith(1);
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('delete-task');
       expect(markdown).toContain('Task "Test Task" deleted successfully');    });
 
@@ -986,7 +997,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('delete-task');    });
 
     it('should handle non-Error API errors in delete', async () => {
@@ -1019,7 +1031,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Users assigned to task successfully');
     });
 
@@ -1090,7 +1103,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Users removed from task successfully');
     });
 
@@ -1112,7 +1126,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('unassign');
     });
 
@@ -1179,7 +1194,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('get');
       expect(markdown).toContain('Task has 2 assignee(s)');
     });
@@ -1197,7 +1213,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Task has 0 assignee(s)');
     });
 
@@ -1269,7 +1286,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list');
     });
 
@@ -1288,7 +1306,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Comment added successfully');
     });
 
@@ -1368,7 +1387,8 @@ describe('Tasks Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list-tasks');
       expect(tasksData.tasks).toEqual([]);
     });
@@ -1389,7 +1409,8 @@ describe('Tasks Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(response).toBeDefined();
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
     });
   });
 
@@ -1439,7 +1460,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('update-task');
       expect(markdown).toContain('Successfully updated 3 tasks');
       expect(tasksData.tasks).toHaveLength(3);
@@ -1467,7 +1489,8 @@ describe('Tasks Tool', () => {
       
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('update-task');
       expect(markdown).toContain('Successfully updated 2 tasks');
     });
@@ -1686,7 +1709,8 @@ describe('Tasks Tool', () => {
       // Verify successful response
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(tasksData.tasks).toHaveLength(2);
       expect(tasksData.tasks[0].priority).toBe(5);
       expect(tasksData.tasks[1].priority).toBe(5);
@@ -1736,7 +1760,8 @@ describe('Tasks Tool', () => {
       // Parse response and verify tasks have been updated via fallback
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(tasksData.tasks).toHaveLength(2);
       
       // Verify that the returned tasks now show the UPDATED priority values
@@ -1975,7 +2000,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully updated 2 tasks');
     });
 
@@ -2005,7 +2031,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully updated 3 tasks');
       expect(tasksData.tasks).toHaveLength(3);
     });
@@ -2022,7 +2049,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully updated 2 tasks');
       expect(mockClient.tasks.bulkUpdateTasks).toHaveBeenCalledWith({
         task_ids: [1, 2],
@@ -2043,7 +2071,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully updated 2 tasks');
       expect(mockClient.tasks.bulkUpdateTasks).toHaveBeenCalledWith({
         task_ids: [1, 2],
@@ -2064,7 +2093,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully updated 2 tasks');
       expect(mockClient.tasks.bulkUpdateTasks).toHaveBeenCalledWith({
         task_ids: [1, 2],
@@ -2085,7 +2115,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully updated 2 tasks');
       expect(mockClient.tasks.bulkUpdateTasks).toHaveBeenCalledWith({
         task_ids: [1, 2],
@@ -2106,7 +2137,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully updated 2 tasks');
     });
 
@@ -2122,7 +2154,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully updated 2 tasks');
       expect(mockClient.tasks.bulkUpdateTasks).toHaveBeenCalledWith({
         task_ids: [1, 2],
@@ -2150,7 +2183,8 @@ describe('Tasks Tool', () => {
       // The bulk update should succeed but warn about assignee failures
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully updated 1 tasks');
     });
 
@@ -2211,7 +2245,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully updated 2 tasks');
       // New batch processing system doesn't have the same fetch failure behavior
     });
@@ -2260,7 +2295,8 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('delete-task');
       expect(markdown).toContain('Successfully deleted 3 tasks');
     });
@@ -2348,7 +2384,8 @@ describe('Tasks Tool', () => {
       const result = await callTool('bulk-delete', { taskIds: [1] });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       // Previous state might be populated depending on whether getTask succeeded first
     });
   });
@@ -2619,7 +2656,8 @@ describe('Tasks Tool', () => {
       const result = await callTool('bulk-create', { projectId: 1, tasks });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
 
       // Restore JSON.stringify
       JSON.stringify = originalStringify;

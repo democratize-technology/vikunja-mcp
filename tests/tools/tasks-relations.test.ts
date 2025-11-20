@@ -152,7 +152,8 @@ describe('Task Relations Tool', () => {
 
       const markdown = (result as any).content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('relate');
       expect(markdown).toContain('Successfully created related relation');
     });
@@ -227,7 +228,8 @@ describe('Task Relations Tool', () => {
 
         const markdown = (result as any).content[0].text;
         const parsed = parseMarkdown(markdown);
-        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+        const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
         expect(markdown).toContain(kind);
       }
     });
@@ -279,7 +281,8 @@ describe('Task Relations Tool', () => {
 
       const markdown = (result as any).content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('unrelate');
       expect(markdown).toContain('Successfully removed subtask relation');
     });
@@ -353,7 +356,8 @@ describe('Task Relations Tool', () => {
 
       const markdown = (result as any).content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('relations');
       expect(markdown).toContain('Found 2 relations for task 1');
     });
@@ -371,7 +375,8 @@ describe('Task Relations Tool', () => {
 
       const markdown = (result as any).content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Found 0 relations for task 1');
     });
 
@@ -388,7 +393,8 @@ describe('Task Relations Tool', () => {
 
       const markdown = (result as any).content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Found 0 relations for task 1');
     });
 

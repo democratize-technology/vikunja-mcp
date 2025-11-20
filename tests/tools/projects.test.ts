@@ -192,7 +192,8 @@ describe('Projects Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Retrieved 2 projects');
       expect(markdown).toMatch(/list[_\\]+projects/);
     });
@@ -257,7 +258,8 @@ describe('Projects Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Retrieved project: Test Project');
       expect(markdown).toMatch(/get[_\\]+project/);
     });
@@ -313,7 +315,8 @@ describe('Projects Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Project "Test Project" created successfully');
       expect(markdown).toMatch(/create[_\\]+project/);
     });
@@ -443,7 +446,8 @@ describe('Projects Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Project "Updated Title" updated successfully');
       expect(markdown).toMatch(/update[_\\]+project/);
     });
@@ -567,7 +571,8 @@ describe('Projects Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Deleted project: Test Project');
     });
 
@@ -622,7 +627,8 @@ describe('Projects Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Project "Test Project" archived successfully');
       expect(markdown).toMatch(/archive[_\\]+project/);
     });
@@ -638,7 +644,8 @@ describe('Projects Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Project "Test Project" is already archived');
       expect(markdown).toMatch(/archive[_\\]+project/);
     });
@@ -697,7 +704,8 @@ describe('Projects Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Project "Test Project" unarchived successfully');
       expect(markdown).toMatch(/unarchive[_\\]+project/);
     });
@@ -712,7 +720,8 @@ describe('Projects Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Project "Test Project" is already active (not archived)');
       expect(markdown).toMatch(/unarchive[_\\]+project/);
     });
@@ -775,7 +784,8 @@ describe('Projects Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Share created successfully for project ID 1');
       expect(markdown).toMatch(/create[_\\]+project[_\\]+share/);
       expect(mockClient.projects.createLinkShare).toHaveBeenCalledWith(1, {
@@ -927,7 +937,8 @@ describe('Projects Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Retrieved 2 shares for project 1');
       expect(markdown).toMatch(/list[_\\]+project[_\\]+shares/);
       expect(mockClient.projects.getLinkShares).toHaveBeenCalledWith(1, {});
@@ -994,7 +1005,8 @@ describe('Projects Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Retrieved share 1 for project 1');
       expect(markdown).toMatch(/get[_\\]+project[_\\]+share/);
       expect(mockClient.projects.getLinkShare).toHaveBeenCalledWith(1, '1');
@@ -1061,7 +1073,8 @@ describe('Projects Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Share with ID 1 deleted successfully');
       expect(markdown).toMatch(/delete[_\\]+project[_\\]+share/);
       expect(mockClient.projects.getLinkShare).toHaveBeenCalledWith(1, '1');
@@ -1126,7 +1139,8 @@ describe('Projects Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Successfully authenticated to share');
       expect(markdown).toMatch(/auth[_\\]+project[_\\]+share/);
       expect(mockClient.shares.getShareAuth).toHaveBeenCalledWith('abc123', {
@@ -1232,7 +1246,8 @@ describe('Projects Tool', () => {
       const result = await callTool('get-children', { id: 1 });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('get-project-children');
       expect(markdown).toContain('Child 1');
       expect(markdown).toContain('Child 2');
@@ -1287,7 +1302,8 @@ describe('Projects Tool', () => {
       const result = await callTool('get-tree', { id: 1 });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('get-project-tree');
       expect(markdown).toContain('Root');
       expect(markdown).toContain('**TotalProjects**: 4');
@@ -1304,7 +1320,8 @@ describe('Projects Tool', () => {
       const result = await callTool('get-tree', { id: 1 });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('get-project-tree');
       expect(markdown).toContain('Project 1');
       expect(markdown).toContain('Project 2');
@@ -1343,7 +1360,8 @@ describe('Projects Tool', () => {
       const result = await callTool('get-tree', { id: 1 });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Root');
     });
 
@@ -1381,7 +1399,8 @@ describe('Projects Tool', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       // The project without ID should be filtered out
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Root');
       expect(markdown).toContain('Child');
     });
@@ -1400,7 +1419,8 @@ describe('Projects Tool', () => {
       const result = await callTool('get-breadcrumb', { id: 3 });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('get-project-breadcrumb');
       expect(markdown).toContain('Root > Child > Grandchild');
     });
@@ -1426,7 +1446,8 @@ describe('Projects Tool', () => {
       const result = await callTool('get-breadcrumb', { id: 2 });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('Child');
     });
 
@@ -1477,7 +1498,8 @@ describe('Projects Tool', () => {
       const result = await callTool('move', { id: 2, parentProjectId: 1 });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('move-project');
       expect(markdown).toContain('moved to parent project ID 1');
     });
@@ -1496,7 +1518,8 @@ describe('Projects Tool', () => {
       const result = await callTool('move', { id: 1, parentProjectId: undefined });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('moved to root level');
     });
 
@@ -1657,7 +1680,8 @@ describe('Projects Tool', () => {
       const result = await callTool('move', { id: 5, parentProjectId: 1 });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('move-project');
     });
 
@@ -1689,7 +1713,8 @@ describe('Projects Tool', () => {
       const result = await callTool('move', { id: 1, parentProjectId: 4 });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('move-project');
     });
 
@@ -1709,7 +1734,8 @@ describe('Projects Tool', () => {
       const result = await callTool('create', { title: 'New Project', parentProjectId: 1 });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('New Project');
     });
 
@@ -1797,7 +1823,8 @@ describe('Projects Tool', () => {
         const result = await callTool('move', { id: 1, parentProjectId: 2 });
         const markdown = result.content[0].text;
         const parsed = parseMarkdown(markdown);
-        expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
+        const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
         expect(markdown).toContain('NewParentProjectId');
       } finally {
         // Restore original shift method
