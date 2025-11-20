@@ -8,6 +8,7 @@ import { getClientFromContext } from '../../client';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { validateId } from './validation';
+import { formatAorpAsMarkdown } from '../../aorp/markdown';
 
 /**
  * Add labels to a task
@@ -80,7 +81,7 @@ export async function applyLabels(args: {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };
@@ -156,7 +157,7 @@ export async function removeLabels(args: {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };
@@ -210,7 +211,7 @@ export async function listTaskLabels(args: {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };

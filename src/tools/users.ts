@@ -11,6 +11,7 @@ import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getClientFromContext } from '../client';
 import type { ExtendedUserSettings } from '../types/vikunja';
 import { handleAuthError } from '../utils/auth-error-handler';
+import { formatAorpAsMarkdown } from '../aorp/markdown';
 
 interface SearchParams {
   page?: number;
@@ -78,7 +79,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -108,7 +109,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -142,7 +143,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -221,7 +222,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };

@@ -6,6 +6,7 @@
 import { MCPError, ErrorCode, getClientFromContext, type Task, transformApiError, handleFetchError, handleStatusCodeError, type AorpBuilderConfig } from '../../../index';
 import { validateId } from '../validation';
 import { createTaskResponse } from './TaskResponseFormatter';
+import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 
 export interface GetTaskArgs {
   id?: number;
@@ -48,7 +49,7 @@ export async function getTask(args: GetTaskArgs): Promise<{ content: Array<{ typ
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response.response),
         },
       ],
     };

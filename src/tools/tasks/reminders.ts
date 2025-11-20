@@ -6,6 +6,7 @@ import type { StandardTaskResponse, MinimalTask } from '../../types/index';
 import { MCPError, ErrorCode } from '../../types/index';
 import { getClientFromContext } from '../../client';
 import { validateId, validateDateString } from './validation';
+import { formatAorpAsMarkdown } from '../../aorp/markdown';
 
 /**
  * Add a reminder to a task
@@ -73,7 +74,7 @@ export async function addReminder(args: {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };
@@ -157,7 +158,7 @@ export async function removeReminder(args: {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };
@@ -216,7 +217,7 @@ export async function listReminders(args: {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };

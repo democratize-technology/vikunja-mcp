@@ -13,6 +13,7 @@ import { logger } from '../utils/logger';
 import { applyRateLimiting } from '../middleware/direct-middleware';
 import { createSecureConnectionMessage } from '../utils/security';
 import { wrapAuthError } from '../utils/error-handler';
+import { formatAorpAsMarkdown } from '../aorp/markdown';
 
 interface AuthArgs {
   subcommand: 'connect' | 'status' | 'refresh' | 'disconnect';
@@ -56,7 +57,7 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager, _c
                 content: [
                   {
                     type: 'text',
-                    text: JSON.stringify(response, null, 2),
+                    text: formatAorpAsMarkdown(response),
                   },
                 ],
               };
@@ -78,7 +79,7 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager, _c
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -96,7 +97,7 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager, _c
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -114,7 +115,7 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager, _c
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -133,7 +134,7 @@ export function registerAuthTool(server: McpServer, authManager: AuthManager, _c
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };

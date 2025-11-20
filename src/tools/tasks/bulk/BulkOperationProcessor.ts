@@ -9,6 +9,7 @@ import { BulkOperationValidator, type BulkUpdateArgs, type BulkDeleteArgs, type 
 import { BulkOperationErrorHandler } from './BulkOperationErrorHandler';
 import { convertRepeatConfiguration } from '../validation';
 
+import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 /**
  * Main processor for all bulk operations
  */
@@ -188,7 +189,7 @@ export class BulkOperationProcessor {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };
@@ -281,7 +282,7 @@ export class BulkOperationProcessor {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(response, null, 2),
+              text: formatAorpAsMarkdown(response as any),
             },
           ],
         };
@@ -308,7 +309,7 @@ export class BulkOperationProcessor {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };
@@ -495,7 +496,7 @@ export class BulkOperationProcessor {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };

@@ -12,6 +12,7 @@ import { getClientFromContext } from '../client';
 import type { Project, Task } from 'node-vikunja';
 import { storageManager } from '../storage';
 import { logger } from '../utils/logger';
+import { formatAorpAsMarkdown } from '../aorp/markdown';
 
 /**
  * Get session-scoped storage instance
@@ -149,7 +150,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
                 content: [
                   {
                     type: 'text',
-                    text: JSON.stringify(response, null, 2),
+                    text: formatAorpAsMarkdown(response),
                   },
                 ],
               };
@@ -187,7 +188,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
                 content: [
                   {
                     type: 'text',
-                    text: JSON.stringify(response, null, 2),
+                    text: formatAorpAsMarkdown(response),
                   },
                 ],
               };
@@ -221,7 +222,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
                 content: [
                   {
                     type: 'text',
-                    text: JSON.stringify(response, null, 2),
+                    text: formatAorpAsMarkdown(response),
                   },
                 ],
               };
@@ -269,7 +270,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
                 content: [
                   {
                     type: 'text',
-                    text: JSON.stringify(response, null, 2),
+                    text: formatAorpAsMarkdown(response),
                   },
                 ],
               };
@@ -306,7 +307,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
                 content: [
                   {
                     type: 'text',
-                    text: JSON.stringify(response, null, 2),
+                    text: formatAorpAsMarkdown(response),
                   },
                 ],
               };
@@ -414,7 +415,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
                 content: [
                   {
                     type: 'text',
-                    text: JSON.stringify(response, null, 2),
+                    text: formatAorpAsMarkdown(response),
                   },
                 ],
               };

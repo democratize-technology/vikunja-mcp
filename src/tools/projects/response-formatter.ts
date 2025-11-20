@@ -19,7 +19,7 @@ export function createProjectResponse(
   verbosity?: string,
   _useOptimizedFormat?: boolean,
   _useAorp?: boolean
-): AorpFactoryResult<unknown> {
+): AorpFactoryResult {
   // Default to standard verbosity if not specified
   const selectedVerbosity = verbosity || 'standard';
 
@@ -60,7 +60,7 @@ export function createProjectSuccessResponse(
     useAorp?: boolean;
     metadata?: Partial<ResponseMetadata>;
   } = {}
-): AorpFactoryResult<unknown> {
+): AorpFactoryResult {
   const {
     message = `${operation} operation completed successfully`,
     verbosity,
@@ -93,7 +93,7 @@ export function createProjectListResponse(
     useOptimizedFormat?: boolean;
     useAorp?: boolean;
   } = {}
-): AorpFactoryResult<unknown> {
+): AorpFactoryResult {
   const metadata: Partial<ResponseMetadata> = {
     pagination: {
       page: currentPage,
@@ -131,7 +131,7 @@ export function createProjectTreeResponse(
     useOptimizedFormat?: boolean;
     useAorp?: boolean;
   } = {}
-): AorpFactoryResult<unknown> {
+): AorpFactoryResult {
   const metadata: Partial<ResponseMetadata> = {
     hierarchy: {
       depth,
@@ -163,7 +163,7 @@ export function createBreadcrumbResponse(
     useOptimizedFormat?: boolean;
     useAorp?: boolean;
   } = {}
-): AorpFactoryResult<unknown> {
+): AorpFactoryResult {
   const metadata: Partial<ResponseMetadata> = {
     navigation: {
       breadcrumbLength: breadcrumb.length,

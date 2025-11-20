@@ -13,6 +13,7 @@ import { wrapToolError } from '../utils/error-handler';
 import { getClientFromContext } from '../client';
 import type { Label } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
+import { formatAorpAsMarkdown } from '../aorp/markdown';
 
 // Use shared validateAndConvertId from utils/validation
 
@@ -74,7 +75,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -98,7 +99,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -128,7 +129,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -165,7 +166,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -187,7 +188,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };

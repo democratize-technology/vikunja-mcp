@@ -50,10 +50,10 @@ export class AorpResponseFactory {
   /**
    * Convert an OptimizedResponse to AORP format
    */
-  fromOptimizedResponse<T>(
-    optimizedResponse: OptimizedResponse<T>,
+  fromOptimizedResponse(
+    optimizedResponse: OptimizedResponse,
     options: AorpFactoryOptions = {}
-  ): AorpFactoryResult<T> {
+  ): AorpFactoryResult {
     const mergedOptions = { ...this.defaultOptions, ...options };
     const startTime = Date.now();
 
@@ -61,7 +61,7 @@ export class AorpResponseFactory {
     const context = this.createTransformationContext(optimizedResponse);
 
     // Create AORP response
-    const response = this.createAorpResponse<T>(optimizedResponse, context, mergedOptions);
+    const response = this.createAorpResponse(optimizedResponse, context, mergedOptions);
 
     // Calculate processing metrics
     const aorpProcessingTime = Date.now() - startTime;
@@ -81,27 +81,27 @@ export class AorpResponseFactory {
   }
 
   /**
-   * Create AORP response directly from data
+   * Create AORP response directly from summary
    */
-  fromData<T>(
+  fromData(
     operation: string,
-    data: T,
+    summary: string,
     success: boolean = true,
     message: string = '',
     options: AorpFactoryOptions = {}
-  ): AorpFactoryResult<T> {
+  ): AorpFactoryResult {
     const mergedOptions = { ...this.defaultOptions, ...options };
     const startTime = Date.now();
 
     // Create a mock optimized response for consistency
-    const mockOptimizedResponse: OptimizedResponse<T> = {
+    const mockOptimizedResponse: OptimizedResponse = {
       success,
       operation,
       message: message || (success ? 'Operation completed successfully' : 'Operation failed'),
-      data,
+      data: summary,
       metadata: {
         timestamp: new Date().toISOString(),
-        count: Array.isArray(data) ? data.length : 1
+        count: 1
       }
     };
 
@@ -109,7 +109,7 @@ export class AorpResponseFactory {
     const context = this.createTransformationContext(mockOptimizedResponse);
 
     // Create AORP response
-    const response = this.createAorpResponse<T>(mockOptimizedResponse, context, mergedOptions);
+    const response = this.createAorpResponse(mockOptimizedResponse, context, mergedOptions);
 
     // Calculate processing metrics
     const aorpProcessingTime = Date.now() - startTime;
@@ -135,7 +135,7 @@ export class AorpResponseFactory {
     operation: string,
     error: Error | Record<string, unknown>,
     options: AorpFactoryOptions = {}
-  ): AorpFactoryResult<null> {
+  ): AorpFactoryResult {
     const mergedOptions = { ...this.defaultOptions, ...options };
     const startTime = Date.now();
 
@@ -150,11 +150,11 @@ export class AorpResponseFactory {
     }
 
     // Create mock optimized response for error
-    const mockOptimizedResponse: OptimizedResponse<null> = {
+    const mockOptimizedResponse: OptimizedResponse = {
       success: false,
       operation,
       message: errorMessage,
-      data: null,
+      data: errorMessage,
       metadata: {
         timestamp: new Date().toISOString(),
         count: 0
@@ -165,7 +165,7 @@ export class AorpResponseFactory {
     const context = this.createTransformationContext(mockOptimizedResponse, [errorMessage]);
 
     // Create AORP response
-    const response = this.createAorpResponse<null>(mockOptimizedResponse, context, mergedOptions);
+    const response = this.createAorpResponse(mockOptimizedResponse, context, mergedOptions);
 
     // Calculate processing metrics
     const aorpProcessingTime = Date.now() - startTime;
@@ -187,8 +187,8 @@ export class AorpResponseFactory {
   /**
    * Create transformation context from optimized response
    */
-  private createTransformationContext<T>(
-    optimizedResponse: OptimizedResponse<T>,
+  private createTransformationContext(
+    optimizedResponse: OptimizedResponse,
     errors?: string[]
   ): AorpTransformationContext {
     const dataSize = this.estimateDataSize(optimizedResponse.data);
@@ -214,20 +214,23 @@ export class AorpResponseFactory {
   /**
    * Create AORP response using builder
    */
-  private createAorpResponse<T>(
-    optimizedResponse: OptimizedResponse<T>,
+  private createAorpResponse(
+    optimizedResponse: OptimizedResponse,
     context: AorpTransformationContext,
     options: AorpFactoryOptions
-  ): AorpResponse<T> {
-    const builder = new AorpBuilder<T>(context, options.builderConfig);
+  ): AorpResponse {
+    const builder = new AorpBuilder(context, options.builderConfig);
 
     if (optimizedResponse.success) {
       // Successful operation
       const keyInsight = this.generateKeyInsight(optimizedResponse);
+      const summary = typeof optimizedResponse.data === 'string'
+        ? optimizedResponse.data
+        : optimizedResponse.message;
 
       const responseBuilder = builder
         .status('success', keyInsight)
-        .data(optimizedResponse.data, optimizedResponse.message);
+        .summary(summary);
 
       if (options.sessionId) {
         responseBuilder.sessionId(options.sessionId);
@@ -250,10 +253,13 @@ export class AorpResponseFactory {
     } else {
       // Failed operation
       const keyInsight = `Operation failed: ${optimizedResponse.message}`;
+      const summary = typeof optimizedResponse.data === 'string'
+        ? optimizedResponse.data
+        : optimizedResponse.message;
 
       const responseBuilder = builder
         .status('error', keyInsight)
-        .data(optimizedResponse.data, optimizedResponse.message);
+        .summary(summary);
 
       if (options.sessionId) {
         responseBuilder.sessionId(options.sessionId);
@@ -278,9 +284,9 @@ export class AorpResponseFactory {
   }
 
   /**
-   * Generate key insight based on operation and data
+   * Generate key insight based on operation and context
    */
-  private generateKeyInsight<T>(optimizedResponse: OptimizedResponse<T>): string {
+  private generateKeyInsight(optimizedResponse: OptimizedResponse): string {
     const { operation, data } = optimizedResponse;
     const count = optimizedResponse.metadata.count || 0;
 
@@ -421,27 +427,27 @@ export const defaultAorpFactory = new AorpResponseFactory();
 /**
  * Utility functions for quick AORP response creation
  */
-export function createAorpResponse<T>(
-  optimizedResponse: OptimizedResponse<T>,
+export function createAorpResponse(
+  optimizedResponse: OptimizedResponse,
   options?: AorpFactoryOptions
-): AorpFactoryResult<T> {
+): AorpFactoryResult {
   return defaultAorpFactory.fromOptimizedResponse(optimizedResponse, options);
 }
 
-export function createAorpFromData<T>(
+export function createAorpFromData(
   operation: string,
-  data: T,
+  summary: string,
   success?: boolean,
   message?: string,
   options?: AorpFactoryOptions
-): AorpFactoryResult<T> {
-  return defaultAorpFactory.fromData(operation, data, success, message, options);
+): AorpFactoryResult {
+  return defaultAorpFactory.fromData(operation, summary, success, message, options);
 }
 
 export function createAorpFromError(
   operation: string,
   error: Error | Record<string, unknown>,
   options?: AorpFactoryOptions
-): AorpFactoryResult<null> {
+): AorpFactoryResult {
   return defaultAorpFactory.fromError(operation, error, options);
 }

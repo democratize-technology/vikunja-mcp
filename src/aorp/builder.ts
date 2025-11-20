@@ -64,11 +64,11 @@ const DEFAULT_NEXT_STEPS_TEMPLATES: Record<string, string[]> = {
 };
 
 /**
- * AORP Builder class with fluent API
+ * AORP Builder class with fluent API - markdown output only
  */
-export class AorpBuilder<T = unknown> {
+export class AorpBuilder {
   private config: Required<AorpBuilderConfig>;
-  private response: Partial<AorpResponse<T>> = {};
+  private response: Partial<AorpResponse> = {};
   private context: AorpTransformationContext;
 
   constructor(
@@ -81,7 +81,6 @@ export class AorpBuilder<T = unknown> {
     // Initialize with defaults
     this.response.details = {
       summary: '',
-      data: null as T,
       metadata: {
         timestamp: new Date().toISOString()
       }
@@ -220,26 +219,13 @@ export class AorpBuilder<T = unknown> {
   /**
    * Set detailed information
    */
-  details(details: AorpDetails<T>): this {
+  details(details: AorpDetails): this {
     this.response.details = details;
     return this;
   }
 
   /**
-   * Set data and summary (shortcut for details)
-   */
-  data(data: T, summary?: string): this {
-    if (this.response.details) {
-      this.response.details.data = data;
-      if (summary) {
-        this.response.details.summary = summary;
-      }
-    }
-    return this;
-  }
-
-  /**
-   * Set summary
+   * Set summary (markdown output)
    */
   summary(summary: string): this {
     if (this.response.details) {
@@ -307,14 +293,10 @@ export class AorpBuilder<T = unknown> {
     const completenessWeight = config.completenessWeight || 0.5;
     const reliabilityWeight = config.reliabilityWeight || 0.5;
 
-    // Calculate completeness based on data and context
+    // Calculate completeness based on context
     let completeness = 0.5; // Default
     if (this.context.dataSize > 0) {
-      if (Array.isArray(this.response.details?.data)) {
-        completeness = Math.min(1.0, this.context.dataSize / 10); // Assume 10 items is "complete"
-      } else {
-        completeness = this.response.details?.data ? 1.0 : 0.0;
-      }
+      completeness = Math.min(1.0, this.context.dataSize / 10); // Assume 10 items is "complete"
     }
 
     // Calculate reliability based on success and errors
@@ -344,7 +326,7 @@ export class AorpBuilder<T = unknown> {
     if (config.customIndicators) {
       for (const [key, calculator] of Object.entries(config.customIndicators)) {
         try {
-          indicators[key] = calculator(this.response.details?.data, this.context);
+          indicators[key] = calculator(null, this.context);
         } catch {
           indicators[key] = 0; // Default on error
         }
@@ -362,7 +344,7 @@ export class AorpBuilder<T = unknown> {
   }
 
   /**
-   * Auto-generate workflow guidance based on operation and data
+   * Auto-generate workflow guidance based on operation and context
    */
   generateWorkflowGuidance(): this {
     let guidance = '';
@@ -376,14 +358,14 @@ export class AorpBuilder<T = unknown> {
     } else if (this.context.operation === 'delete') {
       guidance = 'The resource has been deleted. Update any references to avoid orphaned data.';
     } else if (this.context.operation === 'list') {
-      const count = Array.isArray(this.response.details?.data) ? this.response.details.data.length : 0;
+      const count = this.context.dataSize;
       if (count === 0) {
         guidance = 'No results found. Consider broadening search criteria or creating new resources.';
       } else {
-        guidance = `Found ${count} result${count === 1 ? '' : 's'}. Use the provided data for further operations.`;
+        guidance = `Found ${count} result${count === 1 ? '' : 's'}. Review the summary for details.`;
       }
     } else {
-      guidance = 'Operation completed successfully. Use the returned data for subsequent actions.';
+      guidance = 'Operation completed successfully. Review the summary for details.';
     }
 
     this.workflowGuidance(guidance);
@@ -405,7 +387,7 @@ export class AorpBuilder<T = unknown> {
         score += (this.context.success ? 1 : 0) * weights.success;
         score += Math.min(1.0, this.context.dataSize / 100) * weights.dataSize;
         score += Math.max(0, 1 - (this.context.processingTime / 10000)) * weights.responseTime;
-        score += (this.response.details?.data ? 1 : 0) * weights.completeness;
+        score += (this.response.details?.summary ? 1 : 0) * weights.completeness;
         return Math.max(0.0, Math.min(1.0, score));
       }
 
@@ -437,7 +419,7 @@ export class AorpBuilder<T = unknown> {
   /**
    * Build the final AORP response
    */
-  build(): AorpResponse<T> {
+  build(): AorpResponse {
     // Validate required fields
     if (!this.response.immediate) {
       throw new Error('Immediate response information is required');
@@ -468,7 +450,7 @@ export class AorpBuilder<T = unknown> {
       this.response.immediate.confidence = this.calculateConfidence();
     }
 
-    return this.response as AorpResponse<T>;
+    return this.response as AorpResponse;
   }
 
   /**
@@ -477,7 +459,7 @@ export class AorpBuilder<T = unknown> {
   buildWithAutogeneration(
     nextStepsConfig?: NextStepsConfig,
     qualityConfig?: QualityConfig
-  ): AorpResponse<T> {
+  ): AorpResponse {
     return this
       .generateNextSteps(nextStepsConfig)
       .generateQuality(qualityConfig)
@@ -488,25 +470,25 @@ export class AorpBuilder<T = unknown> {
   /**
    * Create a builder instance with minimal setup
    */
-  static create<T = unknown>(
+  static create(
     context: AorpTransformationContext,
     config?: AorpBuilderConfig
-  ): AorpBuilder<T> {
-    return new AorpBuilder<T>(context, config);
+  ): AorpBuilder {
+    return new AorpBuilder(context, config);
   }
 
   /**
    * Create a successful response builder
    */
-  static success<T = unknown>(
+  static success(
     context: AorpTransformationContext,
     keyInsight: string,
-    data: T,
+    summary: string,
     config?: AorpBuilderConfig
-  ): AorpBuilder<T> {
-    return new AorpBuilder<T>(context, config)
+  ): AorpBuilder {
+    return new AorpBuilder(context, config)
       .status('success', keyInsight)
-      .data(data)
+      .summary(summary)
       .generateNextSteps()
       .generateQuality()
       .generateWorkflowGuidance();
@@ -518,12 +500,12 @@ export class AorpBuilder<T = unknown> {
   static error(
     context: AorpTransformationContext,
     keyInsight: string,
-    error: unknown,
+    summary: string,
     config?: AorpBuilderConfig
-  ): AorpBuilder<unknown> {
-    return new AorpBuilder<unknown>(context, config)
+  ): AorpBuilder {
+    return new AorpBuilder(context, config)
       .status('error', keyInsight)
-      .data(error)
+      .summary(summary)
       .generateNextSteps()
       .generateQuality()
       .generateWorkflowGuidance();

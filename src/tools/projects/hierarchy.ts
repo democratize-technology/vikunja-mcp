@@ -9,6 +9,7 @@ import { getClientFromContext } from '../../client';
 import { transformApiError, handleStatusCodeError } from '../../utils/error-handler';
 import { validateId, validateMoveConstraints } from './validation';
 import { createProjectResponse, createProjectTreeResponse, createBreadcrumbResponse } from './response-formatter';
+import { formatAorpAsMarkdown } from '../../aorp/markdown';
 
 /**
  * Arguments for getting project children
@@ -102,7 +103,7 @@ export async function getProjectChildren(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response.response),
         }
       ]
     };
@@ -194,7 +195,7 @@ export async function getProjectTree(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -257,7 +258,7 @@ export async function getProjectBreadcrumb(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -339,7 +340,7 @@ export async function moveProject(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };

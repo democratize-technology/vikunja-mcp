@@ -9,6 +9,7 @@ import { getClientFromContext } from '../../client';
 import { transformApiError } from '../../utils/error-handler';
 import { validateId } from './validation';
 import { createProjectResponse } from './response-formatter';
+import { formatAorpAsMarkdown } from '../../aorp/markdown';
 
 /**
  * Arguments for creating a project share
@@ -183,7 +184,7 @@ export async function createProjectShare(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -254,7 +255,7 @@ export async function listProjectShares(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -313,7 +314,7 @@ export async function getProjectShare(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -385,7 +386,7 @@ export async function deleteProjectShare(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -445,7 +446,7 @@ export async function authProjectShare(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };

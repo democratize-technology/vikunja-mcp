@@ -113,7 +113,7 @@ describe('AorpResponseFactory', () => {
       expect(result.response.immediate.confidence).toBeGreaterThan(0);
       expect(result.response.actionable.next_steps.length).toBeGreaterThan(0);
       expect(result.response.quality.completeness).toBeGreaterThan(0);
-      expect(result.response.details.data).toEqual(mockOptimizedResponse.data);
+      expect(result.response.details.summary).toBeDefined();
     });
 
     test('should handle failed optimized response', () => {
@@ -160,32 +160,29 @@ describe('AorpResponseFactory', () => {
 
   describe('From Raw Data', () => {
     test('should create AORP response from raw data', () => {
-      const result = factory.fromData('create', { id: 456, title: 'New Task' }, true, 'Task created');
+      const result = factory.fromData('create', 'Task created successfully', true, 'Task created');
 
       expect(result.response.immediate.status).toBe('success');
       expect(result.response.immediate.key_insight).toContain('Successfully created');
-      expect(result.response.details.data).toEqual({ id: 456, title: 'New Task' });
+      expect(result.response.details.summary).toContain('Task created');
       expect(result.transformation.context.operation).toBe('create');
     });
 
     test('should handle error data', () => {
-      const result = factory.fromData('delete', null, false, 'Delete failed');
+      const result = factory.fromData('delete', 'Delete failed - resource not found', false, 'Delete failed');
 
       expect(result.response.immediate.status).toBe('error');
-      expect(result.response.details.data).toBeNull();
+      expect(result.response.details.summary).toContain('Delete failed');
       expect(result.transformation.context.success).toBe(false);
     });
 
     test('should handle array data', () => {
-      const arrayData = [
-        { id: 1, title: 'Task 1' },
-        { id: 2, title: 'Task 2' }
-      ];
+      const summary = 'Retrieved 2 tasks';
 
-      const result = factory.fromData('list', arrayData, true, 'Tasks retrieved');
+      const result = factory.fromData('list', summary, true, 'Tasks retrieved');
 
-      expect(result.response.details.data).toEqual(arrayData);
-      expect(result.transformation.context.dataSize).toBe(2);
+      expect(result.response.details.summary).toContain('tasks');
+      expect(result.transformation.context.dataSize).toBe(1); // Summary is a string (primitive)
     });
   });
 
@@ -198,7 +195,7 @@ describe('AorpResponseFactory', () => {
 
       expect(result.response.immediate.status).toBe('error');
       expect(result.response.immediate.key_insight).toContain('Test error message');
-      expect(result.response.details.data).toBeNull();
+      expect(result.response.details.summary).toContain('Test error message');
       expect(result.transformation.context.errors).toContain('Test error message');
     });
 

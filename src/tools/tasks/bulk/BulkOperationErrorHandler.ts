@@ -6,6 +6,7 @@ import { MCPError, ErrorCode, createStandardResponse } from '../../../types/inde
 import { getClientFromContext } from '../../../client';
 import type { Task, VikunjaClient } from 'node-vikunja';
 import { logger } from '../../../utils/logger';
+import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
 import { BatchProcessorFactory } from './BatchProcessorFactory';
@@ -236,7 +237,7 @@ export class BulkOperationErrorHandler {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };

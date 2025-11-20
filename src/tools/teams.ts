@@ -13,6 +13,7 @@ import { wrapToolError, handleStatusCodeError } from '../utils/error-handler';
 import type { Team } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 import { validateAndConvertId } from '../utils/validation';
+import { formatAorpAsMarkdown } from '../aorp/markdown';
 
 interface TeamListParams {
   page?: number;
@@ -77,7 +78,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -108,7 +109,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };
@@ -191,7 +192,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
                 content: [
                   {
                     type: 'text',
-                    text: JSON.stringify(standardResponse, null, 2),
+                    text: formatAorpAsMarkdown(standardResponse),
                   },
                 ],
               };
@@ -211,7 +212,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response),
                 },
               ],
             };

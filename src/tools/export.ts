@@ -13,6 +13,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
+import { formatAorpAsMarkdown } from '../aorp/markdown';
 import { getClientFromContext } from '../client';
 import type { Project, Task, Label, User, VikunjaClient } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
@@ -174,7 +175,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
           content: [
             {
               type: 'text',
-              text: JSON.stringify(response, null, 2),
+              text: formatAorpAsMarkdown(response),
             },
           ],
         };
@@ -246,7 +247,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
           content: [
             {
               type: 'text',
-              text: JSON.stringify(response, null, 2),
+              text: formatAorpAsMarkdown(response),
             },
           ],
         };
@@ -319,7 +320,7 @@ export function registerExportTool(server: McpServer, authManager: AuthManager, 
           content: [
             {
               type: 'text',
-              text: JSON.stringify(response, null, 2),
+              text: formatAorpAsMarkdown(response),
             },
           ],
         };

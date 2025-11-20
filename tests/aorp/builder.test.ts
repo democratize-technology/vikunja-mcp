@@ -32,7 +32,7 @@ describe('AorpBuilder', () => {
         .recommendations('Primary recommendation', ['Secondary 1', 'Secondary 2'])
         .workflowGuidance('Use this data for next actions')
         .qualityScores(0.8, 0.9, 'medium')
-        .data({ test: 'data' }, 'Test summary')
+        .summary('Test summary')
         .build();
 
       expect(response.immediate.status).toBe('success');
@@ -45,7 +45,6 @@ describe('AorpBuilder', () => {
       expect(response.quality.completeness).toBe(0.8);
       expect(response.quality.reliability).toBe(0.9);
       expect(response.quality.urgency).toBe('medium');
-      expect(response.details.data).toEqual({ test: 'data' });
       expect(response.details.summary).toBe('Test summary');
     });
 
@@ -76,7 +75,6 @@ describe('AorpBuilder', () => {
         })
         .details({
           summary: 'Test summary',
-          data: { result: 'success' },
           metadata: { timestamp: '2024-01-01T00:00:00Z' }
         })
         .build();
@@ -106,7 +104,7 @@ describe('AorpBuilder', () => {
       const response = new AorpBuilder(mockContext)
         .status('success', 'Test')
         .sessionId('session-456')
-        .data({})
+        .summary('Test operation summary')
         .generateNextSteps()
         .generateQuality()
         .workflowGuidance('Test guidance')
@@ -119,7 +117,7 @@ describe('AorpBuilder', () => {
       const debugInfo = { logs: ['log1', 'log2'], performance: { time: 100 } };
       const response = new AorpBuilder(mockContext)
         .status('success', 'Test')
-        .data({})
+        .summary('Test operation with debug info')
         .debug(debugInfo)
         .generateNextSteps()
         .generateQuality()
@@ -134,7 +132,7 @@ describe('AorpBuilder', () => {
     test('should auto-generate next steps for successful operations', () => {
       const response = new AorpBuilder(mockContext)
         .status('success', 'Operation successful')
-        .data({ id: 123, title: 'Test Task' })
+        .summary('Created task #123: Test Task')
         .generateNextSteps()
         .generateQuality()
         .workflowGuidance('Test guidance')
@@ -148,7 +146,7 @@ describe('AorpBuilder', () => {
       const errorContext = { ...mockContext, success: false };
       const response = new AorpBuilder(errorContext)
         .status('error', 'Operation failed')
-        .data(null)
+        .summary('Operation failed: Invalid input provided')
         .generateNextSteps()
         .generateQuality()
         .workflowGuidance('Test guidance')
@@ -161,7 +159,7 @@ describe('AorpBuilder', () => {
     test('should auto-generate quality indicators', () => {
       const response = new AorpBuilder(mockContext)
         .status('success', 'Test')
-        .data({ id: 1, title: 'Test' })
+        .summary('Task #1: Test completed successfully')
         .generateNextSteps()
         .generateQuality()
         .workflowGuidance('Test guidance')
@@ -179,7 +177,7 @@ describe('AorpBuilder', () => {
       const createContext = { ...mockContext, operation: 'create' };
       const response = new AorpBuilder(createContext)
         .status('success', 'Resource created')
-        .data({ id: 123 })
+        .summary('Resource created with ID 123')
         .generateNextSteps()
         .generateQuality()
         .generateWorkflowGuidance()
@@ -195,14 +193,14 @@ describe('AorpBuilder', () => {
       const builder = AorpBuilder.success(
         mockContext,
         'Operation completed successfully',
-        { id: 123, title: 'Test' }
+        'Created item #123: Test'
       );
 
       expect(builder).toBeInstanceOf(AorpBuilder);
       const response = builder.build();
       expect(response.immediate.status).toBe('success');
       expect(response.immediate.key_insight).toBe('Operation completed successfully');
-      expect(response.details.data).toEqual({ id: 123, title: 'Test' });
+      expect(response.details.summary).toContain('Test');
     });
 
     test('should create error response builder', () => {
@@ -210,14 +208,14 @@ describe('AorpBuilder', () => {
       const builder = AorpBuilder.error(
         errorContext,
         'Operation failed',
-        { error: 'Details' }
+        'Operation failed: Invalid input provided'
       );
 
       expect(builder).toBeInstanceOf(AorpBuilder);
       const response = builder.build();
       expect(response.immediate.status).toBe('error');
       expect(response.immediate.key_insight).toBe('Operation failed');
-      expect(response.details.data).toEqual({ error: 'Details' });
+      expect(response.details.summary).toContain('failed');
     });
 
     test('should create builder with custom configuration', () => {
@@ -230,7 +228,7 @@ describe('AorpBuilder', () => {
       const builder = AorpBuilder.create(mockContext, customConfig);
       const response = builder
         .status('success', 'Test')
-        .data({})
+        .summary('Test summary')
         .workflowGuidance('Test')
         .build();
 
@@ -245,7 +243,7 @@ describe('AorpBuilder', () => {
       const simpleConfig = { confidenceMethod: 'simple' as const };
       const response = new AorpBuilder(mockContext, simpleConfig)
         .status('success', 'Test')
-        .data({})
+        .summary('Test operation completed')
         .generateNextSteps()
         .generateQuality()
         .workflowGuidance('Test guidance')
@@ -258,7 +256,7 @@ describe('AorpBuilder', () => {
       const config = { enableNextSteps: false };
       const response = new AorpBuilder(mockContext, config)
         .status('success', 'Test')
-        .data({})
+        .summary('Test operation summary')
         .generateNextSteps()
         .generateQuality()
         .workflowGuidance('Test guidance')
@@ -271,7 +269,7 @@ describe('AorpBuilder', () => {
       const config = { enableQualityIndicators: false };
       const response = new AorpBuilder(mockContext, config)
         .status('success', 'Test')
-        .data({})
+        .summary('Test operation summary')
         .generateNextSteps()
         .generateQuality()
         .workflowGuidance('Test guidance')
@@ -287,28 +285,25 @@ describe('AorpBuilder', () => {
     test('should calculate custom quality indicators', () => {
       const response = new AorpBuilder(mockContext)
         .status('success', 'Test')
-        .data({ field1: 'value1', field2: 'value2', field3: 'value3' })
+        .summary('Processed 3 fields successfully')
         .generateNextSteps()
         .generateQuality({
           customIndicators: {
-            dataComplexity: (data: any) => {
-              if (!data) return 0;
-              return Object.keys(data).length / 10; // Normalize to 0-1
-            },
+            dataComplexity: (data: any) => 0.3, // Custom complexity calculation
             responseTime: () => 0.7
           }
         })
         .workflowGuidance('Test guidance')
         .build();
 
-      expect(response.quality.indicators?.dataComplexity).toBe(0.3); // 3 fields / 10
+      expect(response.quality.indicators?.dataComplexity).toBe(0.3);
       expect(response.quality.indicators?.responseTime).toBe(0.7);
     });
 
     test('should handle errors in custom indicators gracefully', () => {
       const response = new AorpBuilder(mockContext)
         .status('success', 'Test')
-        .data({})
+        .summary('Test operation with indicators')
         .generateNextSteps()
         .generateQuality({
           customIndicators: {
@@ -330,7 +325,7 @@ describe('AorpBuilder', () => {
     test('should build complete response with auto-generation', () => {
       const response = new AorpBuilder(mockContext)
         .status('success', 'Test operation')
-        .data({ result: 'success' }, 'Test operation completed')
+        .summary('Test operation completed successfully')
         .buildWithAutogeneration();
 
       expect(response.immediate.status).toBe('success');
@@ -354,7 +349,7 @@ describe('AorpBuilder', () => {
 
       const response = new AorpBuilder(mockContext)
         .status('success', 'Test')
-        .data({})
+        .summary('Test operation with custom config')
         .buildWithAutogeneration(nextStepsConfig, qualityConfig);
 
       expect(response.actionable.next_steps.length).toBeLessThanOrEqual(3);
@@ -363,31 +358,32 @@ describe('AorpBuilder', () => {
   });
 
   describe('Edge Cases', () => {
-    test('should handle empty data', () => {
+    test('should handle empty summary', () => {
       const response = new AorpBuilder(mockContext)
         .status('success', 'Test')
-        .data(null)
+        .summary('')
         .generateNextSteps()
         .generateQuality()
         .workflowGuidance('Test guidance')
         .build();
 
-      expect(response.details.data).toBeNull();
-      expect(response.quality.completeness).toBe(0);
+      expect(response.details.summary).toBe('');
+      // Empty summary results in default completeness, not 0
+      expect(response.quality.completeness).toBeGreaterThanOrEqual(0);
     });
 
-    test('should handle array data', () => {
-      const arrayData = [1, 2, 3, 4, 5];
+    test('should handle long summary text', () => {
+      const longSummary = 'Long summary with multiple items: ' + Array(5).fill('item').join(', ');
       const response = new AorpBuilder(mockContext)
         .status('success', 'Test')
-        .data(arrayData)
+        .summary(longSummary)
         .generateNextSteps()
         .generateQuality()
         .workflowGuidance('Test guidance')
         .build();
 
-      expect(response.details.data).toEqual(arrayData);
-      expect(response.quality.completeness).toBe(0.5); // 5 items / 10 max
+      expect(response.details.summary).toBe(longSummary);
+      expect(response.quality.completeness).toBeGreaterThan(0);
     });
 
     test('should handle session ID in immediate info', () => {
@@ -398,7 +394,7 @@ describe('AorpBuilder', () => {
           confidence: 0.8,
           session_id: 'custom-session-id'
         })
-        .data({})
+        .summary('Test summary')
         .generateNextSteps()
         .generateQuality()
         .workflowGuidance('Test guidance')

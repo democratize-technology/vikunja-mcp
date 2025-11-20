@@ -9,6 +9,7 @@ import { logger } from '../utils/logger';
 import { createStandardResponse, createErrorResponse } from '../types/index';
 import { ErrorCode, MCPError } from '../types/errors';
 import { handleStatusCodeError, createValidationError, wrapToolError } from '../utils/error-handler';
+import { formatAorpAsMarkdown } from '../aorp/markdown';
 
 /**
  * Schema for listing filters
@@ -164,7 +165,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response as any),
                 },
               ],
             };
@@ -200,7 +201,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response as any),
                 },
               ],
             };
@@ -283,7 +284,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response as any),
                 },
               ],
             };
@@ -338,7 +339,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response as any),
                 },
               ],
             };
@@ -365,7 +366,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response as any),
                 },
               ],
             };
@@ -410,7 +411,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response as any),
                 },
               ],
             };
@@ -438,7 +439,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(response, null, 2),
+                  text: formatAorpAsMarkdown(response as any),
                 },
               ],
             };
@@ -467,7 +468,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
             content: [
               {
                 type: 'text' as const,
-                text: JSON.stringify(response, null, 2),
+                text: formatAorpAsMarkdown(response as any),
               },
             ],
           };
@@ -497,7 +498,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(response, null, 2),
+              text: formatAorpAsMarkdown(response as any),
             },
           ],
         };

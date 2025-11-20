@@ -4,6 +4,7 @@
  */
 
 import type { StandardTaskResponse, MinimalTask } from '../../../types/index';
+import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 
 /**
  * Service for formatting assignee operation responses
@@ -65,7 +66,7 @@ export class AssigneeResponseFormatter {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };

@@ -10,6 +10,7 @@ import { validateId } from '../validation';
 import { transformApiError, handleFetchError, handleStatusCodeError } from '../../../utils/error-handler';
 import { createTaskResponse } from './TaskResponseFormatter';
 import type { AorpBuilderConfig } from '../../../aorp/types';
+import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 
 export interface DeleteTaskArgs {
   id?: number;
@@ -60,7 +61,7 @@ export async function deleteTask(args: DeleteTaskArgs): Promise<{ content: Array
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response.response),
         },
       ],
     };

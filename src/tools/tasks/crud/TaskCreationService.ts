@@ -14,6 +14,7 @@ import { AUTH_ERROR_MESSAGES } from '../constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from '../validation';
 import { createTaskResponse } from './TaskResponseFormatter';
 import type { AorpBuilderConfig } from '../../../aorp/types';
+import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 
 export interface CreateTaskArgs {
   projectId?: number;
@@ -147,7 +148,7 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response.response),
         },
       ],
     };

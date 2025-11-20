@@ -17,6 +17,7 @@ import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
 import { TaskFilteringOrchestrator } from './filtering';
 import type { TaskListingArgs } from './types/filters';
 import { createAuthRequiredError, handleFetchError } from '../../utils/error-handler';
+import { formatAorpAsMarkdown } from '../../aorp/markdown';
 
 /**
  * Zod schema for AorpBuilderConfig
@@ -97,7 +98,7 @@ async function listTasks(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response.response),
         },
       ],
     };

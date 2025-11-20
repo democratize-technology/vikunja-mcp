@@ -4,6 +4,7 @@
  */
 
 import type { StandardTaskResponse } from '../../../types/index';
+import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 
 /**
  * Service for formatting comment operation responses
@@ -48,7 +49,7 @@ export class CommentResponseFormatter {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response as any),
         },
       ],
     };

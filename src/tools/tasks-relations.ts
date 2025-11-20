@@ -11,6 +11,7 @@ import { logger } from '../utils/logger';
 import { validateId as validateSharedId } from '../utils/validation';
 import { wrapToolError } from '../utils/error-handler';
 import type { RelationKind } from 'node-vikunja';
+import { formatAorpAsMarkdown } from '../aorp/markdown';
 
 // Use shared validateId from utils/validation
 
@@ -121,7 +122,7 @@ export async function handleRelationSubcommands(
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(response, null, 2),
+              text: formatAorpAsMarkdown(response as any),
             },
           ],
         };
@@ -185,7 +186,7 @@ export async function handleRelationSubcommands(
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(response, null, 2),
+              text: formatAorpAsMarkdown(response as any),
             },
           ],
         };
@@ -224,7 +225,7 @@ export async function handleRelationSubcommands(
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(response, null, 2),
+              text: formatAorpAsMarkdown(response as any),
             },
           ],
         };

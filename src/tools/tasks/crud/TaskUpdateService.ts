@@ -13,6 +13,7 @@ import { transformApiError, handleFetchError, handleStatusCodeError } from '../.
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { createTaskResponse } from './TaskResponseFormatter';
 import type { AorpBuilderConfig } from '../../../aorp/types';
+import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 
 export interface UpdateTaskArgs {
   id?: number;
@@ -99,7 +100,7 @@ export async function updateTask(args: UpdateTaskArgs): Promise<{ content: Array
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(response, null, 2),
+          text: formatAorpAsMarkdown(response.response),
         },
       ],
     };

@@ -46,7 +46,7 @@ export { createStandardResponse } from '../utils/response-factory';
 
 // Legacy response type - DEPRECATED
 // Use AORP responses instead
-export type StandardResponse<T = unknown> = import('./index').AorpResponse<T>;
+export type StandardResponse = import('./index').AorpResponse;
 
 // Export AORP types and interfaces
 export {

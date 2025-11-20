@@ -172,7 +172,7 @@ export function createTaskResponse(
   useAorp?: boolean,
   aorpConfig?: AorpBuilderConfig,
   sessionId?: string
-): AorpFactoryResult<TaskResponseData> {
+): AorpFactoryResult {
   // Default to standard verbosity if not specified
   const selectedVerbosity = verbosity || 'standard';
 
@@ -207,17 +207,8 @@ export function createTaskResponse(
       }
     });
 
-    // Transform the result to use TaskResponseData type
-    return {
-      ...taskResult,
-      response: {
-        ...taskResult.response,
-        details: {
-          ...taskResult.response.details,
-          data: data // Use original TaskResponseData structure
-        }
-      }
-    } as AorpFactoryResult<TaskResponseData>;
+    // Return AORP result directly (no data field in AORP)
+    return taskResult;
   }
 
   // Fallback for non-task data
@@ -237,7 +228,7 @@ export function createTaskResponse(
       },
       ...(sessionId && { sessionId })
     }
-  }) as AorpFactoryResult<TaskResponseData>;
+  });
 }
 
 /**
@@ -249,7 +240,7 @@ export function createTaskErrorResponse(
   metadata: TaskResponseMetadata = {
     timestamp: new Date().toISOString()
   }
-): AorpFactoryResult<null> {
+): AorpFactoryResult {
   const options: AorpFactoryOptions = {
     includeDebug: process.env.NODE_ENV === 'development'
   };

@@ -9,6 +9,7 @@ import { getClientFromContext } from '../../client';
 import { transformApiError, handleStatusCodeError } from '../../utils/error-handler';
 import { validateId, validateHexColor, validateProjectData, calculateProjectDepth } from './validation';
 import { createProjectResponse, createProjectListResponse } from './response-formatter';
+import { formatAorpAsMarkdown } from '../../aorp/markdown';
 
 // Type for API responses that may have data and total properties
 interface ApiProjectResponse {
@@ -151,7 +152,7 @@ export async function listProjects(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -192,7 +193,7 @@ export async function getProject(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -310,7 +311,7 @@ export async function createProject(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -443,7 +444,7 @@ export async function updateProject(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -493,7 +494,7 @@ export async function deleteProject(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -543,7 +544,7 @@ export async function archiveProject(
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
+            text: formatAorpAsMarkdown(result.response),
           }
         ]
       };
@@ -569,7 +570,7 @@ export async function archiveProject(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };
@@ -619,7 +620,7 @@ export async function unarchiveProject(
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
+            text: formatAorpAsMarkdown(result.response),
           }
         ]
       };
@@ -645,7 +646,7 @@ export async function unarchiveProject(
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
+          text: formatAorpAsMarkdown(result.response),
         }
       ]
     };

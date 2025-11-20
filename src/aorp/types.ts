@@ -62,13 +62,11 @@ export interface AorpQuality {
 }
 
 /**
- * Detailed information and backward compatibility
+ * Detailed information - markdown output only, no data field
  */
-export interface AorpDetails<T = unknown> {
+export interface AorpDetails {
   /** Human-readable overview */
   summary: string;
-  /** Full dataset (backward compatibility) */
-  data: T;
   /** Metadata */
   metadata: {
     timestamp: string;
@@ -79,17 +77,17 @@ export interface AorpDetails<T = unknown> {
 }
 
 /**
- * Complete AORP Response structure
+ * Complete AORP Response structure - markdown output only
  */
-export interface AorpResponse<T = unknown> {
+export interface AorpResponse {
   /** Immediate key information */
   immediate: AorpImmediate;
   /** Actionable insights and guidance */
   actionable: AorpActionable;
   /** Quality and reliability indicators */
   quality: AorpQuality;
-  /** Detailed information and data */
-  details: AorpDetails<T>;
+  /** Detailed information */
+  details: AorpDetails;
 }
 
 /**
@@ -156,15 +154,15 @@ export interface QualityConfig {
 }
 
 /**
- * AORP Response from factory
+ * AORP Response from factory - markdown output only
  */
-export interface AorpFactoryResult<T = unknown> {
+export interface AorpFactoryResult {
   /** The generated AORP response */
-  response: AorpResponse<T>;
+  response: AorpResponse;
   /** Transformation metadata */
   transformation: {
     /** Original optimized response */
-    originalResponse: OptimizedResponse<T>;
+    originalResponse: OptimizedResponse;
     /** Transformation context */
     context: AorpTransformationContext;
     /** Processing metrics */

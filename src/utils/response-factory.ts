@@ -123,14 +123,17 @@ export function createAorpResponse<T>(
     transformFields?: string[];
     aorpOptions?: AorpFactoryOptions;
   } = {}
-): AorpFactoryResult<T> {
+): AorpFactoryResult {
   const startTime = Date.now();
 
   // Create AORP factory instance
   const factory = new AorpResponseFactory(options.aorpOptions);
 
-  // Create AORP response directly from data
-  const result = factory.fromData(operation, data, true, message, {
+  // Convert data to summary string
+  const summary = typeof data === 'string' ? data : message;
+
+  // Create AORP response directly from summary
+  const result = factory.fromData(operation, summary, true, message, {
     includeDebug: false,
     sessionId: metadata.sessionId as string,
     ...options.aorpOptions
@@ -209,7 +212,7 @@ export function createTaskAorpResponse(
     verbosity?: Verbosity;
     aorpOptions?: AorpFactoryOptions;
   } = {}
-): AorpFactoryResult<OptimizedTask | OptimizedTask[]> {
+): AorpFactoryResult {
   // Transform task data using the existing transformer
   const transformerConfig = {
     verbosity: options.verbosity || TransformVerbosity.STANDARD,
@@ -250,7 +253,7 @@ export function createAorpErrorResponse(
   operation: string,
   error: Error | Record<string, unknown>,
   options: AorpFactoryOptions = {}
-): AorpFactoryResult<null> {
+): AorpFactoryResult {
   const factory = new AorpResponseFactory(options);
   return factory.fromError(operation, error, options);
 }
