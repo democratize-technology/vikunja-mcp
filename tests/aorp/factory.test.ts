@@ -80,7 +80,7 @@ describe('AorpResponseFactory', () => {
       const customFactory = new AorpResponseFactory({
         builderConfig: {
           confidenceMethod: 'simple',
-          enableNextSteps: false
+          enableNextSteps: true // AORP always enabled
         },
         nextStepsConfig: {
           maxSteps: 3

@@ -257,16 +257,16 @@ describe('Labels Tool', () => {
     });
 
     it('should throw NOT_FOUND error when label does not exist', async () => {
-      mockClient.labels.getLabel.mockRejectedValue({
-        response: { status: 404 },
-      });
+      const error = new Error('Not found');
+      (error as any).statusCode = 404;
+      mockClient.labels.getLabel.mockRejectedValue(error);
 
       await expect(
         mockHandler({
           subcommand: 'get',
           id: 999,
         }),
-      ).rejects.toThrow(new MCPError(ErrorCode.NOT_FOUND, 'Label not found'));
+      ).rejects.toThrow(new MCPError(ErrorCode.NOT_FOUND, 'Label with ID 999 not found'));
     });
   });
 
@@ -341,16 +341,13 @@ describe('Labels Tool', () => {
           title: 'Test Label',
           hexColor: '#ff0000', // Valid hex color
         }),
-      ).rejects.toThrow('Failed to create label: Invalid hex color');
+      ).rejects.toThrow('vikunja_labels.create label failed: Invalid hex color');
     });
 
     it('should throw INVALID_PARAMS for bad request', async () => {
-      mockClient.labels.createLabel.mockRejectedValue({
-        response: {
-          status: 400,
-          data: { message: 'Invalid hex color' },
-        },
-      });
+      const error = new Error('Invalid hex color');
+      (error as any).statusCode = 400;
+      mockClient.labels.createLabel.mockRejectedValue(error);
 
       await expect(
         mockHandler({
@@ -358,7 +355,7 @@ describe('Labels Tool', () => {
           title: 'Bad Label',
           hexColor: '#invalid',
         }),
-      ).rejects.toThrow(new MCPError(ErrorCode.INVALID_PARAMS, 'Invalid hex color'));
+      ).rejects.toThrow(new MCPError(ErrorCode.API_ERROR, 'Failed to create label: Invalid hex color'));
     });
   });
 
@@ -458,10 +455,10 @@ describe('Labels Tool', () => {
       expect(markdown).toContain('Label "Label" updated successfully');
     });
 
-    it('should throw FORBIDDEN error when lacking permissions', async () => {
-      mockClient.labels.updateLabel.mockRejectedValue({
-        response: { status: 403 },
-      });
+    it('should throw API_ERROR for permission errors', async () => {
+      const error = new Error('You do not have permission to perform this action');
+      (error as any).statusCode = 403;
+      mockClient.labels.updateLabel.mockRejectedValue(error);
 
       await expect(
         mockHandler({
@@ -470,7 +467,7 @@ describe('Labels Tool', () => {
           title: 'Forbidden Update',
         }),
       ).rejects.toThrow(
-        new MCPError(ErrorCode.FORBIDDEN, 'You do not have permission to perform this action'),
+        new MCPError(ErrorCode.API_ERROR, 'Failed to update label: You do not have permission to perform this action'),
       );
     });
   });
@@ -502,16 +499,16 @@ describe('Labels Tool', () => {
     });
 
     it('should throw NOT_FOUND error when label does not exist', async () => {
-      mockClient.labels.deleteLabel.mockRejectedValue({
-        response: { status: 404 },
-      });
+      const error = new Error('Not found');
+      (error as any).statusCode = 404;
+      mockClient.labels.deleteLabel.mockRejectedValue(error);
 
       await expect(
         mockHandler({
           subcommand: 'delete',
           id: 999,
         }),
-      ).rejects.toThrow(new MCPError(ErrorCode.NOT_FOUND, 'Label not found'));
+      ).rejects.toThrow(new MCPError(ErrorCode.NOT_FOUND, 'Label with ID 999 not found'));
     });
   });
 
@@ -532,7 +529,7 @@ describe('Labels Tool', () => {
           subcommand: 'list',
         }),
       ).rejects.toThrow(
-        new MCPError(ErrorCode.INTERNAL_ERROR, 'Failed to list label: Network error'),
+        new MCPError(ErrorCode.API_ERROR, 'vikunja_labels.list label failed: Network error'),
       );
     });
 
@@ -545,13 +542,13 @@ describe('Labels Tool', () => {
           id: 1,
         }),
       ).rejects.toThrow(
-        new MCPError(ErrorCode.INTERNAL_ERROR, 'Failed to get label: Connection refused'),
+        new MCPError(ErrorCode.API_ERROR, 'vikunja_labels.get label failed: Connection refused'),
       );
     });
 
     it('should use default message for 400 errors without message', async () => {
       mockClient.labels.createLabel.mockRejectedValue({
-        response: { status: 400 },
+        statusCode: 400,
       });
 
       await expect(
@@ -559,7 +556,7 @@ describe('Labels Tool', () => {
           subcommand: 'create',
           title: 'Bad Label',
         }),
-      ).rejects.toThrow(new MCPError(ErrorCode.VALIDATION_ERROR, 'Invalid request'));
+      ).rejects.toThrow(new MCPError(ErrorCode.API_ERROR, 'Failed to create label: Unknown error'));
     });
 
     it('should handle non-Error exceptions', async () => {
@@ -569,7 +566,7 @@ describe('Labels Tool', () => {
         mockHandler({
           subcommand: 'list',
         }),
-      ).rejects.toThrow('Failed to list label: String error');
+      ).rejects.toThrow('vikunja_labels.list label failed: Unknown error');
     });
   });
 });

@@ -10,7 +10,6 @@ import type {
   AuthConfig,
   LoggingConfig,
   RateLimitConfig,
-  FeatureFlagsConfig,
 } from './types';
 import {
   Environment,
@@ -19,55 +18,6 @@ import {
 } from './types';
 import { logger } from '../utils/logger';
 
-/**
- * Environment Variable Mapping
- * Maps new configuration structure to existing environment variables for backward compatibility
- */
-const ENV_VAR_MAPPING = {
-  // Authentication
-  'auth.vikunjaUrl': 'VIKUNJA_URL',
-  'auth.vikunjaToken': 'VIKUNJA_API_TOKEN',
-  'auth.mcpMode': 'MCP_MODE',
-  
-  // Logging
-  'logging.level': 'LOG_LEVEL',
-  'logging.debug': 'DEBUG',
-  'logging.environment': 'NODE_ENV',
-  
-  // Rate Limiting - Global
-  'rateLimiting.enabled': 'RATE_LIMIT_ENABLED',
-  
-  // Rate Limiting - Default
-  'rateLimiting.default.requestsPerMinute': 'RATE_LIMIT_PER_MINUTE',
-  'rateLimiting.default.requestsPerHour': 'RATE_LIMIT_PER_HOUR',
-  'rateLimiting.default.maxRequestSize': 'MAX_REQUEST_SIZE',
-  'rateLimiting.default.maxResponseSize': 'MAX_RESPONSE_SIZE',
-  'rateLimiting.default.executionTimeout': 'TOOL_TIMEOUT',
-  
-  // Rate Limiting - Expensive
-  'rateLimiting.expensive.requestsPerMinute': 'EXPENSIVE_RATE_LIMIT_PER_MINUTE',
-  'rateLimiting.expensive.requestsPerHour': 'EXPENSIVE_RATE_LIMIT_PER_HOUR',
-  'rateLimiting.expensive.maxRequestSize': 'EXPENSIVE_MAX_REQUEST_SIZE',
-  'rateLimiting.expensive.maxResponseSize': 'EXPENSIVE_MAX_RESPONSE_SIZE',
-  'rateLimiting.expensive.executionTimeout': 'EXPENSIVE_TOOL_TIMEOUT',
-  
-  // Rate Limiting - Bulk
-  'rateLimiting.bulk.requestsPerMinute': 'BULK_RATE_LIMIT_PER_MINUTE',
-  'rateLimiting.bulk.requestsPerHour': 'BULK_RATE_LIMIT_PER_HOUR',
-  'rateLimiting.bulk.maxRequestSize': 'BULK_MAX_REQUEST_SIZE',
-  'rateLimiting.bulk.maxResponseSize': 'BULK_MAX_RESPONSE_SIZE',
-  'rateLimiting.bulk.executionTimeout': 'BULK_TOOL_TIMEOUT',
-  
-  // Rate Limiting - Export
-  'rateLimiting.export.requestsPerMinute': 'EXPORT_RATE_LIMIT_PER_MINUTE',
-  'rateLimiting.export.requestsPerHour': 'EXPORT_RATE_LIMIT_PER_HOUR',
-  'rateLimiting.export.maxRequestSize': 'EXPORT_MAX_REQUEST_SIZE',
-  'rateLimiting.export.maxResponseSize': 'EXPORT_MAX_RESPONSE_SIZE',
-  'rateLimiting.export.executionTimeout': 'EXPORT_TOOL_TIMEOUT',
-  
-  // Feature Flags
-  'featureFlags.enableServerSideFiltering': 'VIKUNJA_ENABLE_SERVER_SIDE_FILTERING',
-} as const;
 
 /**
  * Environment-specific configuration overrides
@@ -75,58 +25,33 @@ const ENV_VAR_MAPPING = {
 type EnvironmentProfile = {
   logging?: Partial<LoggingConfig>;
   rateLimiting?: Partial<RateLimitConfig>;
-  featureFlags?: Partial<FeatureFlagsConfig>;
   auth?: Partial<AuthConfig>;
+  // AORP is always enabled - no feature flags needed
 };
 
 const ENVIRONMENT_PROFILES: Record<Environment, EnvironmentProfile> = {
   [Environment.DEVELOPMENT]: {
     logging: {
       level: 'debug' as const,
-      debug: true,
       environment: Environment.DEVELOPMENT,
     },
-    rateLimiting: {
-      enabled: false, // Disable rate limiting in development
-    },
-    featureFlags: {
-      enableServerSideFiltering: true,
-      enableAdvancedMetrics: false,
-      enableExperimentalFeatures: true,
-    },
+    // AORP is always enabled - no feature flags needed
   },
-  
+
   [Environment.TEST]: {
     logging: {
       level: 'error' as const,
-      debug: false,
       environment: Environment.TEST,
     },
-    rateLimiting: {
-      enabled: false, // Disable rate limiting in tests
-    },
-    featureFlags: {
-      enableServerSideFiltering: false, // Consistent test behavior
-      enableAdvancedMetrics: false,
-      enableExperimentalFeatures: false,
-    },
+    // AORP is always enabled - no feature flags needed
   },
-  
+
   [Environment.PRODUCTION]: {
     logging: {
       level: 'info' as const,
-      debug: false,
       environment: Environment.PRODUCTION,
     },
-    rateLimiting: {
-      enabled: true,
-      // Use schema defaults for production
-    },
-    featureFlags: {
-      enableServerSideFiltering: true,
-      enableAdvancedMetrics: true,
-      enableExperimentalFeatures: false,
-    },
+    // AORP is always enabled - no feature flags needed
   },
 };
 
@@ -238,18 +163,7 @@ export class ConfigurationManager {
     return config.rateLimiting;
   }
 
-  public async getFeatureFlagsConfig(): Promise<FeatureFlagsConfig> {
-    const config = await this.getConfiguration();
-    return config.featureFlags;
-  }
-
-  /**
-   * Check if a feature flag is enabled
-   */
-  public async isFeatureEnabled(flag: keyof FeatureFlagsConfig): Promise<boolean> {
-    const featureFlags = await this.getFeatureFlagsConfig();
-    return featureFlags[flag] ?? false;
-  }
+  // AORP is always enabled - no feature flags needed
 
   /**
    * Detect current environment
@@ -274,45 +188,14 @@ export class ConfigurationManager {
   }
 
   /**
-   * Load configuration from environment variables using backward-compatible mapping
+   * Load configuration from environment variables
    */
   private loadFromEnvironmentVariables(): Partial<ApplicationConfig> {
-    const config: Record<string, unknown> = {};
-    
-    for (const [configPath, envVar] of Object.entries(ENV_VAR_MAPPING)) {
-      const value = process.env[envVar];
-      if (value !== undefined) {
-        this.setNestedValue(config, configPath, this.parseEnvironmentValue(value));
-      }
-    }
-    
-    return config;
+    // AORP requires direct configuration - no backward compatibility
+    return {};
   }
 
-  /**
-   * Parse environment variable value to appropriate type
-   */
-  private parseEnvironmentValue(value: string): unknown {
-    // Handle boolean values
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    
-    // Handle numeric values
-    if (/^\d+$/.test(value)) {
-      const num = parseInt(value, 10);
-      if (!isNaN(num)) return num;
-    }
-    
-    // Handle floating point values
-    if (/^\d*\.\d+$/.test(value)) {
-      const num = parseFloat(value);
-      if (!isNaN(num)) return num;
-    }
-    
-    // Return as string
-    return value;
-  }
-
+  
   /**
    * Deep merge multiple configuration objects
    */
@@ -408,7 +291,7 @@ export class ConfigurationManager {
       },
       logging: this.config.logging,
       rateLimiting: {
-        enabled: this.config.rateLimiting.enabled,
+        // AORP requires rate limiting to always be enabled
         profiles: {
           default: this.config.rateLimiting.default.requestsPerMinute,
           expensive: this.config.rateLimiting.expensive.requestsPerMinute,
@@ -416,7 +299,7 @@ export class ConfigurationManager {
           export: this.config.rateLimiting.export.requestsPerMinute,
         },
       },
-      featureFlags: this.config.featureFlags,
+      // AORP is always enabled - no feature flags needed
     };
     
     logger.info('Configuration loaded successfully', summary);
@@ -428,6 +311,4 @@ export const getConfiguration = (): Promise<ApplicationConfig> => ConfigurationM
 export const getAuthConfig = (): Promise<AuthConfig> => ConfigurationManager.getInstance().getAuthConfig();
 export const getLoggingConfig = (): Promise<LoggingConfig> => ConfigurationManager.getInstance().getLoggingConfig();
 export const getRateLimitConfig = (): Promise<RateLimitConfig> => ConfigurationManager.getInstance().getRateLimitConfig();
-export const getFeatureFlagsConfig = (): Promise<FeatureFlagsConfig> => ConfigurationManager.getInstance().getFeatureFlagsConfig();
-export const isFeatureEnabled = (flag: keyof FeatureFlagsConfig): Promise<boolean> => 
-  ConfigurationManager.getInstance().isFeatureEnabled(flag);
+// AORP is always enabled - no feature flag exports needed

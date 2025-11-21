@@ -10,6 +10,7 @@ import type {
   AorpQuality,
   AorpDetails,
   AorpBuilderConfig,
+  CompleteAorpBuilderConfig,
   AorpTransformationContext,
   NextStepsConfig,
   QualityConfig,
@@ -20,10 +21,8 @@ import type {
 /**
  * Default configuration for AORP Builder
  */
-const DEFAULT_CONFIG: Required<AorpBuilderConfig> = {
+const DEFAULT_CONFIG: CompleteAorpBuilderConfig = {
   confidenceMethod: 'adaptive',
-  enableNextSteps: true,
-  enableQualityIndicators: true,
   confidenceWeights: {
     success: 0.4,
     dataSize: 0.2,
@@ -67,7 +66,7 @@ const DEFAULT_NEXT_STEPS_TEMPLATES: Record<string, string[]> = {
  * AORP Builder class with fluent API - markdown output only
  */
 export class AorpBuilder {
-  private config: Required<AorpBuilderConfig>;
+  private config: CompleteAorpBuilderConfig;
   private response: Partial<AorpResponse> = {};
   private context: AorpTransformationContext;
 
@@ -75,7 +74,10 @@ export class AorpBuilder {
     context: AorpTransformationContext,
     config: AorpBuilderConfig = {}
   ) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.config = {
+      confidenceMethod: config.confidenceMethod ?? DEFAULT_CONFIG.confidenceMethod,
+      confidenceWeights: config.confidenceWeights ?? DEFAULT_CONFIG.confidenceWeights
+    };
     this.context = context;
 
     // Initialize with defaults
@@ -258,9 +260,7 @@ export class AorpBuilder {
    * Auto-generate next steps based on operation type
    */
   generateNextSteps(config: NextStepsConfig = {}): this {
-    if (!this.config.enableNextSteps) {
-      return this;
-    }
+    // Next steps are always enabled for AORP resilience
 
     const templates = { ...DEFAULT_NEXT_STEPS_TEMPLATES, ...config.templates };
     const operationSteps = templates[this.context.operation] || templates.list || [];
@@ -286,9 +286,7 @@ export class AorpBuilder {
    * Auto-generate quality indicators
    */
   generateQuality(config: QualityConfig = {}): this {
-    if (!this.config.enableQualityIndicators) {
-      return this;
-    }
+    // Quality indicators are always enabled for AORP resilience
 
     const completenessWeight = config.completenessWeight || 0.5;
     const reliabilityWeight = config.reliabilityWeight || 0.5;
@@ -432,14 +430,7 @@ export class AorpBuilder {
     }
 
     // Auto-generate quality indicators if not enabled but required
-    if (!this.response.quality && !this.config.enableQualityIndicators) {
-      // Set minimal quality indicators when disabled
-      this.response.quality = {
-        completeness: 0.5,
-        reliability: this.context.success ? 0.8 : 0.2,
-        urgency: 'medium'
-      };
-    }
+    // Quality indicators are always enabled for AORP resilience
 
     if (!this.response.quality) {
       throw new Error('Quality indicators are required');

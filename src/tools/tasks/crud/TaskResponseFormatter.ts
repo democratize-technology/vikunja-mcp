@@ -21,8 +21,7 @@ function generateAorpConfig(
   // Base configuration
   const baseConfig: AorpBuilderConfig = {
     confidenceMethod: 'adaptive',
-    enableNextSteps: true,
-    enableQualityIndicators: true,
+    // Next steps and quality indicators are always enabled
     confidenceWeights: {
       success: 0.4,
       dataSize: 0.2,
@@ -187,8 +186,7 @@ export function createTaskResponse(
       aorpOptions: {
         builderConfig: aorpBuilderConfig,
         nextStepsConfig: {
-          maxSteps: 5,
-          enableContextual: true,
+          maxSteps: 5, // Contextual next steps are always enabled
           templates: {
             ...STANDARD_NEXT_STEPS_TEMPLATES,
             [`${operation}`]: [
@@ -217,8 +215,7 @@ export function createTaskResponse(
     aorpOptions: {
       builderConfig: aorpBuilderConfig,
       nextStepsConfig: {
-        maxSteps: 5,
-        enableContextual: true,
+        maxSteps: 5, // Contextual next steps are always enabled
         templates: STANDARD_NEXT_STEPS_TEMPLATES
       },
       qualityConfig: {
@@ -242,7 +239,7 @@ export function createTaskErrorResponse(
   }
 ): AorpFactoryResult {
   const options: AorpFactoryOptions = {
-    includeDebug: process.env.NODE_ENV === 'development'
+    // Debug information is always included for AORP resilience
   };
 
   if (metadata.sessionId) {

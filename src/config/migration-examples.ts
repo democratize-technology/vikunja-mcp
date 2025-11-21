@@ -3,7 +3,7 @@
  * Shows how to migrate from scattered process.env usage to centralized configuration
  */
 
-import { getRateLimitConfig, getLoggingConfig, getAuthConfig, isFeatureEnabled } from './ConfigurationManager';
+import { getRateLimitConfig, getLoggingConfig, getAuthConfig } from './ConfigurationManager';
 import type { RateLimitConfig } from './types';
 
 /**
@@ -26,12 +26,12 @@ export async function createRateLimitingMiddleware(): Promise<RateLimitConfig> {
   const config = await getRateLimitConfig();
   
   // Configuration is already validated and typed
+  // AORP requires rate limiting to always be enabled
   return {
     default: config.default,
     expensive: config.expensive,
     bulk: config.bulk,
     export: config.export,
-    enabled: config.enabled,
   };
 }
 
@@ -73,7 +73,8 @@ export async function createLogger(): Promise<{
   
   return {
     level: levelMap[config.level],
-    debug: config.debug,
+    // Debug information is always included for AORP resilience
+    debug: true
   };
 }
 
@@ -123,11 +124,9 @@ export async function initializeAuthentication(): Promise<{
 /**
  * AFTER: Using centralized configuration
  */
-export async function shouldUseServerSideFiltering(enableServerSide: boolean): Promise<boolean> {
-  if (!enableServerSide) return false;
-  
-  const isEnabled = await isFeatureEnabled('enableServerSideFiltering');
-  return isEnabled;
+export function shouldUseServerSideFiltering(enableServerSide: boolean): boolean {
+  // AORP is always enabled - server-side filtering is always on
+  return enableServerSide;
 }
 
 /**

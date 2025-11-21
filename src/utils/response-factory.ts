@@ -134,7 +134,7 @@ export function createAorpResponse<T>(
 
   // Create AORP response directly from summary
   const result = factory.fromData(operation, summary, true, message, {
-    includeDebug: false,
+    // Debug information is always included for AORP resilience
     sessionId: metadata.sessionId as string,
     ...options.aorpOptions
   });
@@ -238,8 +238,7 @@ export function createTaskAorpResponse(
       ...options.aorpOptions,
       builderConfig: {
         confidenceMethod: 'adaptive',
-        enableNextSteps: true,
-        enableQualityIndicators: true,
+        // Next steps and quality indicators are always enabled - no configuration option
         ...options.aorpOptions?.builderConfig
       }
     }
@@ -272,78 +271,8 @@ export function createAorpResponseFactory(options: AorpFactoryOptions = {}): Aor
   return new AorpResponseFactory(options);
 }
 
-// ============================================================================
-// LEGACY BACKWARD COMPATIBILITY FUNCTIONS - DEPRECATED
-// These functions are maintained for backward compatibility during transition
-// They now return AORP responses under the hood
-// ============================================================================
-
 /**
- * Legacy createAorpEnabledFactory - DEPRECATED
- * Returns a factory that creates AORP responses
- */
-export function createAorpEnabledFactory() {
-  return {
-    createResponse: <T>(
-      operation: string,
-      message: string,
-      data: T,
-      metadata: Partial<ResponseMetadata> = {},
-      _options: any = {}
-    ) => {
-      return createAorpResponse(operation, message, data, metadata).response;
-    }
-  };
-}
-
-/**
- * Legacy createOptimizedResponse - DEPRECATED
- * Now returns AORP response
- */
-export function createOptimizedResponse<T>(
-  operation: string,
-  message: string,
-  data: T,
-  metadata: Partial<ResponseMetadata> = {},
-  verbosity: Verbosity = TransformVerbosity.STANDARD
-) {
-  return createAorpResponse(operation, message, data, metadata, {
-    verbosity
-  }).response;
-}
-
-/**
- * Legacy createTaskResponse - DEPRECATED
- * Now returns AORP response
- */
-export function createTaskResponse(
-  operation: string,
-  message: string,
-  tasks: unknown,
-  metadata: Partial<ResponseMetadata> = {},
-  verbosity: Verbosity = TransformVerbosity.STANDARD
-) {
-  return createTaskAorpResponse(operation, message, tasks, metadata, {
-    verbosity
-  }).response;
-}
-
-/**
- * Legacy createMinimalResponse - DEPRECATED
- * Now returns AORP response
- */
-export function createMinimalResponse<T>(
-  operation: string,
-  message: string,
-  data: T,
-  metadata: Partial<ResponseMetadata> = {}
-) {
-  return createAorpResponse(operation, message, data, metadata).response;
-}
-
-/**
- * Legacy createStandardResponse - DEPRECATED
- * Now returns AORP response (maintains old API shape)
+ * AORP-enabled response creator - always uses AORP
  */
 export function createStandardResponse<T>(
   operation: string,
@@ -356,8 +285,15 @@ export function createStandardResponse<T>(
     transformFields?: string[];
   } = {}
 ) {
-  // Always use AORP now
+  // AORP always enabled - no backward compatibility options
   return createAorpResponse(operation, message, data, metadata, {
-    verbosity: options.verbosity || TransformVerbosity.STANDARD
+    verbosity: options.verbosity || TransformVerbosity.STANDARD,
+    aorpOptions: {
+      // Debug information is always included for AORP resilience
+      // Next steps and quality indicators are always enabled - no configuration option
+    }
   }).response;
 }
+
+
+

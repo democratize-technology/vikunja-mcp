@@ -28,13 +28,10 @@ export function createProjectResponse(
     verbosity: selectedVerbosity as Verbosity,
     aorpOptions: {
       builderConfig: {
-        confidenceMethod: 'adaptive',
-        enableNextSteps: true,
-        enableQualityIndicators: true
+        confidenceMethod: 'adaptive', // Next steps and quality indicators are always enabled
       },
       nextStepsConfig: {
-        maxSteps: 5,
-        enableContextual: true,
+        maxSteps: 5, // Contextual next steps are always enabled
         templates: {
           [operation]: [
             "Verify the project data appears correctly in listings",

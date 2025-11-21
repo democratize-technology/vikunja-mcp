@@ -14,10 +14,10 @@ import type { FilterStorage, SavedFilter } from '../types/filters';
 // Export the main storage implementation
 export { SimpleFilterStorage, storageManager };
 
-// Export types for backward compatibility
+// Export storage interface and types
 export type { FilterStorage, SavedFilter };
 
-// Export error classes for backward compatibility
+// Export error classes
 export class StorageDataError extends Error {
   public readonly code: string;
 
@@ -165,5 +165,5 @@ export async function migrateMemoryToPersistent(): Promise<{
   };
 }
 
-// Legacy exports for backward compatibility
+// Alias for SimpleFilterStorage - use the primary class
 export const InMemoryFilterStorage = SimpleFilterStorage;

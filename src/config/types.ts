@@ -21,10 +21,11 @@ export const AuthConfigSchema = z.object({
 
 export type AuthConfig = z.infer<typeof AuthConfigSchema>;
 
-// Logging Configuration Schema
+// Logging Configuration Schema - AORP requires comprehensive logging
 export const LoggingConfigSchema = z.object({
+  // AORP requires comprehensive logging for operational monitoring and resilience
   level: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
-  debug: z.boolean().default(false),
+  // AORP always requires debug information for resilience - no configuration option
   environment: z.nativeEnum(Environment).default(Environment.DEVELOPMENT),
 });
 
@@ -39,10 +40,10 @@ const RateLimitSettingsSchema = z.object({
   executionTimeout: z.number().int().positive().default(30000), // 30 seconds
 });
 
-// Rate Limiting Configuration Schema
+// Rate Limiting Configuration Schema - AORP always enabled
 export const RateLimitConfigSchema = z.object({
-  enabled: z.boolean().default(true),
-  
+  // AORP requires rate limiting to be always enabled for operational resilience
+
   // Default tool limits
   default: RateLimitSettingsSchema.default({
     requestsPerMinute: 60,
@@ -51,8 +52,8 @@ export const RateLimitConfigSchema = z.object({
     maxResponseSize: 10485760,
     executionTimeout: 30000,
   }),
-  
-  // Expensive tool limits  
+
+  // Expensive tool limits
   expensive: RateLimitSettingsSchema.default({
     requestsPerMinute: 10,
     requestsPerHour: 100,
@@ -60,7 +61,7 @@ export const RateLimitConfigSchema = z.object({
     maxResponseSize: 52428800,
     executionTimeout: 120000,
   }),
-  
+
   // Bulk operation limits
   bulk: RateLimitSettingsSchema.default({
     requestsPerMinute: 5,
@@ -69,7 +70,7 @@ export const RateLimitConfigSchema = z.object({
     maxResponseSize: 104857600,
     executionTimeout: 300000,
   }),
-  
+
   // Export operation limits
   export: RateLimitSettingsSchema.default({
     requestsPerMinute: 2,
@@ -82,14 +83,8 @@ export const RateLimitConfigSchema = z.object({
 
 export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
 
-// Feature Flags Configuration Schema
-export const FeatureFlagsConfigSchema = z.object({
-  enableServerSideFiltering: z.boolean().default(false),
-  enableAdvancedMetrics: z.boolean().default(false),
-  enableExperimentalFeatures: z.boolean().default(false),
-});
-
-export type FeatureFlagsConfig = z.infer<typeof FeatureFlagsConfigSchema>;
+// AORP is always enabled - no feature flags needed
+export type FeatureFlagsConfig = Record<string, never>;
 
 // Complete Application Configuration Schema
 export const ApplicationConfigSchema = z.object({
@@ -97,7 +92,7 @@ export const ApplicationConfigSchema = z.object({
   auth: AuthConfigSchema.default({}),
   logging: LoggingConfigSchema.default({}),
   rateLimiting: RateLimitConfigSchema.default({}),
-  featureFlags: FeatureFlagsConfigSchema.default({}),
+  // AORP is always enabled - no feature flags needed
 });
 
 export type ApplicationConfig = z.infer<typeof ApplicationConfigSchema>;

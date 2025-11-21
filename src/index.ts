@@ -121,7 +121,7 @@ export {
   MCPError,
   ErrorCode,
   type TaskResponseData,
-  type StandardResponse,
+  type AorpResponse as StandardResponse,
   type FilterExpression
 } from './types/index';
 

@@ -41,12 +41,16 @@ export {
   createErrorResponse,
 } from './responses';
 
-// Export createStandardResponse for backward compatibility during transition
-export { createStandardResponse } from '../utils/response-factory';
-
-// Legacy response type - DEPRECATED
-// Use AORP responses instead
-export type StandardResponse = import('./index').AorpResponse;
+// Export AORP utilities - always-on
+export {
+  createStandardResponse,
+  createAorpResponse,
+  createTaskAorpResponse,
+  createAorpErrorResponse,
+  getDefaultAorpFactory,
+  createAorpResponseFactory,
+  type AorpResponseMetadata
+} from '../utils/response-factory';
 
 // Export AORP types and interfaces
 export {
@@ -66,5 +70,11 @@ export {
   type AorpError
 } from '../aorp/types';
 
-// Export AORP factory for backwards compatibility during transition
-export { AorpResponseFactory } from '../aorp/factory';
+// Export AORP factory - always-on
+export {
+  AorpResponseFactory,
+  defaultAorpFactory,
+  createAorpResponse as createAorpResponseDirect,
+  createAorpFromData,
+  createAorpFromError
+} from '../aorp/factory';

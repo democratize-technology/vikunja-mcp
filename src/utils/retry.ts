@@ -131,11 +131,7 @@ class CircuitBreakerRegistry {
     logger.info('All circuit breakers reset');
   }
 
-  // Backward compatibility methods
-  getAllStatsSync(): Record<string, any> {
-    return this.getAllStats();
   }
-}
 
 export const circuitBreakerRegistry = new CircuitBreakerRegistry();
 
@@ -316,7 +312,7 @@ export const CIRCUIT_BREAKER_NAMES = {
   CLIENT_OPERATIONS: 'vikunja-client-operations'
 } as const;
 
-// Retry configurations (backward compatibility)
+// Retry configurations - AORP always enabled
 export const RETRY_CONFIG = {
   AUTH_ERRORS: {
     maxRetries: 3,

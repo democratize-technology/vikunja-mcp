@@ -1,6 +1,5 @@
 /**
  * Vikunja Client Factory Exports
- * Re-exports for backwards compatibility
  */
 
 import type { VikunjaClient } from 'node-vikunja';

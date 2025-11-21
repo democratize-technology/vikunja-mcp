@@ -1,88 +1,135 @@
 /**
  * Test helpers for working with AORP responses
- * Provides utility functions to extract legacy-style properties from AORP format
+ * Direct AORP testing utilities - no backward compatibility needed
  */
+
+import type { AorpFactoryResult, AorpResponse } from '../../src/aorp/types';
 
 /**
- * Extract legacy-style properties from AORP response for easier testing
+ * Extract the AORP response from factory result
  */
-export function extractLegacyResponse(aorpResponse: any) {
-  if (!aorpResponse) {
-    throw new Error('AORP response is undefined');
-  }
-
-  // Handle the response structure from the factory
-  const response = aorpResponse.response || aorpResponse;
-
-  return {
-    success: response.immediate?.status === 'success',
-    operation: response.details?.metadata?.operation || 'unknown',
-    message: response.details?.summary || response.details?.metadata?.originalMessage || '',
-    data: response.details?.data,
-    metadata: {
-      count: response.details?.metadata?.count || 0,
-      timestamp: response.details?.metadata?.timestamp,
-      ...response.details?.metadata
-    }
-  };
+export function getAorpResponse(result: AorpFactoryResult | AorpResponse): AorpResponse {
+  return 'response' in result ? result.response : result;
 }
 
 /**
- * Extract task data from AORP response
+ * Check if AORP response indicates success
  */
-export function extractTasksData(aorpResponse: any) {
-  const legacy = extractLegacyResponse(aorpResponse);
-  return {
-    ...legacy,
-    tasks: legacy.data?.tasks || []
-  };
+export function isAorpSuccess(result: AorpFactoryResult | AorpResponse): boolean {
+  const response = getAorpResponse(result);
+  return response.immediate.status === 'success';
 }
 
 /**
- * Extract single task from AORP response
+ * Check if AORP response indicates error
  */
-export function extractTaskData(aorpResponse: any) {
-  const legacy = extractLegacyResponse(aorpResponse);
-  return {
-    ...legacy,
-    task: legacy.data?.task || legacy.data
-  };
+export function isAorpError(result: AorpFactoryResult | AorpResponse): boolean {
+  const response = getAorpResponse(result);
+  return response.immediate.status === 'error';
+}
+
+/**
+ * Get the operation from AORP response
+ */
+export function getAorpOperation(result: AorpFactoryResult | AorpResponse): string {
+  const response = getAorpResponse(result);
+  return response.details.metadata.operation || 'unknown';
+}
+
+/**
+ * Get the primary message from AORP response
+ */
+export function getAorpMessage(result: AorpFactoryResult | AorpResponse): string {
+  const response = getAorpResponse(result);
+  return response.details.summary;
+}
+
+/**
+ * Get the key insight from AORP response
+ */
+export function getAorpKeyInsight(result: AorpFactoryResult | AorpResponse): string {
+  const response = getAorpResponse(result);
+  return response.immediate.key_insight;
+}
+
+/**
+ * Get the confidence score from AORP response
+ */
+export function getAorpConfidence(result: AorpFactoryResult | AorpResponse): number {
+  const response = getAorpResponse(result);
+  return response.immediate.confidence;
+}
+
+/**
+ * Get next steps from AORP response
+ */
+export function getAorpNextSteps(result: AorpFactoryResult | AorpResponse): string[] {
+  const response = getAorpResponse(result);
+  return response.actionable.next_steps;
+}
+
+/**
+ * Get quality indicators from AORP response
+ */
+export function getAorpQuality(result: AorpFactoryResult | AorpResponse) {
+  const response = getAorpResponse(result);
+  return response.quality;
+}
+
+/**
+ * Get debug information from AORP response
+ */
+export function getAorpDebug(result: AorpFactoryResult | AorpResponse): unknown {
+  const response = getAorpResponse(result);
+  return response.details.debug;
 }
 
 /**
  * Expect AORP response to have success status
  */
-export function expectAorpSuccess(aorpResponse: any, expectedOperation?: string) {
-  const legacy = extractLegacyResponse(aorpResponse);
+export function expectAorpSuccess(result: AorpFactoryResult | AorpResponse, expectedOperation?: string): void {
+  const response = getAorpResponse(result);
 
-  expect(legacy.success).toBe(true);
+  expect(response.immediate.status).toBe('success');
+  expect(response.immediate.confidence).toBeGreaterThan(0);
+
   if (expectedOperation) {
-    expect(legacy.operation).toBe(expectedOperation);
+    expect(response.details.metadata.operation).toBe(expectedOperation);
   }
 }
 
 /**
  * Expect AORP response to have error status
  */
-export function expectAorpError(aorpResponse: any, expectedOperation?: string) {
-  const legacy = extractLegacyResponse(aorpResponse);
+export function expectAorpError(result: AorpFactoryResult | AorpResponse, expectedOperation?: string): void {
+  const response = getAorpResponse(result);
 
-  expect(legacy.success).toBe(false);
+  expect(response.immediate.status).toBe('error');
+  expect(response.immediate.confidence).toBeLessThan(1);
+
   if (expectedOperation) {
-    expect(legacy.operation).toBe(expectedOperation);
+    expect(response.details.metadata.operation).toBe(expectedOperation);
   }
 }
 
 /**
- * Get data from AORP response
+ * Get transformation metrics from AORP factory result
  */
-export function getAorpData(aorpResponse: any) {
-  return extractLegacyResponse(aorpResponse).data;
+export function getAorpMetrics(result: AorpFactoryResult) {
+  if (!('transformation' in result)) {
+    throw new Error('Result is not an AorpFactoryResult');
+  }
+
+  return result.transformation.metrics;
 }
 
 /**
- * Get metadata from AORP response
+ * Get transformation context from AORP factory result
  */
-export function getAorpMetadata(aorpResponse: any) {
-  return extractLegacyResponse(aorpResponse).metadata;
+export function getAorpContext(result: AorpFactoryResult) {
+  if (!('transformation' in result)) {
+    throw new Error('Result is not an AorpFactoryResult');
+  }
+
+  return result.transformation.context;
 }

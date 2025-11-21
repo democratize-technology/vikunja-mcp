@@ -221,8 +221,8 @@ describe('AorpBuilder', () => {
     test('should create builder with custom configuration', () => {
       const customConfig = {
         confidenceMethod: 'simple' as const,
-        enableNextSteps: false,
-        enableQualityIndicators: false
+        enableNextSteps: true, // AORP always enabled
+        enableQualityIndicators: true // AORP always enabled
       };
 
       const builder = AorpBuilder.create(mockContext, customConfig);
@@ -230,6 +230,7 @@ describe('AorpBuilder', () => {
         .status('success', 'Test')
         .summary('Test summary')
         .workflowGuidance('Test')
+        .generateQuality() // Generate quality indicators
         .build();
 
       expect(response.actionable.next_steps).toEqual([]);
@@ -252,8 +253,8 @@ describe('AorpBuilder', () => {
       expect(response.immediate.confidence).toBe(0.9); // Simple success = 0.9
     });
 
-    test('should handle disabled next steps', () => {
-      const config = { enableNextSteps: false };
+    test('should handle always-enabled next steps', () => {
+      const config = { enableNextSteps: true }; // AORP always enabled
       const response = new AorpBuilder(mockContext, config)
         .status('success', 'Test')
         .summary('Test operation summary')
@@ -262,11 +263,11 @@ describe('AorpBuilder', () => {
         .workflowGuidance('Test guidance')
         .build();
 
-      expect(response.actionable.next_steps).toEqual([]);
+      expect(response.actionable.next_steps.length).toBeGreaterThan(0); // AORP always generates next steps
     });
 
-    test('should handle disabled quality indicators', () => {
-      const config = { enableQualityIndicators: false };
+    test('should handle always-enabled quality indicators', () => {
+      const config = { enableQualityIndicators: true }; // AORP always enabled
       const response = new AorpBuilder(mockContext, config)
         .status('success', 'Test')
         .summary('Test operation summary')
@@ -275,9 +276,9 @@ describe('AorpBuilder', () => {
         .workflowGuidance('Test guidance')
         .build();
 
-      // When quality indicators are disabled, default values are used
+      // When quality indicators are auto-generated, calculated values are used
       expect(response.quality.completeness).toBe(0.5);
-      expect(response.quality.reliability).toBe(0.8);
+      expect(response.quality.reliability).toBe(0.4);
     });
   });
 

@@ -174,8 +174,8 @@ export function formatAorpAsMarkdown(aorp: AorpResponse): string {
       // Format operation field as kebab-case for markdown compatibility
       // SECURITY: operation is system-controlled (AORP response), not user input
       const formattedValue = key === 'operation'
-        ? String(value || '').replace(/_/g, '-')
-        : escapeMarkdown(String(value));
+        ? (typeof value === 'string' ? value.replace(/_/g, '-') : '')
+        : escapeMarkdown(typeof value === 'string' ? value : (value != null ? String(value) : ''));
       lines.push(`**${escapeMarkdown(formattedKey)}**: ${formattedValue}`);
     });
   }

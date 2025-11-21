@@ -22,8 +22,7 @@ export class AorpResponseFactory {
     this.defaultOptions = {
       builderConfig: {
         confidenceMethod: 'adaptive',
-        enableNextSteps: true,
-        enableQualityIndicators: true,
+        // Next steps and quality indicators are always enabled - no configuration option
         confidenceWeights: {
           success: 0.4,
           dataSize: 0.2,
@@ -34,7 +33,7 @@ export class AorpResponseFactory {
       },
       nextStepsConfig: {
         maxSteps: 5,
-        enableContextual: true,
+        // Contextual next steps are always enabled - no configuration option
         ...defaultOptions.nextStepsConfig
       },
       qualityConfig: {
@@ -42,7 +41,7 @@ export class AorpResponseFactory {
         reliabilityWeight: 0.5,
         ...defaultOptions.qualityConfig
       },
-      includeDebug: false,
+      // Debug information is always included - no configuration option
       ...defaultOptions
     };
   }
@@ -236,13 +235,12 @@ export class AorpResponseFactory {
         responseBuilder.sessionId(options.sessionId);
       }
 
-      if (options.includeDebug) {
-        responseBuilder.debug({
-          originalResponse: optimizedResponse,
-          processingTime: Date.now(),
-          factoryOptions: options
-        });
-      }
+      // Debug information is always included for AORP resilience
+      responseBuilder.debug({
+        originalResponse: optimizedResponse,
+        processingTime: Date.now(),
+        factoryOptions: options
+      });
 
       return responseBuilder
         .addMetadata('operation', optimizedResponse.operation)
@@ -265,14 +263,13 @@ export class AorpResponseFactory {
         responseBuilder.sessionId(options.sessionId);
       }
 
-      if (options.includeDebug) {
-        responseBuilder.debug({
-          originalResponse: optimizedResponse,
-          processingTime: Date.now(),
-          factoryOptions: options,
-          error: true
-        });
-      }
+      // Debug information is always included for AORP resilience
+      responseBuilder.debug({
+        originalResponse: optimizedResponse,
+        processingTime: Date.now(),
+        factoryOptions: options,
+        error: true
+      });
 
       return responseBuilder
         .addMetadata('operation', optimizedResponse.operation)
@@ -412,8 +409,8 @@ export class AorpResponseFactory {
 
     return new AorpResponseFactory({
       nextStepsConfig: {
-        templates,
-        enableContextual: true
+        templates
+        // Contextual next steps are always enabled - no configuration option
       }
     });
   }

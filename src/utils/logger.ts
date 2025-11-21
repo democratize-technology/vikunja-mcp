@@ -17,29 +17,8 @@ class Logger {
   };
 
   constructor() {
-    const debug = process.env.DEBUG === 'true';
-    const logLevel = process.env.LOG_LEVEL?.toLowerCase();
-
-    if (logLevel) {
-      switch (logLevel) {
-        case 'error':
-          this.level = LogLevel.ERROR;
-          break;
-        case 'warn':
-          this.level = LogLevel.WARN;
-          break;
-        case 'info':
-          this.level = LogLevel.INFO;
-          break;
-        case 'debug':
-          this.level = LogLevel.DEBUG;
-          break;
-        default:
-          this.level = debug ? LogLevel.DEBUG : LogLevel.INFO;
-      }
-    } else {
-      this.level = debug ? LogLevel.DEBUG : LogLevel.INFO;
-    }
+    // AORP requires comprehensive logging - always enable debug level
+    this.level = LogLevel.DEBUG;
   }
 
   private log(level: LogLevel, message: string, ...args: unknown[]): void {

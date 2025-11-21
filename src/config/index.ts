@@ -12,6 +12,5 @@ export {
   getAuthConfig,
   getLoggingConfig,
   getRateLimitConfig,
-  getFeatureFlagsConfig,
-  isFeatureEnabled,
+  // AORP is always enabled - no feature flag exports needed
 } from './ConfigurationManager';

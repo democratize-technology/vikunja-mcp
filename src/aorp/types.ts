@@ -91,17 +91,29 @@ export interface AorpResponse {
 }
 
 /**
- * AORP Builder configuration
+ * AORP Builder configuration - AORP always enabled with fixed settings
  */
 export interface AorpBuilderConfig {
   /** Default confidence calculation method */
   confidenceMethod?: 'adaptive' | 'weighted' | 'simple';
-  /** Enable next steps generation */
-  enableNextSteps?: boolean;
-  /** Enable quality indicators */
-  enableQualityIndicators?: boolean;
   /** Custom confidence weights */
   confidenceWeights?: {
+    success: number;
+    dataSize: number;
+    responseTime: number;
+    completeness: number;
+  };
+  // Note: Next steps and quality indicators are always enabled - no configuration option
+}
+
+/**
+ * Complete AORP Builder configuration with all required defaults
+ */
+export interface CompleteAorpBuilderConfig {
+  /** Default confidence calculation method */
+  confidenceMethod: 'adaptive' | 'weighted' | 'simple';
+  /** Custom confidence weights */
+  confidenceWeights: {
     success: number;
     dataSize: number;
     responseTime: number;
@@ -130,15 +142,14 @@ export interface AorpTransformationContext {
 }
 
 /**
- * Next Steps Generator configuration
+ * Next Steps Generator configuration - AORP always enabled
  */
 export interface NextStepsConfig {
   /** Maximum number of next steps to generate */
   maxSteps?: number;
   /** Context-specific next step templates */
   templates?: Record<string, string[]>;
-  /** Enable contextual next steps */
-  enableContextual?: boolean;
+  // Note: Contextual next steps are always enabled - no configuration option
 }
 
 /**
@@ -190,7 +201,7 @@ export interface AorpError {
 }
 
 /**
- * AORP Response factory options
+ * AORP Response factory options - AORP always enabled
  */
 export interface AorpFactoryOptions {
   /** Builder configuration */
@@ -199,8 +210,7 @@ export interface AorpFactoryOptions {
   nextStepsConfig?: NextStepsConfig;
   /** Quality configuration */
   qualityConfig?: QualityConfig;
-  /** Include debug information */
-  includeDebug?: boolean;
   /** Custom session ID */
   sessionId?: string;
+  // Note: Debug information is always included - no configuration option
 }

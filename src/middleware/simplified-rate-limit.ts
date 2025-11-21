@@ -26,6 +26,14 @@ interface RateLimitConfig {
 }
 
 /**
+ * Interface for rate limit count tracking
+ */
+interface RateLimitCount {
+  totalHits: number;
+  resetTime: Date;
+}
+
+/**
  * Tool-specific rate limiting configurations
  */
 interface ToolRateLimits {
@@ -148,7 +156,7 @@ export class SimplifiedRateLimitMiddleware {
 
     try {
       // Check minute limit
-      const minuteCount = (await this.minuteStore.get(key)) as any || { totalHits: 0, resetTime: new Date(now + 60000) };
+      const minuteCount: RateLimitCount = (await this.minuteStore.get(key)) as RateLimitCount || { totalHits: 0, resetTime: new Date(now + 60000) };
       if (minuteCount.totalHits >= config.requestsPerMinute) {
         logger.warn('Rate limit exceeded (per minute)', {
           toolName,
@@ -174,7 +182,7 @@ export class SimplifiedRateLimitMiddleware {
 
       // Check hour limit
       const hourKey = `${key}_hour`;
-      const hourCount = (await this.hourStore.get(hourKey)) as any || { totalHits: 0, resetTime: new Date(now + 3600000) };
+      const hourCount: RateLimitCount = (await this.hourStore.get(hourKey)) as RateLimitCount || { totalHits: 0, resetTime: new Date(now + 3600000) };
       if (hourCount.totalHits >= config.requestsPerHour) {
         logger.warn('Rate limit exceeded (per hour)', {
           toolName,
@@ -411,5 +419,5 @@ export function withRateLimit<T extends unknown[], R>(
   return simplifiedRateLimitMiddleware.withRateLimit(toolName, handler);
 }
 
-// Export types for backward compatibility
+// Export types for rate limiting configuration
 export type { RateLimitConfig, ToolRateLimits };
