@@ -351,7 +351,9 @@ describe('AorpResponseFactory', () => {
       const response = { ...mockOptimizedResponse, operation: 'tasks_create' };
       const result = taskFactory.fromOptimizedResponse(response);
 
-      expect(result.response.actionable.next_steps).toContain('Set up reminders or notifications if needed');
+      // With data-driven insights, we should get specific information about the operation
+      expect(result.response.actionable.next_steps.length).toBeGreaterThan(0);
+      expect(result.response.actionable.next_steps[0]).toContain('3 items');
     });
   });
 

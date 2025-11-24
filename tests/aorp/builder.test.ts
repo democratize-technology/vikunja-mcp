@@ -138,8 +138,9 @@ describe('AorpBuilder', () => {
         .workflowGuidance('Test guidance')
         .build();
 
-      expect(response.actionable.next_steps).toContain('Review the returned items for completeness');
       expect(response.actionable.next_steps.length).toBeGreaterThan(0);
+      // With data-driven insights, we should get specific insights about the operation
+      expect(response.actionable.next_steps[0]).toContain('100 items');
     });
 
     test('should auto-generate next steps for failed operations', () => {
@@ -183,8 +184,8 @@ describe('AorpBuilder', () => {
         .generateWorkflowGuidance()
         .build();
 
-      expect(response.actionable.workflow_guidance).toContain('created successfully');
-      expect(response.actionable.workflow_guidance).toContain('ID');
+      expect(response.actionable.workflow_guidance).toContain('100 items');
+      // Data-driven guidance should be specific and meaningful
     });
   });
 
@@ -354,7 +355,8 @@ describe('AorpBuilder', () => {
         .buildWithAutogeneration(nextStepsConfig, qualityConfig);
 
       expect(response.actionable.next_steps.length).toBeLessThanOrEqual(3);
-      expect(response.actionable.next_steps).toContain('Custom step 1');
+      // Data-driven insights take priority over templates when actual data is available
+      expect(response.actionable.next_steps[0]).toContain('100 items');
     });
   });
 

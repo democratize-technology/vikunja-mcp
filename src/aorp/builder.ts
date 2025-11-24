@@ -257,29 +257,192 @@ export class AorpBuilder {
   }
 
   /**
-   * Auto-generate next steps based on operation type
+   * Auto-generate data-driven next steps based on operation type and context
    */
   generateNextSteps(config: NextStepsConfig = {}): this {
     // Next steps are always enabled for AORP resilience
 
-    const templates = { ...DEFAULT_NEXT_STEPS_TEMPLATES, ...config.templates };
-    const operationSteps = templates[this.context.operation] || templates.list || [];
+    let dataDrivenSteps: string[] = [];
 
-    // Filter based on context
-    let filteredSteps = operationSteps;
+    // Generate specific insights based on operation and actual data
     if (this.context.success === false) {
-      filteredSteps = [
+      dataDrivenSteps = [
         "Review error details and fix the underlying issue",
         "Verify input parameters and authentication",
         "Check API rate limits and service availability"
       ];
+    } else {
+      // Generate data-driven insights based on operation type and data
+      dataDrivenSteps = this.generateDataDrivenNextSteps();
+    }
+
+    // Fallback to templates if no data-driven steps generated
+    if (dataDrivenSteps.length === 0) {
+      const templates = { ...DEFAULT_NEXT_STEPS_TEMPLATES, ...config.templates };
+      dataDrivenSteps = templates[this.context.operation] || templates.list || [];
     }
 
     // Limit to max steps
     const maxSteps = config.maxSteps || 5;
-    this.nextSteps(filteredSteps.slice(0, maxSteps));
+    this.nextSteps(dataDrivenSteps.slice(0, maxSteps));
 
     return this;
+  }
+
+  /**
+   * Generate specific, data-driven next steps based on operation context
+   */
+  private generateDataDrivenNextSteps(): string[] {
+    const steps: string[] = [];
+    const { operation, task, tasks, results } = this.context;
+
+    switch (operation) {
+      case 'create-task':
+        if (task && typeof task === 'object') {
+          const taskData = task as any;
+          const insights = [];
+
+          // Task title insight
+          if (taskData.title) {
+            insights.push(`Task "${taskData.title}"`);
+          }
+
+          // Priority insight
+          if (taskData.priority) {
+            insights.push(`priority ${taskData.priority}`);
+          }
+
+          // Due date insight
+          if (taskData.due_date) {
+            const dueDate = new Date(taskData.due_date);
+            insights.push(`Due ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
+          }
+
+          // Assignee insight
+          if (taskData.assignees && Array.isArray(taskData.assignees) && taskData.assignees.length > 0) {
+            const assignee = taskData.assignees[0];
+            const assigneeName = assignee.username || assignee.name || `user_${assignee.id}`;
+            insights.push(`Assigned to @${assigneeName}`);
+          }
+
+          if (insights.length > 0) {
+            steps.push(`${insights.join(' ')}.`);
+          }
+
+          // Add actionable next steps
+          steps.push('Verify the created task appears in listings');
+          if (taskData.priority >= 4) {
+            steps.push('Consider setting up reminders for high-priority task');
+          }
+          if (taskData.assignees && taskData.assignees.length > 0) {
+            steps.push('Notify assignees of the new task assignment');
+          }
+        }
+        break;
+
+      case 'list-tasks':
+        if (tasks && Array.isArray(tasks)) {
+          const taskCount = tasks.length;
+          const highPriorityTasks = tasks.filter((t: any) => t.priority && t.priority >= 4).length;
+          const overdueTasks = tasks.filter((t: any) => {
+            if (!t.due_date || t.done) return false;
+            return new Date(t.due_date) < new Date();
+          }).length;
+          const completedTasks = tasks.filter((t: any) => t.done).length;
+
+          // Generate summary insights
+          const insights = [`Found ${taskCount} task${taskCount === 1 ? '' : 's'}`];
+          if (highPriorityTasks > 0) {
+            insights.push(`${highPriorityTasks} high priority`);
+          }
+          if (overdueTasks > 0) {
+            insights.push(`${overdueTasks} overdue`);
+          }
+          if (completedTasks > 0) {
+            insights.push(`${completedTasks} completed`);
+          }
+
+          steps.push(`${insights.join(', ')}.`);
+
+          // Add actionable next steps based on data
+          if (overdueTasks > 0) {
+            steps.push('Update overdue tasks with new due dates or mark as completed');
+          }
+          if (highPriorityTasks > 0) {
+            steps.push('Focus on high-priority tasks first');
+          }
+          if (taskCount > 20) {
+            steps.push('Use filters to narrow down results to most relevant tasks');
+          }
+          if (completedTasks > taskCount * 0.5) {
+            steps.push('Consider archiving completed tasks to clean up the list');
+          }
+        }
+        break;
+
+      case 'bulk-create-tasks':
+      case 'bulk-update-tasks':
+      case 'bulk-delete-tasks':
+        if (results && typeof results === 'object') {
+          const resultsData = results as any;
+          const successful = resultsData.successful || 0;
+          const failed = resultsData.failed || 0;
+          const total = successful + failed;
+
+          if (total > 0) {
+            steps.push(`${operation.includes('create') ? 'Created' : operation.includes('update') ? 'Updated' : 'Deleted'} ${successful}/${total} tasks successfully.`);
+            if (failed > 0) {
+              steps.push(`${failed} tasks failed due to validation errors.`);
+              steps.push('Review failed items and retry with corrected data');
+            } else {
+              steps.push('All tasks processed successfully');
+            }
+          }
+        }
+        break;
+
+      case 'update-task':
+        if (task && typeof task === 'object') {
+          const taskData = task as any;
+          steps.push(`Task "${taskData.title || 'unnamed'}" updated successfully.`);
+
+          // Check if priority was changed
+          if (taskData.priority >= 4) {
+            steps.push('High priority task updated - consider notifying team');
+          }
+
+          // Check if due date was updated
+          if (taskData.due_date) {
+            const dueDate = new Date(taskData.due_date);
+            if (dueDate < new Date()) {
+              steps.push('Task due date is in the past - update as needed');
+            }
+          }
+        }
+        break;
+
+      case 'delete-task':
+        steps.push('Task deleted successfully.');
+        steps.push('Verify task no longer appears in searches');
+        steps.push('Check for any orphaned subtasks or dependencies');
+        break;
+
+      default:
+        // Generic fallback for other operations
+        if (this.context.dataSize > 0) {
+          steps.push(`Operation completed successfully with ${this.context.dataSize} item${this.context.dataSize === 1 ? '' : 's'} processed.`);
+        } else {
+          steps.push('Operation completed successfully.');
+        }
+        break;
+    }
+
+    // Add performance-based insights
+    if (this.context.processingTime > 2000) {
+      steps.push('Consider optimizing filters for faster response times');
+    }
+
+    return steps;
   }
 
   /**
@@ -342,27 +505,20 @@ export class AorpBuilder {
   }
 
   /**
-   * Auto-generate workflow guidance based on operation and context
+   * Auto-generate data-driven workflow guidance based on operation and context
    */
   generateWorkflowGuidance(): this {
     let guidance = '';
 
     if (!this.context.success) {
       guidance = 'Review the error details and retry the operation with corrected parameters.';
-    } else if (this.context.operation === 'create') {
-      guidance = 'The resource has been created successfully. Use the returned ID for future operations.';
-    } else if (this.context.operation === 'update') {
-      guidance = 'The resource has been updated. Verify changes are reflected in subsequent queries.';
-    } else if (this.context.operation === 'delete') {
-      guidance = 'The resource has been deleted. Update any references to avoid orphaned data.';
-    } else if (this.context.operation === 'list') {
-      const count = this.context.dataSize;
-      if (count === 0) {
-        guidance = 'No results found. Consider broadening search criteria or creating new resources.';
-      } else {
-        guidance = `Found ${count} result${count === 1 ? '' : 's'}. Review the summary for details.`;
-      }
     } else {
+      // Generate specific guidance based on operation and actual data
+      guidance = this.generateDataDrivenWorkflowGuidance();
+    }
+
+    // Fallback to generic guidance if no specific guidance generated
+    if (!guidance) {
       guidance = 'Operation completed successfully. Review the summary for details.';
     }
 
@@ -371,7 +527,139 @@ export class AorpBuilder {
   }
 
   /**
-   * Calculate confidence score based on context and configuration
+   * Generate specific, data-driven workflow guidance
+   */
+  private generateDataDrivenWorkflowGuidance(): string {
+    const { operation, task, tasks, results, dataSize } = this.context;
+
+    switch (operation) {
+      case 'create-task':
+        if (task && typeof task === 'object') {
+          const taskData = task as any;
+          let guidance = `Task "${taskData.title || 'unnamed'}" has been created successfully.`;
+
+          // Add specific tool recommendations based on task properties
+          if (taskData.priority && taskData.priority >= 4) {
+            guidance += ' Use vikunja_tasks with subcommand=list and priority filter to track high-priority tasks.';
+          }
+
+          if (taskData.assignees && Array.isArray(taskData.assignees) && taskData.assignees.length > 0) {
+            guidance += ' Consider notifying assignees of their new task assignment.';
+          }
+
+          return guidance;
+        }
+        return 'The task has been created successfully. Use the returned ID for future operations.';
+
+      case 'update-task':
+        if (task && typeof task === 'object') {
+          const taskData = task as any;
+          let guidance = `Task "${taskData.title || 'unnamed'}" has been updated successfully.`;
+
+          // Contextual recommendations
+          if (taskData.priority >= 4) {
+            guidance += ' Monitor this high-priority task closely.';
+          }
+
+          if (taskData.due_date) {
+            const dueDate = new Date(taskData.due_date);
+            if (dueDate < new Date()) {
+              guidance += ' The due date has passed - consider updating or marking as complete.';
+            }
+          }
+
+          return guidance;
+        }
+        return 'The task has been updated successfully. Verify changes are reflected in subsequent queries.';
+
+      case 'delete-task':
+        return 'The task has been deleted permanently. Update any references to avoid orphaned data.';
+
+      case 'list-tasks':
+        if (tasks && Array.isArray(tasks)) {
+          const totalTasks = tasks.length;
+          const completedTasks = tasks.filter((t: any) => t.done).length;
+          const highPriorityTasks = tasks.filter((t: any) => t.priority && t.priority >= 4).length;
+
+          if (totalTasks === 0) {
+            return 'No tasks found. Use vikunja_tasks with subcommand=create to add new tasks or adjust your filters.';
+          }
+
+          let guidance = `Found ${totalTasks} task${totalTasks === 1 ? '' : 's'}`;
+
+          if (completedTasks > 0) {
+            guidance += ` with ${completedTasks} completed`;
+          }
+
+          guidance += '. ';
+
+          // Add specific tool recommendations
+          if (totalTasks > 50) {
+            guidance += 'Use filters like priority, due_date, or done=false to narrow results.';
+          } else if (highPriorityTasks > 0) {
+            guidance += `Focus on the ${highPriorityTasks} high-priority task${highPriorityTasks === 1 ? '' : 's'} first.`;
+          } else if (completedTasks > totalTasks * 0.7) {
+            guidance += 'Consider archiving completed tasks to clean up your workspace.';
+          }
+
+          return guidance;
+        }
+        return `Found ${dataSize} result${dataSize === 1 ? '' : 's'}. Review the summary for details.`;
+
+      case 'bulk-create-tasks':
+      case 'bulk-update-tasks':
+      case 'bulk-delete-tasks':
+        if (results && typeof results === 'object') {
+          const resultsData = results as any;
+          const successful = resultsData.successful || 0;
+          const failed = resultsData.failed || 0;
+          const total = successful + failed;
+
+          if (total > 0) {
+            let guidance = `Bulk operation completed: ${successful}/${total} tasks processed successfully.`;
+
+            if (failed > 0) {
+              guidance += ` Review the ${failed} failed item${failed === 1 ? '' : 's'} and retry with corrected data.`;
+            } else {
+              guidance += ' All items processed successfully.';
+            }
+
+            return guidance;
+          }
+        }
+        return 'Bulk operation completed. Review the summary for details.';
+
+      case 'get-task':
+        if (task && typeof task === 'object') {
+          const taskData = task as any;
+          let guidance = `Retrieved task "${taskData.title || 'unnamed'}".`;
+
+          if (taskData.done) {
+            guidance += ' This task is completed.';
+          } else if (taskData.due_date) {
+            const dueDate = new Date(taskData.due_date);
+            if (dueDate < new Date()) {
+              guidance += ' This task is overdue.';
+            } else {
+              const daysUntilDue = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+              guidance += ` Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}.`;
+            }
+          }
+
+          return guidance;
+        }
+        return 'Task retrieved successfully. Review details for next actions.';
+
+      default:
+        if (dataSize > 0) {
+          return `Operation completed successfully with ${dataSize} item${dataSize === 1 ? '' : 's'} processed.`;
+        }
+        return 'Operation completed successfully. Review the summary for details.';
+    }
+  }
+
+  /**
+   * Calculate data-driven confidence score based on actual operation metrics
    */
   private calculateConfidence(): number {
     const weights = this.config.confidenceWeights;
@@ -391,26 +679,309 @@ export class AorpBuilder {
 
       case 'adaptive':
       default: {
-        // Adaptive: considers multiple factors and adjusts weights based on context
-        let adaptiveScore = this.context.success ? 0.7 : 0.2;
+        // Redesigned data-driven adaptive confidence with realistic weighting
+        // ARCH-001 Fix: Reduced success dominance, increased data quality impact
+        let confidence = 0; // Start from 0, build up based on actual merit
 
-        // Bonus for successful operations with data
-        if (this.context.success && this.context.dataSize > 0) {
-          adaptiveScore += 0.2;
+        // 1. Base success factor (30% weight - reduced from 60%)
+        if (this.context.success) {
+          confidence += 0.3; // Modest base for success, data quality determines final score
+        } else {
+          confidence += 0.1; // Minimal confidence for complete failure
         }
 
-        // Penalty for slow operations
-        if (this.context.processingTime > 5000) {
-          adaptiveScore -= 0.1;
-        }
+        // 2. Data quality factor (40% weight - increased from 30%)
+        const dataQualityScore = this.calculateDataQualityScore();
+        confidence += dataQualityScore * 0.4;
 
-        // Penalty for errors
-        if (this.context.errors && this.context.errors.length > 0) {
-          adaptiveScore -= 0.1 * this.context.errors.length;
-        }
+        // 3. Performance factor (20% weight - maintained)
+        const performanceScore = this.calculatePerformanceScore();
+        confidence += performanceScore * 0.2;
 
-        return Math.max(0.0, Math.min(1.0, adaptiveScore));
+        // 4. Field validation penalties (NEW - critical field impact)
+        const fieldValidationPenalty = this.calculateFieldValidationPenalty();
+        confidence -= fieldValidationPenalty;
+
+        // 5. Error impact (reduced to prevent over-penalization)
+        const errorPenalty = this.calculateErrorPenalty();
+        confidence -= errorPenalty;
+
+        // 6. Operation-specific bonus (reduced impact)
+        const operationBonus = this.calculateOperationBonus();
+        confidence += operationBonus;
+
+        // Clamp to realistic range [0.0, 0.95] - perfect 1.0 requires exceptional data
+        return Math.max(0.0, Math.min(0.95, confidence));
       }
+    }
+  }
+
+  /**
+   * Calculate field validation penalties for missing critical fields
+   * ARCH-001 Fix: Enhanced validation to check field validity, not just presence
+   */
+  private calculateFieldValidationPenalty(): number {
+    const { task, tasks, operation } = this.context;
+    let penalty = 0;
+
+    // Define critical fields by operation type with validation criteria
+    const criticalFields = {
+      'create-task': [
+        { field: 'title', validator: (val: any) => val && typeof val === 'string' && val.trim().length > 0 },
+        { field: 'priority', validator: (val: any) => val !== undefined && val !== null && val >= 1 && val <= 5 }
+      ],
+      'update-task': [],
+      'get-task': [],
+      'list-tasks': [],
+      'delete-task': [],
+      'bulk-create-tasks': [
+        { field: 'title', validator: (val: any) => val && typeof val === 'string' && val.trim().length > 0 }
+      ],
+      'bulk-update-tasks': [],
+      'bulk-delete-tasks': []
+    };
+
+    // Define important fields with validation criteria
+    const importantFields = [
+      { field: 'due_date', validator: (val: any) => val && !isNaN(new Date(val).getTime()) },
+      { field: 'description', validator: (val: any) => val && typeof val === 'string' && val.trim().length > 5 }
+    ];
+
+    const operationCriticalFields = criticalFields[operation as keyof typeof criticalFields] || [];
+
+    if (task && typeof task === 'object') {
+      const taskData = task as any;
+
+      // Heavy penalties for invalid critical fields
+      operationCriticalFields.forEach(({ field, validator }) => {
+        if (!validator(taskData[field])) {
+          penalty += 0.4; // Increased penalty for invalid critical fields
+        }
+      });
+
+      // Moderate penalties for invalid important fields
+      importantFields.forEach(({ field, validator }) => {
+        if (taskData[field] !== undefined && !validator(taskData[field])) {
+          penalty += 0.2; // Penalty for invalid important fields (but only if field exists)
+        }
+      });
+    }
+
+    return Math.min(0.7, penalty); // Increased cap to 70% total penalty
+  }
+
+  /**
+   * Calculate data quality score based on actual content analysis
+   * ARCH-001 Fix: Enhanced to provide meaningful field completeness analysis
+   */
+  private calculateDataQualityScore(): number {
+    let score = 0;
+    let maxScore = 0;
+
+    const { task, tasks, results } = this.context;
+
+    if (task && typeof task === 'object') {
+      const taskData = task as any;
+
+      // Enhanced field quality analysis with validation
+      const qualityFields = [
+        {
+          field: 'title',
+          weight: 0.25,
+          validator: (val: any) => val && typeof val === 'string' && val.trim().length > 0
+        },
+        {
+          field: 'description',
+          weight: 0.2,
+          validator: (val: any) => val && typeof val === 'string' && val.trim().length > 10
+        },
+        {
+          field: 'priority',
+          weight: 0.2,
+          validator: (val: any) => val !== undefined && val !== null && val >= 1 && val <= 5
+        },
+        {
+          field: 'due_date',
+          weight: 0.15,
+          validator: (val: any) => val && !isNaN(new Date(val).getTime())
+        },
+        {
+          field: 'assignees',
+          weight: 0.1,
+          validator: (val: any) => Array.isArray(val) && val.length > 0
+        },
+        {
+          field: 'labels',
+          weight: 0.1,
+          validator: (val: any) => Array.isArray(val) && val.length > 0
+        }
+      ];
+
+      qualityFields.forEach(({ field, weight, validator }) => {
+        maxScore += weight;
+        if (validator(taskData[field])) {
+          score += weight;
+        } else if (taskData[field]) {
+          // Partial score for field that exists but doesn't meet quality criteria
+          score += weight * 0.3;
+        }
+      });
+    } else if (tasks && Array.isArray(tasks)) {
+      // Enhanced task list quality analysis
+      const totalTasks = tasks.length;
+      if (totalTasks > 0) {
+        maxScore = 1.0;
+
+        // More sophisticated data richness checks
+        const tasksWithValidTitles = tasks.filter((t: any) =>
+          t.title && typeof t.title === 'string' && t.title.trim().length > 0
+        ).length;
+        const tasksWithValidPriority = tasks.filter((t: any) =>
+          t.priority !== undefined && t.priority !== null && t.priority >= 1 && t.priority <= 5
+        ).length;
+        const tasksWithValidDueDates = tasks.filter((t: any) =>
+          t.due_date && !isNaN(new Date(t.due_date).getTime())
+        ).length;
+        const tasksWithAssignees = tasks.filter((t: any) =>
+          Array.isArray(t.assignees) && t.assignees.length > 0
+        ).length;
+
+        // Weighted scoring based on field completeness
+        score += (tasksWithValidTitles / totalTasks) * 0.35;
+        score += (tasksWithValidPriority / totalTasks) * 0.25;
+        score += (tasksWithValidDueDates / totalTasks) * 0.25;
+        score += (tasksWithAssignees / totalTasks) * 0.15;
+      }
+    } else if (results && typeof results === 'object') {
+      const resultsData = results as any;
+      const total = (resultsData.successful || 0) + (resultsData.failed || 0);
+
+      if (total > 0) {
+        maxScore = 1.0;
+        const successRate = (resultsData.successful || 0) / total;
+        // ARCH-001 Fix: More realistic success rate scaling - only excellent above 95%
+        score = successRate > 0.95 ? 1.0 : successRate * 0.85; // Perfect only above 95% success
+      }
+    } else if (this.context.dataSize > 0) {
+      // Generic data size-based scoring with diminishing returns
+      maxScore = 1.0;
+      // Logarithmic scaling: more realistic assessment of data quantity
+      score = Math.min(1.0, Math.log10(this.context.dataSize + 1) / Math.log10(20)); // 20 items = perfect
+    }
+
+    return maxScore > 0 ? score / maxScore : 0;
+  }
+
+  /**
+   * Calculate performance score based on response time and operation complexity
+   */
+  private calculatePerformanceScore(): number {
+    const { processingTime, operation, dataSize } = this.context;
+
+    // Define acceptable response times by operation type (in ms)
+    const acceptableTimes = {
+      'create-task': 500,
+      'update-task': 500,
+      'delete-task': 300,
+      'get-task': 200,
+      'list-tasks': 800,
+      'bulk-create-tasks': 2000,
+      'bulk-update-tasks': 3000,
+      'bulk-delete-tasks': 2000,
+    };
+
+    const expectedTime = acceptableTimes[operation as keyof typeof acceptableTimes] || 1000;
+
+    // Score based on how much faster than expected
+    if (processingTime <= expectedTime) {
+      return 1.0; // Excellent performance
+    } else if (processingTime <= expectedTime * 2) {
+      return 0.7; // Acceptable performance
+    } else if (processingTime <= expectedTime * 3) {
+      return 0.4; // Slow performance
+    } else {
+      return 0.1; // Very slow performance
+    }
+  }
+
+  /**
+   * Calculate error penalty based on actual error count and severity
+   * ARCH-001 Fix: Balanced error penalties that don't overwhelm data quality scores
+   */
+  private calculateErrorPenalty(): number {
+    let totalPenalty = 0;
+
+    // For bulk operations, consider both error array and results failure rate
+    if (this.context.operation.includes('bulk-')) {
+      // Check for explicit errors in context
+      if (this.context.errors && this.context.errors.length > 0) {
+        totalPenalty += Math.min(0.1, this.context.errors.length * 0.03); // Reduced from 0.2
+      }
+
+      // Check for failed operations in results
+      if (this.context.results && typeof this.context.results === 'object') {
+        const results = this.context.results as any;
+        const failed = results.failed || 0;
+        const total = (results.successful || 0) + failed;
+
+        if (total > 0) {
+          const failureRate = failed / total;
+          // Moderate penalty for failure rates
+          totalPenalty += failureRate * 0.2; // Reduced from 0.4
+        }
+      }
+
+      return Math.min(0.3, totalPenalty); // Reduced from 0.5
+    }
+
+    // For single operations, errors are significant but not devastating
+    if (this.context.errors && this.context.errors.length > 0) {
+      totalPenalty += Math.min(0.2, this.context.errors.length * 0.1); // Reduced from 0.5
+    }
+
+    return totalPenalty;
+  }
+
+  /**
+   * Calculate operation-specific confidence bonuses
+   * ARCH-001 Fix: Reduced bonus impact to prevent artificial inflation
+   */
+  private calculateOperationBonus(): number {
+    const { operation, success } = this.context;
+
+    if (!success) {
+      return 0;
+    }
+
+    // Different operations have different reliability patterns
+    switch (operation) {
+      case 'create-task':
+      case 'update-task':
+      case 'delete-task':
+        return 0.05; // Reduced from 0.1
+
+      case 'get-task':
+        return 0.08; // Reduced from 0.15
+
+      case 'list-tasks':
+        return 0.03; // Reduced from 0.05
+
+      case 'bulk-create-tasks':
+      case 'bulk-update-tasks':
+      case 'bulk-delete-tasks':
+        // Bonus based on success rate for bulk operations
+        if (this.context.results && typeof this.context.results === 'object') {
+          const results = this.context.results as any;
+          const total = (results.successful || 0) + (results.failed || 0);
+          if (total > 0) {
+            const successRate = (results.successful || 0) / total;
+            return successRate * 0.05; // Reduced from 0.1
+          }
+        }
+        return -0.02; // Reduced penalty from -0.05
+
+      default:
+        return 0;
     }
   }
 
