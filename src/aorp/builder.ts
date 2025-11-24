@@ -17,6 +17,7 @@ import type {
   AorpStatus,
   AorpUrgency
 } from './types';
+import { ToolRecommendationEngine } from './tool-recommendations';
 
 /**
  * Default configuration for AORP Builder
@@ -290,159 +291,14 @@ export class AorpBuilder {
   }
 
   /**
-   * Generate specific, data-driven next steps based on operation context
+   * Generate specific, data-driven next steps using tool recommendation engine
    */
   private generateDataDrivenNextSteps(): string[] {
-    const steps: string[] = [];
-    const { operation, task, tasks, results } = this.context;
+    // Use the new tool recommendation engine for specific recommendations
+    const recommendations = ToolRecommendationEngine.generateRecommendations(this.context);
+    const formatted = ToolRecommendationEngine.formatForAorp(recommendations);
 
-    switch (operation) {
-      case 'create-task':
-        if (task && typeof task === 'object') {
-          const taskData = task as any;
-          const insights = [];
-
-          // Task title insight
-          if (taskData.title) {
-            insights.push(`Task "${taskData.title}"`);
-          }
-
-          // Priority insight
-          if (taskData.priority) {
-            insights.push(`priority ${taskData.priority}`);
-          }
-
-          // Due date insight
-          if (taskData.due_date) {
-            const dueDate = new Date(taskData.due_date);
-            insights.push(`Due ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
-          }
-
-          // Assignee insight
-          if (taskData.assignees && Array.isArray(taskData.assignees) && taskData.assignees.length > 0) {
-            const assignee = taskData.assignees[0];
-            const assigneeName = assignee.username || assignee.name || `user_${assignee.id}`;
-            insights.push(`Assigned to @${assigneeName}`);
-          }
-
-          if (insights.length > 0) {
-            steps.push(`${insights.join(' ')}.`);
-          }
-
-          // Add actionable next steps
-          steps.push('Verify the created task appears in listings');
-          if (taskData.priority >= 4) {
-            steps.push('Consider setting up reminders for high-priority task');
-          }
-          if (taskData.assignees && taskData.assignees.length > 0) {
-            steps.push('Notify assignees of the new task assignment');
-          }
-        }
-        break;
-
-      case 'list-tasks':
-        if (tasks && Array.isArray(tasks)) {
-          const taskCount = tasks.length;
-          const highPriorityTasks = tasks.filter((t: any) => t.priority && t.priority >= 4).length;
-          const overdueTasks = tasks.filter((t: any) => {
-            if (!t.due_date || t.done) return false;
-            return new Date(t.due_date) < new Date();
-          }).length;
-          const completedTasks = tasks.filter((t: any) => t.done).length;
-
-          // Generate summary insights
-          const insights = [`Found ${taskCount} task${taskCount === 1 ? '' : 's'}`];
-          if (highPriorityTasks > 0) {
-            insights.push(`${highPriorityTasks} high priority`);
-          }
-          if (overdueTasks > 0) {
-            insights.push(`${overdueTasks} overdue`);
-          }
-          if (completedTasks > 0) {
-            insights.push(`${completedTasks} completed`);
-          }
-
-          steps.push(`${insights.join(', ')}.`);
-
-          // Add actionable next steps based on data
-          if (overdueTasks > 0) {
-            steps.push('Update overdue tasks with new due dates or mark as completed');
-          }
-          if (highPriorityTasks > 0) {
-            steps.push('Focus on high-priority tasks first');
-          }
-          if (taskCount > 20) {
-            steps.push('Use filters to narrow down results to most relevant tasks');
-          }
-          if (completedTasks > taskCount * 0.5) {
-            steps.push('Consider archiving completed tasks to clean up the list');
-          }
-        }
-        break;
-
-      case 'bulk-create-tasks':
-      case 'bulk-update-tasks':
-      case 'bulk-delete-tasks':
-        if (results && typeof results === 'object') {
-          const resultsData = results as any;
-          const successful = resultsData.successful || 0;
-          const failed = resultsData.failed || 0;
-          const total = successful + failed;
-
-          if (total > 0) {
-            steps.push(`${operation.includes('create') ? 'Created' : operation.includes('update') ? 'Updated' : 'Deleted'} ${successful}/${total} tasks successfully.`);
-            if (failed > 0) {
-              steps.push(`${failed} tasks failed due to validation errors.`);
-              steps.push('Review failed items and retry with corrected data');
-            } else {
-              steps.push('All tasks processed successfully');
-            }
-          }
-        }
-        break;
-
-      case 'update-task':
-        if (task && typeof task === 'object') {
-          const taskData = task as any;
-          steps.push(`Task "${taskData.title || 'unnamed'}" updated successfully.`);
-
-          // Check if priority was changed
-          if (taskData.priority >= 4) {
-            steps.push('High priority task updated - consider notifying team');
-          }
-
-          // Check if due date was updated
-          if (taskData.due_date) {
-            const dueDate = new Date(taskData.due_date);
-            if (dueDate < new Date()) {
-              steps.push('Task due date is in the past - update as needed');
-            }
-          }
-        }
-        break;
-
-      case 'delete-task':
-        steps.push('Task deleted successfully.');
-        steps.push('Verify task no longer appears in searches');
-        steps.push('Check for any orphaned subtasks or dependencies');
-        break;
-
-      default:
-        // Generic fallback for other operations
-        if (this.context.dataSize > 0) {
-          steps.push(`Operation completed successfully with ${this.context.dataSize} item${this.context.dataSize === 1 ? '' : 's'} processed.`);
-        } else {
-          steps.push('Operation completed successfully.');
-        }
-        break;
-    }
-
-    // Add performance-based insights
-    if (this.context.processingTime > 2000) {
-      steps.push('Consider optimizing filters for faster response times');
-    }
-
-    return steps;
+    return formatted.nextSteps;
   }
 
   /**
@@ -527,135 +383,29 @@ export class AorpBuilder {
   }
 
   /**
-   * Generate specific, data-driven workflow guidance
+   * Generate specific, data-driven workflow guidance using tool recommendation engine
    */
   private generateDataDrivenWorkflowGuidance(): string {
-    const { operation, task, tasks, results, dataSize } = this.context;
+    // Use the new tool recommendation engine for specific workflow guidance
+    const recommendations = ToolRecommendationEngine.generateRecommendations(this.context);
+    const formatted = ToolRecommendationEngine.formatForAorp(recommendations);
 
-    switch (operation) {
-      case 'create-task':
-        if (task && typeof task === 'object') {
-          const taskData = task as any;
-          let guidance = `Task "${taskData.title || 'unnamed'}" has been created successfully.`;
+    return formatted.workflowGuidance;
+  }
 
-          // Add specific tool recommendations based on task properties
-          if (taskData.priority && taskData.priority >= 4) {
-            guidance += ' Use vikunja_tasks with subcommand=list and priority filter to track high-priority tasks.';
-          }
+  /**
+   * Auto-generate recommendations using tool recommendation engine
+   */
+  generateRecommendations(): this {
+    const recommendations = ToolRecommendationEngine.generateRecommendations(this.context);
+    const formatted = ToolRecommendationEngine.formatForAorp(recommendations);
 
-          if (taskData.assignees && Array.isArray(taskData.assignees) && taskData.assignees.length > 0) {
-            guidance += ' Consider notifying assignees of their new task assignment.';
-          }
-
-          return guidance;
-        }
-        return 'The task has been created successfully. Use the returned ID for future operations.';
-
-      case 'update-task':
-        if (task && typeof task === 'object') {
-          const taskData = task as any;
-          let guidance = `Task "${taskData.title || 'unnamed'}" has been updated successfully.`;
-
-          // Contextual recommendations
-          if (taskData.priority >= 4) {
-            guidance += ' Monitor this high-priority task closely.';
-          }
-
-          if (taskData.due_date) {
-            const dueDate = new Date(taskData.due_date);
-            if (dueDate < new Date()) {
-              guidance += ' The due date has passed - consider updating or marking as complete.';
-            }
-          }
-
-          return guidance;
-        }
-        return 'The task has been updated successfully. Verify changes are reflected in subsequent queries.';
-
-      case 'delete-task':
-        return 'The task has been deleted permanently. Update any references to avoid orphaned data.';
-
-      case 'list-tasks':
-        if (tasks && Array.isArray(tasks)) {
-          const totalTasks = tasks.length;
-          const completedTasks = tasks.filter((t: any) => t.done).length;
-          const highPriorityTasks = tasks.filter((t: any) => t.priority && t.priority >= 4).length;
-
-          if (totalTasks === 0) {
-            return 'No tasks found. Use vikunja_tasks with subcommand=create to add new tasks or adjust your filters.';
-          }
-
-          let guidance = `Found ${totalTasks} task${totalTasks === 1 ? '' : 's'}`;
-
-          if (completedTasks > 0) {
-            guidance += ` with ${completedTasks} completed`;
-          }
-
-          guidance += '. ';
-
-          // Add specific tool recommendations
-          if (totalTasks > 50) {
-            guidance += 'Use filters like priority, due_date, or done=false to narrow results.';
-          } else if (highPriorityTasks > 0) {
-            guidance += `Focus on the ${highPriorityTasks} high-priority task${highPriorityTasks === 1 ? '' : 's'} first.`;
-          } else if (completedTasks > totalTasks * 0.7) {
-            guidance += 'Consider archiving completed tasks to clean up your workspace.';
-          }
-
-          return guidance;
-        }
-        return `Found ${dataSize} result${dataSize === 1 ? '' : 's'}. Review the summary for details.`;
-
-      case 'bulk-create-tasks':
-      case 'bulk-update-tasks':
-      case 'bulk-delete-tasks':
-        if (results && typeof results === 'object') {
-          const resultsData = results as any;
-          const successful = resultsData.successful || 0;
-          const failed = resultsData.failed || 0;
-          const total = successful + failed;
-
-          if (total > 0) {
-            let guidance = `Bulk operation completed: ${successful}/${total} tasks processed successfully.`;
-
-            if (failed > 0) {
-              guidance += ` Review the ${failed} failed item${failed === 1 ? '' : 's'} and retry with corrected data.`;
-            } else {
-              guidance += ' All items processed successfully.';
-            }
-
-            return guidance;
-          }
-        }
-        return 'Bulk operation completed. Review the summary for details.';
-
-      case 'get-task':
-        if (task && typeof task === 'object') {
-          const taskData = task as any;
-          let guidance = `Retrieved task "${taskData.title || 'unnamed'}".`;
-
-          if (taskData.done) {
-            guidance += ' This task is completed.';
-          } else if (taskData.due_date) {
-            const dueDate = new Date(taskData.due_date);
-            if (dueDate < new Date()) {
-              guidance += ' This task is overdue.';
-            } else {
-              const daysUntilDue = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-              guidance += ` Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}.`;
-            }
-          }
-
-          return guidance;
-        }
-        return 'Task retrieved successfully. Review details for next actions.';
-
-      default:
-        if (dataSize > 0) {
-          return `Operation completed successfully with ${dataSize} item${dataSize === 1 ? '' : 's'} processed.`;
-        }
-        return 'Operation completed successfully. Review the summary for details.';
+    // Set primary recommendation
+    if (formatted.primaryRecommendation) {
+      this.recommendations(formatted.primaryRecommendation, formatted.secondaryRecommendations);
     }
+
+    return this;
   }
 
   /**
@@ -1024,6 +774,7 @@ export class AorpBuilder {
   ): AorpResponse {
     return this
       .generateNextSteps(nextStepsConfig)
+      .generateRecommendations()
       .generateQuality(qualityConfig)
       .generateWorkflowGuidance()
       .build();

@@ -21,7 +21,6 @@ import { AorpBuilder } from './builder';
 const SIMPLE_OPERATIONS = new Set([
   'get-task',
   'delete-task',
-  'update-task',
   'get-project',
   'delete-project',
   'update-project',
@@ -40,7 +39,9 @@ const COMPLEX_OPERATIONS = new Set([
   'list-tasks',
   'list-projects',
   'tasks-export',
-  'projects-export'
+  'projects-export',
+  'create-task',
+  'update-task'
 ]);
 
 /**
@@ -344,7 +345,7 @@ export class AorpResponseFactory {
       options
     );
 
-    return {
+    const context: AorpTransformationContext = {
       operation: optimizedResponse.operation,
       success: optimizedResponse.success,
       dataSize,
@@ -360,6 +361,27 @@ export class AorpResponseFactory {
         categoriesIncluded: optimizedResponse.metadata.optimization.categoriesIncluded
       })
     };
+
+    // Include operation-specific data for tool recommendations
+    if (optimizedResponse.data && typeof optimizedResponse.data === 'object') {
+      // Add task data for single task operations
+      if (this.isTaskOperation(optimizedResponse.operation) && !Array.isArray(optimizedResponse.data)) {
+        context.task = optimizedResponse.data;
+      }
+      // Add tasks array for list operations
+      else if (Array.isArray(optimizedResponse.data)) {
+        context.tasks = optimizedResponse.data;
+      }
+      // Add results data for bulk operations
+      else if (this.isBulkOperation(optimizedResponse.operation) &&
+               typeof optimizedResponse.data === 'object' &&
+               !Array.isArray(optimizedResponse.data) &&
+               'successful' in optimizedResponse.data) {
+        context.results = optimizedResponse.data;
+      }
+    }
+
+    return context;
   }
 
   /**
@@ -541,6 +563,27 @@ export class AorpResponseFactory {
     }
 
     return 1; // Primitive type
+  }
+
+  /**
+   * Check if operation is a single task operation
+   */
+  private isTaskOperation(operation: string): boolean {
+    return operation === 'create-task' ||
+           operation === 'update-task' ||
+           operation === 'delete-task' ||
+           operation === 'get-task';
+  }
+
+  /**
+   * Check if operation is a bulk operation
+   */
+  private isBulkOperation(operation: string): boolean {
+    return operation.startsWith('bulk-') ||
+           operation.includes('-bulk') ||
+           operation === 'bulk-create-tasks' ||
+           operation === 'bulk-update-tasks' ||
+           operation === 'bulk-delete-tasks';
   }
 
   /**
