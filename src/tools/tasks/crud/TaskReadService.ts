@@ -10,10 +10,6 @@ import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 
 export interface GetTaskArgs {
   id?: number;
-  verbosity?: string;
-  useOptimizedFormat?: boolean;
-  useAorp?: boolean;
-  aorpConfig?: AorpBuilderConfig;
   sessionId?: string;
 }
 
@@ -38,10 +34,10 @@ export async function getTask(args: GetTaskArgs): Promise<{ content: Array<{ typ
         timestamp: new Date().toISOString(),
         taskId: args.id,
       },
-      args.verbosity,
-      args.useOptimizedFormat,
-      args.useAorp,
-      args.aorpConfig,
+      undefined, // verbosity (ignored)
+      undefined, // useOptimizedFormat (ignored)
+      undefined, // useAorp (ignored)
+      undefined, // aorpConfig (using auto-generated)
       args.sessionId
     );
 

@@ -90,10 +90,8 @@ export function registerProjectsTool(
       name: z.string().optional(),
       password: z.string().optional(),
       shares: z.number().min(1).optional(),
-      // Common arguments
-      verbosity: z.enum(['minimal', 'standard', 'detailed']).optional(),
-      useOptimizedFormat: z.boolean().optional(),
-      useAorp: z.boolean().optional(),
+      // Session ID for AORP response tracking
+      sessionId: z.string().optional(),
     },
     async (args, context) => {
       // Check authentication with enhanced error message
@@ -217,9 +215,6 @@ export function registerProjectsTool(
             };
             if (args.projectId !== undefined) authShareArgs.projectId = args.projectId;
             if (args.password !== undefined) authShareArgs.password = args.password;
-            if (args.verbosity !== undefined) authShareArgs.verbosity = args.verbosity;
-            if (args.useOptimizedFormat !== undefined) authShareArgs.useOptimizedFormat = args.useOptimizedFormat;
-            if (args.useAorp !== undefined) authShareArgs.useAorp = args.useAorp;
             return await authProjectShare(authShareArgs, context);
 
           default:
@@ -429,9 +424,6 @@ export function registerProjectTools(
               };
               if (args.projectId !== undefined) authShareArgs.projectId = args.projectId;
               if (args.password !== undefined) authShareArgs.password = args.password;
-              if (args.verbosity !== undefined) authShareArgs.verbosity = args.verbosity;
-              if (args.useOptimizedFormat !== undefined) authShareArgs.useOptimizedFormat = args.useOptimizedFormat;
-              if (args.useAorp !== undefined) authShareArgs.useAorp = args.useAorp;
               return await authProjectShare(authShareArgs, context);
 
             default:

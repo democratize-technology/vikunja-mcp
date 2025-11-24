@@ -166,23 +166,20 @@ export function createTaskResponse(
   metadata: TaskResponseMetadata = {
     timestamp: new Date().toISOString()
   },
-  verbosity?: string,
-  useOptimizedFormat?: boolean,
-  useAorp?: boolean,
+  _verbosity?: string, // Parameter kept for backward compatibility but ignored
+  _useOptimizedFormat?: boolean, // Parameter kept for backward compatibility but ignored
+  _useAorp?: boolean, // Parameter kept for backward compatibility but ignored
   aorpConfig?: AorpBuilderConfig,
   sessionId?: string
 ): AorpFactoryResult {
-  // Default to standard verbosity if not specified
-  const selectedVerbosity = verbosity || 'standard';
-
-  // AORP is now the only response format - always use it
-  const aorpBuilderConfig = aorpConfig || generateAorpConfig(operation, data, selectedVerbosity);
+  // Use standard AORP configuration - no more verbosity options
+  const aorpBuilderConfig = aorpConfig || generateAorpConfig(operation, data, 'standard');
 
   // For task operations, use specialized task AORP response
   const taskData = data.task || data.tasks;
   if (taskData) {
     const taskResult = createTaskAorpResponse(operation, message, taskData, metadata, {
-      verbosity: selectedVerbosity as Verbosity,
+      verbosity: 'standard' as Verbosity, // Always standard now
       aorpOptions: {
         builderConfig: aorpBuilderConfig,
         nextStepsConfig: {
@@ -211,7 +208,7 @@ export function createTaskResponse(
 
   // Fallback for non-task data
   return createAorpResponse(operation, message, data, metadata, {
-    verbosity: selectedVerbosity as Verbosity,
+    verbosity: 'standard' as Verbosity, // Always standard now
     aorpOptions: {
       builderConfig: aorpBuilderConfig,
       nextStepsConfig: {

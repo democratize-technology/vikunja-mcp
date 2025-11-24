@@ -14,10 +14,6 @@ import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 
 export interface DeleteTaskArgs {
   id?: number;
-  verbosity?: string;
-  useOptimizedFormat?: boolean;
-  useAorp?: boolean;
-  aorpConfig?: AorpBuilderConfig;
   sessionId?: string;
 }
 
@@ -50,10 +46,10 @@ export async function deleteTask(args: DeleteTaskArgs): Promise<{ content: Array
         taskId: args.id,
         ...(deletionContext.taskToDelete?.title && { taskTitle: deletionContext.taskToDelete.title }),
       },
-      args.verbosity,
-      args.useOptimizedFormat,
-      args.useAorp,
-      args.aorpConfig,
+      undefined, // verbosity (ignored)
+      undefined, // useOptimizedFormat (ignored)
+      undefined, // useAorp (ignored)
+      undefined, // aorpConfig (using auto-generated)
       args.sessionId
     );
 

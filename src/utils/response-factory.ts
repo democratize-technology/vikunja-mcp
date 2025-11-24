@@ -293,25 +293,25 @@ export function createAorpResponseFactory(options: AorpFactoryOptions = {}): Aor
 }
 
 /**
- * AORP-enabled response creator - always uses AORP
+ * AORP-enabled response creator - always uses AORP with standard format
+ * One clean output format focused on actual project/task data in details.data
  */
 export function createStandardResponse<T>(
   operation: string,
   message: string,
   data: T,
   metadata: Partial<ResponseMetadata> = {},
-  options: {
+  _options: { // Options kept for backward compatibility but ignored
     verbosity?: Verbosity;
     useOptimization?: boolean;
     transformFields?: string[];
   } = {}
 ) {
-  // AORP always enabled - no backward compatibility options
+  // Always use AORP with standard format - no more verbosity confusion
   return createAorpResponse(operation, message, data, metadata, {
-    verbosity: options.verbosity || TransformVerbosity.STANDARD,
+    verbosity: TransformVerbosity.STANDARD, // Always standard now
     aorpOptions: {
-      // Debug information is always included for AORP resilience
-      // Next steps and quality indicators are always enabled - no configuration option
+      // Standard AORP with focus on details.data for actual projects/tasks
     }
   }).response;
 }

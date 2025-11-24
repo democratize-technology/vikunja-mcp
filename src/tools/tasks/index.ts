@@ -85,10 +85,10 @@ async function listTasks(
         count: filteringResult.tasks.length,
         ...filteringResult.metadata,
       },
-      args.verbosity,
-      args.useOptimizedFormat,
-      args.useAorp,
-      args.aorpConfig,
+      undefined, // verbosity (ignored - using standard AORP)
+      undefined, // useOptimizedFormat (ignored - using standard AORP)
+      undefined, // useAorp (ignored - always using AORP)
+      undefined, // aorpConfig (using auto-generated)
       args.sessionId
     );
 
@@ -211,11 +211,7 @@ export function registerTasksTool(
       reminderId: z.number().optional(),
       // Add relation schema
       ...relationSchema,
-      // Response formatting options
-      verbosity: z.enum(['minimal', 'standard', 'detailed', 'complete']).optional(),
-      useOptimizedFormat: z.boolean().optional(),
-      useAorp: z.boolean().optional(),
-      aorpConfig: AorpBuilderConfigSchema, // AorpBuilderConfig with proper Zod schema
+      // Session ID for AORP response tracking
       sessionId: z.string().optional(),
     },
     async (args) => {

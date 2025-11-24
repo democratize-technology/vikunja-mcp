@@ -26,10 +26,7 @@ export interface CreateTaskArgs {
   assignees?: number[];
   repeatAfter?: number;
   repeatMode?: 'day' | 'week' | 'month' | 'year';
-  verbosity?: string;
-  useOptimizedFormat?: boolean;
-  useAorp?: boolean;
-  aorpConfig?: AorpBuilderConfig;
+  // Session ID for AORP response tracking
   sessionId?: string;
 }
 
@@ -132,10 +129,10 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
         labelsAdded: args.labels ? args.labels.length > 0 : false,
         assigneesAdded: args.assignees ? args.assignees.length > 0 : false,
       },
-      args.verbosity,
-      args.useOptimizedFormat,
-      args.useAorp,
-      args.aorpConfig,
+      undefined, // verbosity (ignored - using standard AORP)
+      undefined, // useOptimizedFormat (ignored - using standard AORP)
+      undefined, // useAorp (ignored - always using AORP)
+      undefined, // aorpConfig (using auto-generated)
       args.sessionId
     );
 

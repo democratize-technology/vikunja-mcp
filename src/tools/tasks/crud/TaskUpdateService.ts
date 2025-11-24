@@ -26,10 +26,7 @@ export interface UpdateTaskArgs {
   assignees?: number[];
   repeatAfter?: number;
   repeatMode?: 'day' | 'week' | 'month' | 'year';
-  verbosity?: string;
-  useOptimizedFormat?: boolean;
-  useAorp?: boolean;
-  aorpConfig?: AorpBuilderConfig;
+  // Session ID for AORP response tracking
   sessionId?: string;
 }
 
@@ -89,10 +86,10 @@ export async function updateTask(args: UpdateTaskArgs): Promise<{ content: Array
         previousState: updateState.previousState as Partial<Task>,
         taskId: args.id,
       },
-      args.verbosity,
-      args.useOptimizedFormat,
-      args.useAorp,
-      args.aorpConfig,
+      undefined, // verbosity (ignored - using standard AORP)
+      undefined, // useOptimizedFormat (ignored - using standard AORP)
+      undefined, // useAorp (ignored - always using AORP)
+      undefined, // aorpConfig (using auto-generated)
       args.sessionId
     );
 

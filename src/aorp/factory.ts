@@ -15,34 +15,8 @@ import type {
 } from './types';
 import { AorpBuilder } from './builder';
 
-/**
- * Operation types that should default to simple AORP
- */
-const SIMPLE_OPERATIONS = new Set([
-  'get-task',
-  'delete-task',
-  'get-project',
-  'delete-project',
-  'update-project',
-  'get-label',
-  'delete-label',
-  'update-label'
-]);
-
-/**
- * Operation types that should always use full AORP
- */
-const COMPLEX_OPERATIONS = new Set([
-  'bulk-create-tasks',
-  'bulk-update-tasks',
-  'bulk-delete-tasks',
-  'list-tasks',
-  'list-projects',
-  'tasks-export',
-  'projects-export',
-  'create-task',
-  'update-task'
-]);
+// Removed SIMPLE_OPERATIONS and COMPLEX_OPERATIONS constants
+// Always using full AORP format - one clean output format focused on actual data
 
 /**
  * AORP Response Factory class
@@ -216,7 +190,8 @@ export class AorpResponseFactory {
   }
 
   /**
-   * Detect appropriate verbosity level based on operation and data
+   * Simplified verbosity detection - always use full AORP format
+   * No more complexity - one clean output format focused on actual data
    */
   private detectVerbosityLevel(
     operation: string,
@@ -225,31 +200,11 @@ export class AorpResponseFactory {
     data?: unknown,
     options?: AorpFactoryOptions
   ): { verbosityLevel: AorpVerbosityLevel; complexityFactors: ComplexityFactors } {
-    // Handle user override for verbosity level
-    if (options?.verbosityLevel) {
-      return {
-        verbosityLevel: options.verbosityLevel,
-        complexityFactors: this.createComplexityFactors(operation, dataSize, errors, data)
-      };
-    }
-
-    // Handle user override for useAorp flag
-    if (options?.useAorp === false) {
-      return {
-        verbosityLevel: 'simple',
-        complexityFactors: this.createComplexityFactors(operation, dataSize, errors, data)
-      };
-    }
-
-    if (options?.useAorp === true) {
-      return {
-        verbosityLevel: 'full',
-        complexityFactors: this.createComplexityFactors(operation, dataSize, errors, data)
-      };
-    }
-
-    // Auto-detect based on operation and data complexity
-    return this.autoDetectVerbosityLevel(operation, dataSize, errors, data);
+    // Always use full AORP format - focus on details.data where actual projects/tasks live
+    return {
+      verbosityLevel: 'full',
+      complexityFactors: this.createComplexityFactors(operation, dataSize, errors, data)
+    };
   }
 
   /**
@@ -289,40 +244,7 @@ export class AorpResponseFactory {
     return complexityFactors;
   }
 
-  /**
-   * Auto-detect verbosity level based on operation and data
-   */
-  private autoDetectVerbosityLevel(
-    operation: string,
-    dataSize: number,
-    errors?: string[],
-    data?: unknown
-  ): { verbosityLevel: AorpVerbosityLevel; complexityFactors: ComplexityFactors } {
-    const complexityFactors = this.createComplexityFactors(operation, dataSize, errors, data);
-
-    // Operation-based detection
-    if (SIMPLE_OPERATIONS.has(operation)) {
-      return { verbosityLevel: 'simple', complexityFactors };
-    }
-
-    if (COMPLEX_OPERATIONS.has(operation)) {
-      return { verbosityLevel: 'full', complexityFactors };
-    }
-
-    // Complexity-based detection
-    if (
-      complexityFactors.hasErrors ||
-      complexityFactors.hasWarnings ||
-      complexityFactors.isBulkOperation ||
-      complexityFactors.isPartialSuccess ||
-      dataSize > 20
-    ) {
-      return { verbosityLevel: 'full', complexityFactors };
-    }
-
-    // Default to full for unrecognized operations (backward compatibility)
-    return { verbosityLevel: 'full', complexityFactors };
-  }
+  // Removed autoDetectVerbosityLevel - always using full AORP format for consistency
 
   /**
    * Create transformation context from optimized response
@@ -550,7 +472,8 @@ export class AorpResponseFactory {
 
   /**
    * Extract and format actual data for AORP response details.data field
-   * This preserves the original API response data as required by AORP spec
+   * THIS IS WHERE THE ACTUAL PROJECT/TASK DATA GOES - clients access details.data for real data
+   * No more verbosity confusion - just clean access to projects/tasks data
    */
   private extractDataForResponse(optimizedResponse: OptimizedResponse): Record<string, unknown> {
     const data = optimizedResponse.data;
