@@ -62,11 +62,20 @@ export interface AorpQuality {
 }
 
 /**
- * Detailed information - markdown output only, no data field
+ * Detailed information - includes actual data objects as required by AORP spec
  */
 export interface AorpDetails {
   /** Human-readable overview */
   summary: string;
+  /** Actual response data (legacy format preserved) - REQUIRED by AORP specification */
+  data: {
+    /** Full project data when applicable */
+    projects?: unknown[];
+    /** Full task data when applicable */
+    tasks?: unknown[];
+    /** Additional operation-specific data */
+    [key: string]: unknown;
+  };
   /** Metadata */
   metadata: {
     timestamp: string;

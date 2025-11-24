@@ -449,7 +449,8 @@ export class AorpResponseFactory {
 
       const responseBuilder = builder
         .status('success', keyInsight)
-        .summary(summary);
+        .summary(summary)
+        .data(this.extractDataForResponse(optimizedResponse));
 
       if (options.sessionId) {
         responseBuilder.sessionId(options.sessionId);
@@ -477,7 +478,8 @@ export class AorpResponseFactory {
 
       const responseBuilder = builder
         .status('error', keyInsight)
-        .summary(summary);
+        .summary(summary)
+        .data(this.extractDataForResponse(optimizedResponse));
 
       if (options.sessionId) {
         responseBuilder.sessionId(options.sessionId);
@@ -544,6 +546,58 @@ export class AorpResponseFactory {
       return (typeof id === 'string' || typeof id === 'number') ? id : 'unknown';
     }
     return 'unknown';
+  }
+
+  /**
+   * Extract and format actual data for AORP response details.data field
+   * This preserves the original API response data as required by AORP spec
+   */
+  private extractDataForResponse(optimizedResponse: OptimizedResponse): Record<string, unknown> {
+    const data = optimizedResponse.data;
+    const operation = optimizedResponse.operation;
+
+    // Initialize result object
+    const result: Record<string, unknown> = {};
+
+    // Handle array data (list operations)
+    if (Array.isArray(data)) {
+      if (operation.includes('project')) {
+        result.projects = data;
+      } else if (operation.includes('task')) {
+        result.tasks = data;
+      } else {
+        // Generic array data - include under operation-specific key
+        const key = operation.replace(/-/g, '_').replace('bulk_', '');
+        result[key] = data;
+      }
+    }
+    // Handle object data
+    else if (data && typeof data === 'object') {
+      const dataObj = data as Record<string, unknown>;
+
+      // Check if this is already in the correct format (has projects/tasks)
+      if ('projects' in dataObj || 'tasks' in dataObj) {
+        return dataObj as Record<string, unknown>;
+      }
+
+      // Single object - categorize by operation
+      if (operation.includes('project')) {
+        result.projects = [data]; // Wrap in array for consistency
+      } else if (operation.includes('task')) {
+        result.tasks = [data]; // Wrap in array for consistency
+      } else {
+        // Generic object data
+        const key = operation.replace(/-/g, '_').replace('bulk_', '');
+        result[key] = data;
+      }
+    }
+    // Handle primitive/string data
+    else {
+      // For non-object data, include as summary info
+      result.summary = data;
+    }
+
+    return result;
   }
 
   /**

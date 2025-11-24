@@ -10,7 +10,8 @@ import type {
   OptimizedTask,
   Task,
   TransformerConfig,
-  TransformationResult
+  TransformationResult,
+  OptimizedResponse
 } from '../transforms/index';
 import {
   defaultTaskTransformer,
@@ -130,11 +131,22 @@ export function createAorpResponse<T>(
   // Create AORP factory instance
   const factory = new AorpResponseFactory(options.aorpOptions);
 
-  // Convert data to summary string
-  const summary = typeof data === 'string' ? data : message;
+  // Create OptimizedResponse with actual data preserved
+  // This ensures the real data gets to details.data instead of being discarded
+  const optimizedResponse: OptimizedResponse = {
+    success: true,
+    operation,
+    message,
+    data, // PRESERVE ACTUAL DATA - don't convert to string
+    metadata: {
+      timestamp: new Date().toISOString(),
+      count: Array.isArray(data) ? data.length : (data ? 1 : 0),
+      sessionId: metadata.sessionId
+    }
+  };
 
-  // Create AORP response directly from summary
-  const result = factory.fromData(operation, summary, true, message, {
+  // Create AORP response from the complete optimized response with actual data
+  const result = factory.fromOptimizedResponse(optimizedResponse, {
     // Debug information is always included for AORP resilience
     sessionId: metadata.sessionId as string,
     ...options.aorpOptions

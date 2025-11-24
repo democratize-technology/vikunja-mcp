@@ -81,9 +81,10 @@ export class AorpBuilder {
     };
     this.context = context;
 
-    // Initialize with defaults
+    // Initialize with defaults - include required data field for AORP spec compliance
     this.response.details = {
       summary: '',
+      data: {}, // Required field for actual project/task data
       metadata: {
         timestamp: new Date().toISOString()
       }
@@ -233,6 +234,16 @@ export class AorpBuilder {
   summary(summary: string): this {
     if (this.response.details) {
       this.response.details.summary = summary;
+    }
+    return this;
+  }
+
+  /**
+   * Set actual data in details.data (required by AORP spec)
+   */
+  data(data: Record<string, unknown>): this {
+    if (this.response.details) {
+      this.response.details.data = data;
     }
     return this;
   }
