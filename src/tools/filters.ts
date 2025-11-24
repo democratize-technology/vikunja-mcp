@@ -165,7 +165,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: formatAorpAsMarkdown(response as any),
+                  text: formatAorpAsMarkdown(response), // createStandardResponse returns AORP object, format as markdown
                 },
               ],
             };
@@ -201,7 +201,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: formatAorpAsMarkdown(response as any),
+                  text: formatAorpAsMarkdown(response), // createStandardResponse returns AORP object, format as markdown
                 },
               ],
             };
@@ -284,7 +284,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: formatAorpAsMarkdown(response as any),
+                  text: formatAorpAsMarkdown(response), // createStandardResponse returns AORP object, format as markdown
                 },
               ],
             };
@@ -339,7 +339,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: formatAorpAsMarkdown(response as any),
+                  text: formatAorpAsMarkdown(response), // createStandardResponse returns AORP object, format as markdown
                 },
               ],
             };
@@ -366,7 +366,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: formatAorpAsMarkdown(response as any),
+                  text: formatAorpAsMarkdown(response), // createStandardResponse returns AORP object, format as markdown
                 },
               ],
             };
@@ -411,7 +411,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: formatAorpAsMarkdown(response as any),
+                  text: formatAorpAsMarkdown(response), // createStandardResponse returns AORP object, format as markdown
                 },
               ],
             };
@@ -439,7 +439,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               content: [
                 {
                   type: 'text' as const,
-                  text: formatAorpAsMarkdown(response as any),
+                  text: formatAorpAsMarkdown(response), // createStandardResponse returns AORP object, format as markdown
                 },
               ],
             };
@@ -468,7 +468,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
             content: [
               {
                 type: 'text' as const,
-                text: formatAorpAsMarkdown(response as any),
+                text: JSON.stringify(response, null, 2), // Error responses should be JSON formatted
               },
             ],
           };
@@ -498,7 +498,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
           content: [
             {
               type: 'text' as const,
-              text: formatAorpAsMarkdown(response as any),
+              text: JSON.stringify(response, null, 2), // Error responses should be JSON formatted
             },
           ],
         };

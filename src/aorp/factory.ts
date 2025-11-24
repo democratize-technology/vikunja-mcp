@@ -8,9 +8,40 @@ import type {
   AorpResponse,
   AorpFactoryResult,
   AorpFactoryOptions,
-  AorpTransformationContext
+  AorpTransformationContext,
+  AorpVerbosityLevel,
+  ComplexityFactors,
+  SimpleAorpResponse
 } from './types';
 import { AorpBuilder } from './builder';
+
+/**
+ * Operation types that should default to simple AORP
+ */
+const SIMPLE_OPERATIONS = new Set([
+  'get-task',
+  'delete-task',
+  'update-task',
+  'get-project',
+  'delete-project',
+  'update-project',
+  'get-label',
+  'delete-label',
+  'update-label'
+]);
+
+/**
+ * Operation types that should always use full AORP
+ */
+const COMPLEX_OPERATIONS = new Set([
+  'bulk-create-tasks',
+  'bulk-update-tasks',
+  'bulk-delete-tasks',
+  'list-tasks',
+  'list-projects',
+  'tasks-export',
+  'projects-export'
+]);
 
 /**
  * AORP Response Factory class
@@ -57,7 +88,7 @@ export class AorpResponseFactory {
     const startTime = Date.now();
 
     // Create transformation context
-    const context = this.createTransformationContext(optimizedResponse);
+    const context = this.createTransformationContext(optimizedResponse, undefined, mergedOptions);
 
     // Create AORP response
     const response = this.createAorpResponse(optimizedResponse, context, mergedOptions);
@@ -105,7 +136,7 @@ export class AorpResponseFactory {
     };
 
     // Create transformation context
-    const context = this.createTransformationContext(mockOptimizedResponse);
+    const context = this.createTransformationContext(mockOptimizedResponse, undefined, mergedOptions);
 
     // Create AORP response
     const response = this.createAorpResponse(mockOptimizedResponse, context, mergedOptions);
@@ -161,7 +192,7 @@ export class AorpResponseFactory {
     };
 
     // Create transformation context with error information
-    const context = this.createTransformationContext(mockOptimizedResponse, [errorMessage]);
+    const context = this.createTransformationContext(mockOptimizedResponse, [errorMessage], mergedOptions);
 
     // Create AORP response
     const response = this.createAorpResponse(mockOptimizedResponse, context, mergedOptions);
@@ -184,15 +215,134 @@ export class AorpResponseFactory {
   }
 
   /**
+   * Detect appropriate verbosity level based on operation and data
+   */
+  private detectVerbosityLevel(
+    operation: string,
+    dataSize: number,
+    errors?: string[],
+    data?: unknown,
+    options?: AorpFactoryOptions
+  ): { verbosityLevel: AorpVerbosityLevel; complexityFactors: ComplexityFactors } {
+    // Handle user override for verbosity level
+    if (options?.verbosityLevel) {
+      return {
+        verbosityLevel: options.verbosityLevel,
+        complexityFactors: this.createComplexityFactors(operation, dataSize, errors, data)
+      };
+    }
+
+    // Handle user override for useAorp flag
+    if (options?.useAorp === false) {
+      return {
+        verbosityLevel: 'simple',
+        complexityFactors: this.createComplexityFactors(operation, dataSize, errors, data)
+      };
+    }
+
+    if (options?.useAorp === true) {
+      return {
+        verbosityLevel: 'full',
+        complexityFactors: this.createComplexityFactors(operation, dataSize, errors, data)
+      };
+    }
+
+    // Auto-detect based on operation and data complexity
+    return this.autoDetectVerbosityLevel(operation, dataSize, errors, data);
+  }
+
+  /**
+   * Create complexity factors object
+   */
+  private createComplexityFactors(
+    operation: string,
+    dataSize: number,
+    errors?: string[],
+    data?: unknown
+  ): ComplexityFactors {
+    const complexityFactors: ComplexityFactors = {
+      dataSize: dataSize > 10,
+      hasWarnings: false,
+      hasErrors: !!(errors && errors.length > 0),
+      isBulkOperation: operation.includes('bulk-') || operation.includes('-bulk'),
+      isPartialSuccess: false,
+      custom: {}
+    };
+
+    // Detect warnings in data
+    if (data && typeof data === 'object') {
+      const dataObj = data as Record<string, unknown>;
+      complexityFactors.hasWarnings = !!(
+        dataObj.warnings ||
+        dataObj.failed ||
+        dataObj.errors ||
+        (dataObj.created && dataObj.failed && (dataObj.created as number) > 0 && (dataObj.failed as number) > 0)
+      );
+
+      complexityFactors.isPartialSuccess = !!(
+        (dataObj.created && dataObj.total && (dataObj.created as number) < (dataObj.total as number)) ||
+        (dataObj.success === true && dataObj.partial === true)
+      );
+    }
+
+    return complexityFactors;
+  }
+
+  /**
+   * Auto-detect verbosity level based on operation and data
+   */
+  private autoDetectVerbosityLevel(
+    operation: string,
+    dataSize: number,
+    errors?: string[],
+    data?: unknown
+  ): { verbosityLevel: AorpVerbosityLevel; complexityFactors: ComplexityFactors } {
+    const complexityFactors = this.createComplexityFactors(operation, dataSize, errors, data);
+
+    // Operation-based detection
+    if (SIMPLE_OPERATIONS.has(operation)) {
+      return { verbosityLevel: 'simple', complexityFactors };
+    }
+
+    if (COMPLEX_OPERATIONS.has(operation)) {
+      return { verbosityLevel: 'full', complexityFactors };
+    }
+
+    // Complexity-based detection
+    if (
+      complexityFactors.hasErrors ||
+      complexityFactors.hasWarnings ||
+      complexityFactors.isBulkOperation ||
+      complexityFactors.isPartialSuccess ||
+      dataSize > 20
+    ) {
+      return { verbosityLevel: 'full', complexityFactors };
+    }
+
+    // Default to full for unrecognized operations (backward compatibility)
+    return { verbosityLevel: 'full', complexityFactors };
+  }
+
+  /**
    * Create transformation context from optimized response
    */
   private createTransformationContext(
     optimizedResponse: OptimizedResponse,
-    errors?: string[]
+    errors?: string[],
+    options: AorpFactoryOptions = {}
   ): AorpTransformationContext {
     const dataSize = this.estimateDataSize(optimizedResponse.data);
     const processingTime = optimizedResponse.metadata.optimization?.performance.transformationTimeMs || 0;
     const verbosity = optimizedResponse.metadata.optimization?.verbosity || 'standard';
+
+    // Detect verbosity level based on operation and data complexity
+    const { verbosityLevel, complexityFactors } = this.detectVerbosityLevel(
+      optimizedResponse.operation,
+      dataSize,
+      errors,
+      optimizedResponse.data,
+      options
+    );
 
     return {
       operation: optimizedResponse.operation,
@@ -200,6 +350,8 @@ export class AorpResponseFactory {
       dataSize,
       processingTime,
       verbosity: verbosity.toString(),
+      verbosityLevel: options.verbosityLevel || verbosityLevel,
+      complexityFactors,
       ...(errors && { errors }),
       // Include any additional metadata
       ...(optimizedResponse.metadata.optimization && {
@@ -214,6 +366,52 @@ export class AorpResponseFactory {
    * Create AORP response using builder
    */
   private createAorpResponse(
+    optimizedResponse: OptimizedResponse,
+    context: AorpTransformationContext,
+    options: AorpFactoryOptions
+  ): AorpResponse | SimpleAorpResponse {
+    // Check if we should return a simple response
+    if (context.verbosityLevel === 'simple' && options.useAorp !== true) {
+      return this.createSimpleAorpResponse(optimizedResponse, context, options);
+    }
+
+    // Create full AORP response using existing logic
+    return this.createFullAorpResponse(optimizedResponse, context, options);
+  }
+
+  /**
+   * Create simple AORP response for basic operations
+   */
+  private createSimpleAorpResponse(
+    optimizedResponse: OptimizedResponse,
+    context: AorpTransformationContext,
+    options: AorpFactoryOptions
+  ): SimpleAorpResponse {
+    const keyInsight = this.generateKeyInsight(optimizedResponse);
+    const summary = typeof optimizedResponse.data === 'string'
+      ? optimizedResponse.data
+      : optimizedResponse.message;
+
+    return {
+      immediate: {
+        status: optimizedResponse.success ? 'success' : 'error',
+        key_insight: keyInsight,
+        confidence: 0.95, // High confidence for simple operations
+        ...(options.sessionId && { session_id: options.sessionId })
+      },
+      summary,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        operation: optimizedResponse.operation,
+        success: optimizedResponse.success
+      }
+    };
+  }
+
+  /**
+   * Create full AORP response using builder
+   */
+  private createFullAorpResponse(
     optimizedResponse: OptimizedResponse,
     context: AorpTransformationContext,
     options: AorpFactoryOptions

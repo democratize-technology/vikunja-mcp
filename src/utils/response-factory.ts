@@ -17,7 +17,8 @@ import {
   Verbosity as TransformVerbosity
 } from '../transforms/index';
 import { AorpResponseFactory } from '../aorp/factory';
-import type { AorpFactoryOptions, AorpResponse, AorpFactoryResult } from '../types/index';
+import type { AorpFactoryOptions, AorpResponse, AorpFactoryResult, SimpleAorpResponse } from '../types/index';
+import { isSimpleAorpResponse } from '../types/index';
 import { createErrorResponse } from '../types/responses';
 
 /**
@@ -141,9 +142,17 @@ export function createAorpResponse<T>(
 
   // Add additional metadata to the response
   if (metadata && Object.keys(metadata).length > 0) {
-    Object.entries(metadata).forEach(([key, value]) => {
-      result.response.details.metadata[key] = value;
-    });
+    if (isSimpleAorpResponse(result.response)) {
+      // For SimpleAorpResponse, add metadata to the metadata object
+      Object.entries(metadata).forEach(([key, value]) => {
+        (result.response as SimpleAorpResponse).metadata[key] = value;
+      });
+    } else {
+      // For full AorpResponse, add metadata to details.metadata
+      Object.entries(metadata).forEach(([key, value]) => {
+        (result.response as AorpResponse).details.metadata[key] = value;
+      });
+    }
   }
 
   return result;

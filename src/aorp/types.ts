@@ -135,6 +135,10 @@ export interface AorpTransformationContext {
   processingTime: number;
   /** Verbosity level used */
   verbosity: string;
+  /** Detected verbosity level */
+  verbosityLevel: AorpVerbosityLevel;
+  /** Complexity factors that influenced the decision */
+  complexityFactors: ComplexityFactors;
   /** Any errors that occurred */
   errors?: string[];
   /** Additional context */
@@ -165,11 +169,68 @@ export interface QualityConfig {
 }
 
 /**
- * AORP Response from factory - markdown output only
+ * Type guard to check if response is SimpleAorpResponse
+ */
+export function isSimpleAorpResponse(response: AorpResponse | SimpleAorpResponse): response is SimpleAorpResponse {
+  return 'summary' in response && !('actionable' in response);
+}
+
+/**
+ * Runtime validation to ensure response structure is valid
+ */
+export function validateAorpResponse(response: unknown): response is AorpResponse | SimpleAorpResponse {
+  if (!response || typeof response !== 'object') {
+    return false;
+  }
+
+  const resp = response as Record<string, unknown>;
+
+  // Check for required immediate section
+  if (!resp.immediate || typeof resp.immediate !== 'object') {
+    return false;
+  }
+
+  const immediate = resp.immediate as Record<string, unknown>;
+  if (typeof immediate.status !== 'string' ||
+      typeof immediate.key_insight !== 'string' ||
+      typeof immediate.confidence !== 'number') {
+    return false;
+  }
+
+  // Check if it's a simple or full response
+  if ('summary' in resp && typeof resp.summary === 'string' &&
+      !('actionable' in resp)) {
+    // SimpleAorpResponse
+    if (!resp.metadata || typeof resp.metadata !== 'object') {
+      return false;
+    }
+    const metadata = resp.metadata as Record<string, unknown>;
+    return typeof metadata.timestamp === 'string' &&
+           typeof metadata.operation === 'string' &&
+           typeof metadata.success === 'boolean';
+  } else if ('actionable' in resp && resp.details) {
+    // Full AorpResponse
+    if (!resp.actionable || typeof resp.actionable !== 'object' ||
+        !resp.details || typeof resp.details !== 'object') {
+      return false;
+    }
+    const actionable = resp.actionable as Record<string, unknown>;
+    const details = resp.details as Record<string, unknown>;
+    return Array.isArray(actionable.next_steps) &&
+           typeof actionable.recommendations === 'object' &&
+           typeof details.summary === 'string' &&
+           typeof details.metadata === 'object';
+  }
+
+  return false;
+}
+
+/**
+ * AORP Response from factory - can be full or simple format
  */
 export interface AorpFactoryResult {
-  /** The generated AORP response */
-  response: AorpResponse;
+  /** The generated AORP response (full or simple format) */
+  response: AorpResponse | SimpleAorpResponse;
   /** Transformation metadata */
   transformation: {
     /** Original optimized response */
@@ -201,7 +262,48 @@ export interface AorpError {
 }
 
 /**
- * AORP Response factory options - AORP always enabled
+ * Verbosity levels for AORP responses
+ */
+export type AorpVerbosityLevel = 'simple' | 'full';
+
+/**
+ * Simple AORP Response format for basic operations
+ * Minimal structure with just essential information
+ */
+export interface SimpleAorpResponse {
+  /** Immediate key information only */
+  immediate: AorpImmediate;
+  /** Minimal details - no complex sections */
+  summary: string;
+  /** Operation metadata */
+  metadata: {
+    timestamp: string;
+    operation: string;
+    success: boolean;
+    [key: string]: unknown; // Allow additional metadata properties
+  };
+}
+
+/**
+ * Complexity factors that influence verbosity decisions
+ */
+export interface ComplexityFactors {
+  /** Data size threshold exceeded */
+  dataSize: boolean;
+  /** Operation has warnings or errors */
+  hasWarnings: boolean;
+  /** Operation has errors */
+  hasErrors: boolean;
+  /** Bulk operation detected */
+  isBulkOperation: boolean;
+  /** Partial success detected */
+  isPartialSuccess: boolean;
+  /** Custom factors */
+  custom: Record<string, boolean>;
+}
+
+/**
+ * AORP Response factory options - Now with conditional verbosity
  */
 export interface AorpFactoryOptions {
   /** Builder configuration */
@@ -212,5 +314,9 @@ export interface AorpFactoryOptions {
   qualityConfig?: QualityConfig;
   /** Custom session ID */
   sessionId?: string;
+  /** Force verbosity level - overrides auto-detection */
+  useAorp?: boolean;
+  /** Force specific verbosity level - overrides auto-detection */
+  verbosityLevel?: AorpVerbosityLevel;
   // Note: Debug information is always included - no configuration option
 }

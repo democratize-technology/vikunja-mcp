@@ -4,7 +4,8 @@
  * Manual string building (no external libraries) per audit approval
  */
 
-import type { AorpResponse, AorpStatus, AorpUrgency } from './types';
+import type { AorpResponse, AorpStatus, AorpUrgency, SimpleAorpResponse } from './types';
+import { isSimpleAorpResponse } from './types';
 
 /**
  * Escapes Markdown special characters to prevent injection attacks
@@ -72,6 +73,58 @@ function getUrgencyEmoji(urgency: AorpUrgency): string {
 const MAX_INPUT_LENGTH = 10_000_000; // 10MB
 
 /**
+ * Formats Simple AORP response as concise Markdown
+ *
+ * @param aorp - The simple AORP response to format
+ * @returns Concise Markdown-formatted string representation
+ * @throws Error if any input field exceeds MAX_INPUT_LENGTH (DoS protection)
+ */
+export function formatSimpleAorpAsMarkdown(aorp: SimpleAorpResponse): string {
+  // Validate string fields for length (DoS protection)
+  const fieldsToValidate = [
+    aorp.immediate.key_insight,
+    aorp.summary,
+  ];
+
+  for (const field of fieldsToValidate) {
+    if (field.length > MAX_INPUT_LENGTH) {
+      throw new Error(
+        `Input field exceeds maximum length of ${MAX_INPUT_LENGTH} characters (got ${field.length})`,
+      );
+    }
+  }
+
+  const lines: string[] = [];
+
+  // Status header
+  const statusEmoji = getStatusEmoji(aorp.immediate.status);
+  const confidencePercent = Math.round(aorp.immediate.confidence * 100);
+  lines.push(`## ${statusEmoji} ${aorp.immediate.status.charAt(0).toUpperCase() + aorp.immediate.status.slice(1)} | Confidence: ${confidencePercent}%`);
+
+  // Key insight
+  lines.push('');
+  lines.push(`**Key Insight**: ${escapeMarkdown(aorp.immediate.key_insight)}`);
+
+  // Session ID if present
+  if (aorp.immediate.session_id) {
+    lines.push(`**Session ID**: \`${escapeMarkdown(aorp.immediate.session_id)}\``);
+  }
+
+  // Summary
+  lines.push('');
+  lines.push(`**Summary**: ${escapeMarkdown(aorp.summary)}`);
+
+  // Metadata
+  lines.push('');
+  lines.push('**Metadata**:');
+  lines.push(`- **Timestamp**: ${escapeMarkdown(aorp.metadata.timestamp)}`);
+  lines.push(`- **Operation**: ${escapeMarkdown(aorp.metadata.operation)}`);
+  lines.push(`- **Success**: ${aorp.metadata.success ? '✅ Yes' : '❌ No'}`);
+
+  return lines.join('\n');
+}
+
+/**
  * Formats AORP response as clean, readable Markdown
  * All user-controlled content is sanitized to prevent Markdown injection
  *
@@ -79,7 +132,12 @@ const MAX_INPUT_LENGTH = 10_000_000; // 10MB
  * @returns Markdown-formatted string representation
  * @throws Error if any input field exceeds MAX_INPUT_LENGTH (DoS protection)
  */
-export function formatAorpAsMarkdown(aorp: AorpResponse): string {
+export function formatAorpAsMarkdown(aorp: AorpResponse | SimpleAorpResponse): string {
+  // Handle simple AORP response
+  if (isSimpleAorpResponse(aorp)) {
+    return formatSimpleAorpAsMarkdown(aorp);
+  }
+
   // Validate all string fields for length (DoS protection)
   const fieldsToValidate = [
     aorp.immediate.key_insight,

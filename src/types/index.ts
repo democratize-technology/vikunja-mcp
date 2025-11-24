@@ -55,6 +55,7 @@ export {
 // Export AORP types and interfaces
 export {
   type AorpResponse,
+  type SimpleAorpResponse,
   type AorpFactoryResult,
   type AorpFactoryOptions,
   type AorpImmediate,
@@ -67,7 +68,9 @@ export {
   type AorpTransformationContext,
   type NextStepsConfig,
   type QualityConfig,
-  type AorpError
+  type AorpError,
+  isSimpleAorpResponse,
+  validateAorpResponse
 } from '../aorp/types';
 
 // Export AORP factory - always-on

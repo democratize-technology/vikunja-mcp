@@ -3,7 +3,8 @@
  * Handles response formatting for comment operations
  */
 
-import type { StandardTaskResponse } from '../../../types/index';
+import type { StandardTaskResponse, ResponseMetadata } from '../../../types/index';
+import { createStandardResponse } from '../../../types/index';
 import { formatAorpAsMarkdown } from '../../../aorp/markdown';
 
 /**
@@ -45,11 +46,19 @@ export class CommentResponseFormatter {
    * Format MCP response wrapper
    */
   static formatMcpResponse(response: StandardTaskResponse): { content: Array<{ type: 'text'; text: string }> } {
+    // Create proper AORP response instead of casting StandardTaskResponse
+    const aorpResponse = createStandardResponse(
+      response.operation || 'unknown',
+      response.message || 'Operation completed',
+      response,
+      response.metadata || {} as any
+    );
+
     return {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(aorpResponse), // Format AORP response as markdown
         },
       ],
     };

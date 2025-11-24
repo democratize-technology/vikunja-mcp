@@ -237,7 +237,7 @@ export class BulkOperationErrorHandler {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(response), // createStandardResponse returns AORP object, format as markdown
         },
       ],
     };
