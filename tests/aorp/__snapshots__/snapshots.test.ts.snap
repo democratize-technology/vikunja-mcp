@@ -30,6 +30,7 @@ The operation has completed successfully. Review the detailed results for any ar
 ### 📋 Details
 **Summary**: Successfully processed and updated multiple related entities with full data validation.
 **Timestamp**: 2024-11-20T17:30:00.000Z
+### 📊 Metadata
 **Operation**: complex-batch-update
 **Entities Affected**: 15
 **Processing Time**: 2.1s"
@@ -64,6 +65,7 @@ The operation encountered validation errors. Please review the error details and
 ### 📋 Details
 **Summary**: Validation failed due to malformed input data. Please ensure all required fields are properly formatted.
 **Timestamp**: 2024-11-20T17:35:00.000Z
+### 📊 Metadata
 **Operation**: entity-validation
 **Validation Errors**: 3
 **Error Details**: Missing required fields and invalid data format"
@@ -91,6 +93,7 @@ Monitor for any issues
 ### 📋 Details
 **Summary**: Simple operation completed successfully
 **Timestamp**: 2024-11-20T17:30:00.000Z
+### 📊 Metadata
 **Operation**: simple-operation"
 `;
 
@@ -123,6 +126,7 @@ The operation completed but with warnings. Please review the details and take co
 ### 📋 Details
 **Summary**: Operation successful with 2 warnings. Data integrity maintained, but some non-critical issues require attention.
 **Timestamp**: 2024-11-20T17:40:00.000Z
+### 📊 Metadata
 **Operation**: data-sync
 **Warnings**: 2
 **Items Processed**: 150

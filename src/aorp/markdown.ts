@@ -222,11 +222,66 @@ export function formatAorpAsMarkdown(aorp: AorpResponse | SimpleAorpResponse): s
   lines.push(`**Summary**: ${escapeMarkdown(aorp.details.summary)}`);
   lines.push(`**Timestamp**: ${aorp.details.metadata.timestamp}`);
 
+  // Display actual data from details.data (the most important part!)
+  if (aorp.details.data && Object.keys(aorp.details.data).length > 0) {
+    lines.push('');
+    lines.push('### 📦 Actual Data');
+
+    Object.entries(aorp.details.data).forEach(([key, value]) => {
+      const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+      if (Array.isArray(value)) {
+        lines.push(`**${escapeMarkdown(formattedKey)}** (${value.length} items):`);
+        if (value.length > 0) {
+          // Display array items with proper serialization
+          value.forEach((item, index) => {
+            try {
+              const itemStr = typeof item === 'object'
+                ? JSON.stringify(item, null, 2)
+                : String(item);
+              lines.push(`${index + 1}. \`\`\`json`);
+              // Split long JSON across multiple lines for readability
+              const jsonLines = itemStr.split('\n');
+              jsonLines.forEach(line => {
+                if (line.trim()) {
+                  lines.push(`   ${line}`);
+                }
+              });
+              lines.push('   ```');
+            } catch (error) {
+              lines.push(`${index + 1}. [Object serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}]`);
+            }
+          });
+        } else {
+          lines.push('- *Empty array*');
+        }
+      } else if (value && typeof value === 'object') {
+        lines.push(`**${escapeMarkdown(formattedKey)}**:`);
+        try {
+          const objStr = JSON.stringify(value, null, 2);
+          lines.push('```json');
+          objStr.split('\n').forEach(line => {
+            lines.push(line);
+          });
+          lines.push('```');
+        } catch (error) {
+          lines.push(`[Object serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}]`);
+        }
+      } else {
+        // Primitive value
+        const displayValue = value != null ? String(value) : 'null';
+        lines.push(`**${escapeMarkdown(formattedKey)}**: ${escapeMarkdown(displayValue)}`);
+      }
+      lines.push(''); // Add spacing between data sections
+    });
+  }
+
   // Additional metadata (excluding timestamp which we already displayed)
   const additionalMetadata = Object.entries(aorp.details.metadata)
     .filter(([key]) => key !== 'timestamp');
 
   if (additionalMetadata.length > 0) {
+    lines.push('### 📊 Metadata');
     additionalMetadata.forEach(([key, value]) => {
       const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
       // Format operation field as kebab-case for markdown compatibility
