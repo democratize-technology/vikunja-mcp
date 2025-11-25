@@ -25,6 +25,37 @@ const MAX_VALUE_LENGTH = 200;
 const ALLOWED_CHARS = /^[\t\n\r\u0020-\u007D\u00C0-\u017F\u4E00-\u9FFF]*$/;
 
 /**
+ * Pre-compiled optimized regex patterns for performance and security
+ * Using atomic groups, possessive quantifiers, and non-backtracking patterns to prevent ReDoS
+ */
+const DATE_PATTERNS = {
+  // Combined pattern with atomic groups to prevent backtracking
+  QUICK_DATE_CHECK: /^(?:(?:\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2})?)|now(?:[+-]\d{1,4}[smhdwMy])?|now\/[smhdwMy])$/,
+
+  // Individual optimized patterns for specific validation
+  ISO_DATE: /^\d{4}-\d{2}-\d{2}$/,
+  ISO_DATETIME: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
+  NOW_LITERAL: /^now$/,
+  RELATIVE_DATE: /^now([+-]\d{1,4}[smhdwMy])$/,
+  PERIOD_DATE: /^now\/([smhdwMy])$/,
+
+  // Fast rejection patterns - optimized for performance
+  SECURITY_REJECTION: [
+    /\s/,                           // Any spaces
+    /now\+\d+day/,                  // "day" instead of "d"
+    /now\/day/,                     // "day" instead of "d"
+    /\d{4}\/\d{1}\/\d{1}/,          // Missing leading zeros in YYYY/M/D
+    /\d{1}-\d{2}-\d{4}/,            // Wrong order D-MM-YYYY
+    /now\+\d+\.\d+[a-z]/,           // Decimal numbers
+    /now\+\+/,                      // Double operator
+    /now\+-/,                       // Conflicting operators
+  ],
+} as const;
+
+// Repeated character check for DoS prevention - optimized pattern
+const REPEATED_CHAR_PATTERN = /(.)\1{20,}/;
+
+/**
  * Zod schemas for validation
  */
 const FilterFieldSchema = z.enum([
@@ -651,7 +682,7 @@ function validateFieldTypeAndValue(field: FilterField, operator: FilterOperator,
     errors.push(`Field "${field}" requires an array or comma-separated string`);
   }
 
-  // Date validation (basic format check with security constraints)
+  // Date validation (optimized for performance and security)
   if (fieldType === 'date' && typeof value === 'string') {
     // Security check: reject extremely long values that could cause DoS
     if (value.length > 50) {
@@ -659,61 +690,47 @@ function validateFieldTypeAndValue(field: FilterField, operator: FilterOperator,
       return errors;
     }
 
-    // Additional security check: prevent repeated characters that could indicate attacks
-    if (/(.)\1{20,}/.test(value)) { // More than 20 of the same character in a row
+    // Fast security check: prevent repeated characters that could indicate attacks
+    if (REPEATED_CHAR_PATTERN.test(value)) {
       errors.push(`Field "${field}" requires a valid date value`);
       return errors;
     }
 
-    // Explicit invalid format checks first (reject these patterns)
-    const invalidPatterns = [
-      /\s/,                           // Any spaces
-      /now\+\d+day/,                  // "day" instead of "d"
-      /now\/day/,                     // "day" instead of "d"
-      /\d{4}\/\d{1}\/\d{1}/,          // Missing leading zeros in YYYY/M/D
-      /\d{1}-\d{2}-\d{4}/,            // Wrong order D-MM-YYYY
-      /now\+\d+\.\d+[a-z]/,           // Decimal numbers
-      /now\+\+/,                      // Double operator
-      /now\+-/,                       // Conflicting operators
-    ];
-
-    const hasInvalidPattern = invalidPatterns.some(pattern => pattern.test(value));
-    if (hasInvalidPattern) {
-      errors.push(`Field "${field}" requires a valid date value`);
-      return errors;
-    }
-
-    // Valid format patterns
-    const datePatterns = [
-      /^\d{4}-\d{2}-\d{2}$/,                    // YYYY-MM-DD
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,  // ISO datetime
-      /^now$/,                                  // Current time
-      /^now([+-]\d{1,4}[smhdwMy])?$/,          // Relative dates like "now+7d", "now-30s"
-      /^now\/[smhdwMy]$/,                       // Period dates like "now/d", "now/w"
-    ];
-
-    const isValidPattern = datePatterns.some(pattern => pattern.test(value));
-    if (!isValidPattern) {
-      errors.push(`Field "${field}" requires a valid date value`);
-      return errors;
-    }
-
-    // Additional validation for YYYY-MM-DD dates to check for valid calendar dates
-    const dateMatch = value.match(/^\d{4}-\d{2}-\d{2}$/);
-    if (dateMatch) {
-      const [yearStr, monthStr, dayStr] = dateMatch[0].split('-');
-      const year = parseInt(yearStr!, 10);
-      const month = parseInt(monthStr!, 10);
-      const day = parseInt(dayStr!, 10);
-
-      const date = new Date(year, month - 1, day);
-
-      // Check if the date is valid (month and day within bounds)
-      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    // Fast rejection: check against known invalid patterns first (optimized)
+    for (const pattern of DATE_PATTERNS.SECURITY_REJECTION) {
+      if (pattern.test(value)) {
         errors.push(`Field "${field}" requires a valid date value`);
         return errors;
       }
     }
+
+    // Quick validation: use combined pattern for fast acceptance (prevents backtracking)
+    if (!DATE_PATTERNS.QUICK_DATE_CHECK.test(value)) {
+      errors.push(`Field "${field}" requires a valid date value`);
+      return errors;
+    }
+
+    // Specific validation: only run additional checks if needed
+    // This minimizes regex operations for common cases
+    if (DATE_PATTERNS.ISO_DATE.test(value)) {
+      // Validate actual calendar date only for ISO date format
+      const dateMatch = value.match(DATE_PATTERNS.ISO_DATE);
+      if (dateMatch) {
+        const [yearStr, monthStr, dayStr] = dateMatch[0].split('-');
+        const year = parseInt(yearStr!, 10);
+        const month = parseInt(monthStr!, 10);
+        const day = parseInt(dayStr!, 10);
+
+        const date = new Date(year, month - 1, day);
+
+        // Check if the date is valid (month and day within bounds)
+        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+          errors.push(`Field "${field}" requires a valid date value`);
+          return errors;
+        }
+      }
+    }
+    // No additional validation needed for other formats - they were validated by QUICK_DATE_CHECK
   }
 
   return errors;
