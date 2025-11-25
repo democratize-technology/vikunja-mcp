@@ -9,7 +9,7 @@ import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getClientFromContext } from '../client';
-import type { ExtendedUserSettings } from '../types/vikunja';
+import type { User, ExtendedUserSettings } from '../types/vikunja';
 import { handleAuthError } from '../utils/auth-error-handler';
 import { formatAorpAsMarkdown } from '../aorp/markdown';
 
@@ -67,12 +67,34 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
 
         switch (subcommand) {
           case 'current': {
-            const user = await client.users.getUser();
+            const rawUser = await client.users.getUser();
+
+            // Handle the actual API response format gracefully
+            // Cast the basic node-vikunja User to our extended User interface
+            // Extended properties may not be available from all Vikunja API versions
+            const user: User = rawUser as unknown as User;
+
+            const enhancedUser: User = {
+              id: user.id,
+              username: user.username,
+              ...(user.email && { email: user.email }),
+              ...(user.name && { name: user.name }),
+              ...(user.created && { created: user.created }),
+              ...(user.updated && { updated: user.updated }),
+              // Extended settings - these may not be available in basic User response
+              ...(user.language && { language: user.language }),
+              ...(user.timezone && { timezone: user.timezone }),
+              ...(user.week_start !== undefined && { week_start: user.week_start }),
+              frontend_settings: user.frontend_settings || {},
+              ...(user.email_reminders_enabled !== undefined && { email_reminders_enabled: user.email_reminders_enabled }),
+              ...(user.overdue_tasks_reminders_enabled !== undefined && { overdue_tasks_reminders_enabled: user.overdue_tasks_reminders_enabled }),
+              ...(user.overdue_tasks_reminders_time && { overdue_tasks_reminders_time: user.overdue_tasks_reminders_time }),
+            };
 
             const response = createStandardResponse(
               'get-current-user',
               'Current user retrieved successfully',
-              { user },
+              { user: enhancedUser },
             );
 
             return {
@@ -117,20 +139,24 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
 
           case 'settings': {
             // Get current user first to get their settings
-            const user = await client.users.getUser();
+            const rawUser = await client.users.getUser();
 
+            // Cast the basic node-vikunja User to our extended User interface
+            const user: User = rawUser as unknown as User;
+
+            // Handle the actual API response format gracefully
             const settings = {
               id: user.id,
               username: user.username,
-              email: user.email,
-              name: user.name,
-              language: user.language,
-              timezone: user.timezone,
-              weekStart: user.week_start,
-              frontendSettings: user.frontend_settings,
-              emailRemindersEnabled: user.email_reminders_enabled,
-              overdueTasksRemindersEnabled: user.overdue_tasks_reminders_enabled,
-              overdueTasksRemindersTime: user.overdue_tasks_reminders_time,
+              ...(user.email && { email: user.email }),
+              ...(user.name && { name: user.name }),
+              ...(user.language && { language: user.language }),
+              ...(user.timezone && { timezone: user.timezone }),
+              ...(user.week_start !== undefined && { weekStart: user.week_start }),
+              frontendSettings: user.frontend_settings || {},
+              ...(user.email_reminders_enabled !== undefined && { emailRemindersEnabled: user.email_reminders_enabled }),
+              ...(user.overdue_tasks_reminders_enabled !== undefined && { overdueTasksRemindersEnabled: user.overdue_tasks_reminders_enabled }),
+              ...(user.overdue_tasks_reminders_time && { overdueTasksRemindersTime: user.overdue_tasks_reminders_time }),
             };
 
             const response = createStandardResponse(
@@ -209,7 +235,10 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
             );
 
             // Get updated user info
-            const updatedUser = await client.users.getUser();
+            const rawUpdatedUser = await client.users.getUser();
+
+            // Cast the basic node-vikunja User to our extended User interface
+            const updatedUser: User = rawUpdatedUser as unknown as User;
 
             const response = createStandardResponse(
               'update-user-settings',

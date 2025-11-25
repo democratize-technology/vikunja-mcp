@@ -6,6 +6,7 @@
 
 import type { AorpResponse, AorpStatus, AorpUrgency, SimpleAorpResponse } from './types';
 import { isSimpleAorpResponse } from './types';
+import { fixLiteralUnicodeEscapesInData } from '../utils/unicode-fix';
 
 /**
  * Escapes Markdown special characters to prevent injection attacks
@@ -80,10 +81,13 @@ const MAX_INPUT_LENGTH = 10_000_000; // 10MB
  * @throws Error if any input field exceeds MAX_INPUT_LENGTH (DoS protection)
  */
 export function formatSimpleAorpAsMarkdown(aorp: SimpleAorpResponse): string {
+  // Fix any literal unicode escape sequences in the data
+  const fixedAorp = fixLiteralUnicodeEscapesInData(aorp) as SimpleAorpResponse;
+
   // Validate string fields for length (DoS protection)
   const fieldsToValidate = [
-    aorp.immediate.key_insight,
-    aorp.summary,
+    fixedAorp.immediate.key_insight,
+    fixedAorp.summary,
   ];
 
   for (const field of fieldsToValidate) {
@@ -97,29 +101,29 @@ export function formatSimpleAorpAsMarkdown(aorp: SimpleAorpResponse): string {
   const lines: string[] = [];
 
   // Status header
-  const statusEmoji = getStatusEmoji(aorp.immediate.status);
-  const confidencePercent = Math.round(aorp.immediate.confidence * 100);
-  lines.push(`## ${statusEmoji} ${aorp.immediate.status.charAt(0).toUpperCase() + aorp.immediate.status.slice(1)} | Confidence: ${confidencePercent}%`);
+  const statusEmoji = getStatusEmoji(fixedAorp.immediate.status);
+  const confidencePercent = Math.round(fixedAorp.immediate.confidence * 100);
+  lines.push(`## ${statusEmoji} ${fixedAorp.immediate.status.charAt(0).toUpperCase() + fixedAorp.immediate.status.slice(1)} | Confidence: ${confidencePercent}%`);
 
   // Key insight
   lines.push('');
-  lines.push(`**Key Insight**: ${escapeMarkdown(aorp.immediate.key_insight)}`);
+  lines.push(`**Key Insight**: ${escapeMarkdown(fixedAorp.immediate.key_insight)}`);
 
   // Session ID if present
-  if (aorp.immediate.session_id) {
-    lines.push(`**Session ID**: \`${escapeMarkdown(aorp.immediate.session_id)}\``);
+  if (fixedAorp.immediate.session_id) {
+    lines.push(`**Session ID**: \`${escapeMarkdown(fixedAorp.immediate.session_id)}\``);
   }
 
   // Summary
   lines.push('');
-  lines.push(`**Summary**: ${escapeMarkdown(aorp.summary)}`);
+  lines.push(`**Summary**: ${escapeMarkdown(fixedAorp.summary)}`);
 
   // Metadata
   lines.push('');
   lines.push('**Metadata**:');
-  lines.push(`- **Timestamp**: ${escapeMarkdown(aorp.metadata.timestamp)}`);
-  lines.push(`- **Operation**: ${escapeMarkdown(aorp.metadata.operation)}`);
-  lines.push(`- **Success**: ${aorp.metadata.success ? '✅ Yes' : '❌ No'}`);
+  lines.push(`- **Timestamp**: ${escapeMarkdown(fixedAorp.metadata.timestamp)}`);
+  lines.push(`- **Operation**: ${escapeMarkdown(fixedAorp.metadata.operation)}`);
+  lines.push(`- **Success**: ${fixedAorp.metadata.success ? '✅ Yes' : '❌ No'}`);
 
   return lines.join('\n');
 }
@@ -138,14 +142,18 @@ export function formatAorpAsMarkdown(aorp: AorpResponse | SimpleAorpResponse): s
     return formatSimpleAorpAsMarkdown(aorp);
   }
 
+  // Fix any literal unicode escape sequences in the data
+  // This addresses the issue where API data contains escaped unicode like "\ud83d\udc65"
+  const fixedAorp = fixLiteralUnicodeEscapesInData(aorp) as AorpResponse;
+
   // Validate all string fields for length (DoS protection)
   const fieldsToValidate = [
-    aorp.immediate.key_insight,
-    aorp.details.summary,
-    aorp.actionable.workflow_guidance || '',
-    ...aorp.actionable.next_steps,
-    aorp.actionable.recommendations.primary,
-    ...(aorp.actionable.recommendations.secondary || []),
+    fixedAorp.immediate.key_insight,
+    fixedAorp.details.summary,
+    fixedAorp.actionable.workflow_guidance || '',
+    ...fixedAorp.actionable.next_steps,
+    fixedAorp.actionable.recommendations.primary,
+    ...(fixedAorp.actionable.recommendations.secondary || []),
   ];
 
   for (const field of fieldsToValidate) {
@@ -159,75 +167,94 @@ export function formatAorpAsMarkdown(aorp: AorpResponse | SimpleAorpResponse): s
   const lines: string[] = [];
 
   // === IMMEDIATE SECTION ===
-  const statusEmoji = getStatusEmoji(aorp.immediate.status);
-  const statusText = aorp.immediate.status.charAt(0).toUpperCase() + aorp.immediate.status.slice(1);
-  const confidence = Math.round(aorp.immediate.confidence * 100);
+  const statusEmoji = getStatusEmoji(fixedAorp.immediate.status);
+  const statusText = fixedAorp.immediate.status.charAt(0).toUpperCase() + fixedAorp.immediate.status.slice(1);
+  const confidence = Math.round(fixedAorp.immediate.confidence * 100);
 
   lines.push(`## ${statusEmoji} ${statusText} | Confidence: ${confidence}%`);
   lines.push('');
-  lines.push(`**Key Insight**: ${escapeMarkdown(aorp.immediate.key_insight)}`);
+  lines.push(`**Key Insight**: ${escapeMarkdown(fixedAorp.immediate.key_insight)}`);
 
-  if (aorp.immediate.session_id) {
-    lines.push(`**Session ID**: \`${aorp.immediate.session_id}\``);
+  if (fixedAorp.immediate.session_id) {
+    lines.push(`**Session ID**: \`${fixedAorp.immediate.session_id}\``);
   }
   lines.push('');
 
   // === ACTIONABLE SECTION ===
   lines.push('### 🎯 Next Steps');
-  aorp.actionable.next_steps.forEach((step, index) => {
+  fixedAorp.actionable.next_steps.forEach((step, index) => {
     lines.push(`${index + 1}. ${escapeMarkdown(step)}`);
   });
   lines.push('');
 
   lines.push('### 💡 Recommendations');
-  lines.push(`**Primary**: ${escapeMarkdown(aorp.actionable.recommendations.primary)}`);
+  lines.push(`**Primary**: ${escapeMarkdown(fixedAorp.actionable.recommendations.primary)}`);
 
-  if (aorp.actionable.recommendations.secondary?.length) {
-    aorp.actionable.recommendations.secondary.forEach((rec) => {
+  if (fixedAorp.actionable.recommendations.secondary?.length) {
+    fixedAorp.actionable.recommendations.secondary.forEach((rec) => {
       lines.push(`- ${escapeMarkdown(rec)}`);
     });
   }
   lines.push('');
 
-  if (aorp.actionable.workflow_guidance) {
+  if (fixedAorp.actionable.workflow_guidance) {
     lines.push('### 🔄 Workflow Guidance');
-    lines.push(escapeMarkdown(aorp.actionable.workflow_guidance));
+    lines.push(escapeMarkdown(fixedAorp.actionable.workflow_guidance));
     lines.push('');
   }
 
   // === QUALITY SECTION ===
   lines.push('### 📊 Quality Indicators');
-  const completeness = Math.round(aorp.quality.completeness * 100);
-  const reliability = Math.round(aorp.quality.reliability * 100);
-  const urgencyEmoji = getUrgencyEmoji(aorp.quality.urgency);
-  const urgencyText = aorp.quality.urgency.charAt(0).toUpperCase() + aorp.quality.urgency.slice(1);
+  const completeness = Math.round(fixedAorp.quality.completeness * 100);
+  const reliability = Math.round(fixedAorp.quality.reliability * 100);
+  const urgencyEmoji = getUrgencyEmoji(fixedAorp.quality.urgency);
+  const urgencyText = fixedAorp.quality.urgency.charAt(0).toUpperCase() + fixedAorp.quality.urgency.slice(1);
 
   lines.push(`- **Completeness**: ${completeness}%`);
   lines.push(`- **Reliability**: ${reliability}%`);
   lines.push(`- **Urgency**: ${urgencyEmoji} ${urgencyText}`);
 
-  if (aorp.quality.indicators && Object.keys(aorp.quality.indicators).length > 0) {
-    Object.entries(aorp.quality.indicators).forEach(([key, value]) => {
+  if (fixedAorp.quality.indicators && Object.keys(fixedAorp.quality.indicators).length > 0) {
+    Object.entries(fixedAorp.quality.indicators).forEach(([key, value]) => {
       const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      const formattedValue = typeof value === 'number' && value >= 0 && value <= 1
-        ? `${Math.round(value * 100)}%`
-        : String(value);
-      lines.push(`- **${escapeMarkdown(formattedKey)}**: ${escapeMarkdown(formattedValue)}`);
+
+      let formattedValue: string;
+      if (typeof value === 'number' && value >= 0 && value <= 1) {
+        formattedValue = `${Math.round(value * 100)}%`;
+      } else if (value && typeof value === 'object') {
+        // Complex object - serialize as JSON
+        try {
+          formattedValue = `\n\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
+        } catch (error) {
+          formattedValue = `[Object serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+        }
+      } else {
+        formattedValue = String(value);
+      }
+
+      if (formattedValue.includes('```json')) {
+        // Multi-line JSON - put on separate lines
+        lines.push(`- **${escapeMarkdown(formattedKey)}**:`);
+        lines.push(formattedValue);
+      } else {
+        // Single line value
+        lines.push(`- **${escapeMarkdown(formattedKey)}**: ${escapeMarkdown(formattedValue)}`);
+      }
     });
   }
   lines.push('');
 
   // === DETAILS SECTION ===
   lines.push('### 📋 Details');
-  lines.push(`**Summary**: ${escapeMarkdown(aorp.details.summary)}`);
-  lines.push(`**Timestamp**: ${aorp.details.metadata.timestamp}`);
+  lines.push(`**Summary**: ${escapeMarkdown(fixedAorp.details.summary)}`);
+  lines.push(`**Timestamp**: ${fixedAorp.details.metadata.timestamp}`);
 
   // Display actual data from details.data (the most important part!)
-  if (aorp.details.data && Object.keys(aorp.details.data).length > 0) {
+  if (fixedAorp.details.data && Object.keys(fixedAorp.details.data).length > 0) {
     lines.push('');
     lines.push('### 📦 Actual Data');
 
-    Object.entries(aorp.details.data).forEach(([key, value]) => {
+    Object.entries(fixedAorp.details.data).forEach(([key, value]) => {
       const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
       if (Array.isArray(value)) {
@@ -268,8 +295,8 @@ export function formatAorpAsMarkdown(aorp: AorpResponse | SimpleAorpResponse): s
           lines.push(`[Object serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}]`);
         }
       } else {
-        // Primitive value
-        const displayValue = value != null ? String(value) : 'null';
+        // Primitive value - safe to cast to string since we've excluded objects
+        const displayValue = value !== null ? String(value as string | number | boolean) : 'null';
         lines.push(`**${escapeMarkdown(formattedKey)}**: ${escapeMarkdown(displayValue)}`);
       }
       lines.push(''); // Add spacing between data sections
@@ -277,19 +304,39 @@ export function formatAorpAsMarkdown(aorp: AorpResponse | SimpleAorpResponse): s
   }
 
   // Additional metadata (excluding timestamp which we already displayed)
-  const additionalMetadata = Object.entries(aorp.details.metadata)
+  const additionalMetadata = Object.entries(fixedAorp.details.metadata)
     .filter(([key]) => key !== 'timestamp');
 
   if (additionalMetadata.length > 0) {
     lines.push('### 📊 Metadata');
     additionalMetadata.forEach(([key, value]) => {
       const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      // Format operation field as kebab-case for markdown compatibility
-      // SECURITY: operation is system-controlled (AORP response), not user input
-      const formattedValue = key === 'operation'
-        ? (typeof value === 'string' ? value.replace(/_/g, '-') : '')
-        : escapeMarkdown(typeof value === 'string' ? value : (value != null ? String(value) : ''));
-      lines.push(`**${escapeMarkdown(formattedKey)}**: ${formattedValue}`);
+
+      let formattedValue: string;
+      if (key === 'operation') {
+        // Format operation field as kebab-case for markdown compatibility
+        // SECURITY: operation is system-controlled (AORP response), not user input
+        formattedValue = typeof value === 'string' ? value.replace(/_/g, '-') : (value !== null && value !== undefined ? String(value as string | number | boolean) : '');
+      } else if (value && typeof value === 'object') {
+        // Complex object - serialize as JSON
+        try {
+          formattedValue = `\n\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
+        } catch (error) {
+          formattedValue = `[Object serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+        }
+      } else {
+        // Simple value - escape for markdown safety
+        formattedValue = escapeMarkdown(typeof value === 'string' ? value : (value !== null && value !== undefined ? String(value as string | number | boolean) : 'null'));
+      }
+
+      if (formattedValue.includes('```json')) {
+        // Multi-line JSON - put on separate lines
+        lines.push(`**${escapeMarkdown(formattedKey)}**:`);
+        lines.push(formattedValue);
+      } else {
+        // Single line value
+        lines.push(`**${escapeMarkdown(formattedKey)}**: ${formattedValue}`);
+      }
     });
   }
 
