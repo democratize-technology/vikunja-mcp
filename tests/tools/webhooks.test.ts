@@ -621,11 +621,13 @@ describe('Webhooks Tool', () => {
           events: ['task.created', 'task.updated', 'task.deleted'],
         }),
       });
-      const markdown = result.content[0].text;
-      const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
-      expect(markdown).toContain('update');
-      expect(markdown).toContain('Webhook events updated successfully');
+      const responseText = result.content[0].text;
+      const response = JSON.parse(responseText);
+
+      // Check AORP structure
+      expect(response.immediate.status).toBe('success');
+      expect(response.details.summary).toContain('Webhook events updated successfully');
+      expect(response.details.data.update.webhook).toBeDefined();
     });
 
     it('should throw error when events are missing', async () => {
@@ -866,12 +868,14 @@ describe('Webhooks Tool', () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
       const result = await mockHandler({ subcommand: 'list-events' });
-      const markdown = result.content[0].text;
-      const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
-      expect(markdown).toContain('list-events');
-      expect(markdown).toContain('task.created');
-      expect(markdown).toContain('project.created');
+      const responseText = result.content[0].text;
+      const response = JSON.parse(responseText);
+
+      // Check AORP structure
+      expect(response.immediate.status).toBe('success');
+      expect(response.details.summary).toContain('webhook events');
+      expect(response.details.data.list_events.events).toContain('task.created');
+      expect(response.details.data.list_events.events).toContain('project.created');
     });
 
     it('should use default events when API returns 401/403/404', async () => {
@@ -886,13 +890,15 @@ describe('Webhooks Tool', () => {
       });
 
       const result = await mockHandler({ subcommand: 'list-events' });
-      const markdown = result.content[0].text;
-      const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
-      expect(markdown).toContain('list-events');
-      expect(markdown).toContain('task.created');
-      expect(markdown).toContain('project.created');
-      expect(markdown).toContain('team.created');
+      const responseText = result.content[0].text;
+      const response = JSON.parse(responseText);
+
+      // Check AORP structure
+      expect(response.immediate.status).toBe('success');
+      expect(response.details.summary).toContain('webhook events');
+      expect(response.details.data.list_events.events).toContain('task.created');
+      expect(response.details.data.list_events.events).toContain('project.created');
+      expect(response.details.data.list_events.events).toContain('team.created');
     });
 
     it('should use default events when events API returns other errors', async () => {
@@ -907,12 +913,14 @@ describe('Webhooks Tool', () => {
       });
 
       const result = await mockHandler({ subcommand: 'list-events' });
-      const markdown = result.content[0].text;
-      const parsed = parseMarkdown(markdown);
-      expect(parsed.hasHeading(2, /✅ Success/)).toBe(true);
-      expect(markdown).toContain('list-events');
-      expect(markdown).toContain('task.created');
-      expect(markdown).toContain('project.created');
+      const responseText = result.content[0].text;
+      const response = JSON.parse(responseText);
+
+      // Check AORP structure
+      expect(response.immediate.status).toBe('success');
+      expect(response.details.summary).toContain('webhook events');
+      expect(response.details.data.list_events.events).toContain('task.created');
+      expect(response.details.data.list_events.events).toContain('project.created');
     });
   });
 

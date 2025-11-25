@@ -12,6 +12,7 @@ import { getClientFromContext } from '../client';
 import type { Webhook } from '../types/vikunja';
 import { logger } from '../utils/logger';
 import { validateAndConvertId } from '../utils/validation';
+import { createAorpResponse } from '../utils/response-factory';
 
 // Event cache for validation
 let cachedEvents: string[] | null = null;
@@ -127,21 +128,6 @@ async function validateWebhookEvents(authManager: AuthManager, events: string[])
   }
 }
 
-// Standardized webhook response type
-interface StandardWebhookResponse {
-  success: boolean;
-  operation: 'create' | 'update' | 'delete' | 'list' | 'get' | 'list-events';
-  message?: string;
-  webhook?: Webhook;
-  webhooks?: Webhook[];
-  events?: string[];
-  metadata?: {
-    timestamp: string;
-    count?: number;
-    affectedFields?: string[];
-  };
-}
-
 export function registerWebhooksTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {
   server.tool(
     'vikunja_webhooks',
@@ -209,21 +195,21 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
 
             logger.info('Listed webhooks', { projectId, count: webhooks.length });
 
-            const standardResponse: StandardWebhookResponse = {
-              success: true,
-              operation: 'list',
-              webhooks,
-              metadata: {
-                timestamp: new Date().toISOString(),
-                count: webhooks.length,
-              },
-            };
+            // Use AORP factory for consistent response format
+            const aorpResult = createAorpResponse(
+              'list',
+              `Retrieved ${webhooks.length} webhooks for project ${projectId}`,
+              { webhooks }, // Preserve webhooks data in details.data.webhooks
+              {
+                count: webhooks.length
+              }
+            );
 
             return {
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(standardResponse, null, 2),
+                  text: JSON.stringify(aorpResult.response, null, 2),
                 },
               ],
             };
@@ -268,20 +254,21 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
 
             logger.info('Retrieved webhook', { projectId, webhookId });
 
-            const standardResponse: StandardWebhookResponse = {
-              success: true,
-              operation: 'get',
-              webhook,
-              metadata: {
-                timestamp: new Date().toISOString(),
-              },
-            };
+            // Use AORP factory for consistent response format
+            const aorpResult = createAorpResponse(
+              'get',
+              `Retrieved webhook ${webhookId} for project ${projectId}`,
+              { webhook }, // Preserve webhook data in details.data.webhook
+              {
+                count: 1
+              }
+            );
 
             return {
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(standardResponse, null, 2),
+                  text: JSON.stringify(aorpResult.response, null, 2),
                 },
               ],
             };
@@ -343,21 +330,21 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
 
             logger.info('Created webhook', { projectId, webhookId: webhook.id });
 
-            const standardResponse: StandardWebhookResponse = {
-              success: true,
-              operation: 'create',
-              message: `Webhook created successfully with ID ${webhook.id}`,
-              webhook,
-              metadata: {
-                timestamp: new Date().toISOString(),
-              },
-            };
+            // Use AORP factory for consistent response format
+            const aorpResult = createAorpResponse(
+              'create',
+              `Webhook created successfully with ID ${webhook.id}`,
+              { webhook }, // Preserve webhook data in details.data.webhook
+              {
+                count: 1
+              }
+            );
 
             return {
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(standardResponse, null, 2),
+                  text: JSON.stringify(aorpResult.response, null, 2),
                 },
               ],
             };
@@ -409,22 +396,22 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
 
             logger.info('Updated webhook events', { projectId, webhookId, events: args.events });
 
-            const standardResponse: StandardWebhookResponse = {
-              success: true,
-              operation: 'update',
-              message: 'Webhook events updated successfully',
-              webhook,
-              metadata: {
-                timestamp: new Date().toISOString(),
-                affectedFields: ['events'],
-              },
-            };
+            // Use AORP factory for consistent response format
+            const aorpResult = createAorpResponse(
+              'update',
+              'Webhook events updated successfully',
+              { webhook }, // Preserve webhook data in details.data.webhook
+              {
+                count: 1,
+                affectedFields: ['events']
+              }
+            );
 
             return {
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(standardResponse, null, 2),
+                  text: JSON.stringify(aorpResult.response, null, 2),
                 },
               ],
             };
@@ -458,20 +445,21 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
 
             logger.info('Deleted webhook', { projectId, webhookId });
 
-            const standardResponse: StandardWebhookResponse = {
-              success: true,
-              operation: 'delete',
-              message: `Webhook ${webhookId} deleted successfully`,
-              metadata: {
-                timestamp: new Date().toISOString(),
-              },
-            };
+            // Use AORP factory for consistent response format
+            const aorpResult = createAorpResponse(
+              'delete',
+              `Webhook ${webhookId} deleted successfully`,
+              { webhookId }, // Preserve webhookId in details.data.webhookId
+              {
+                count: 1
+              }
+            );
 
             return {
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(standardResponse, null, 2),
+                  text: JSON.stringify(aorpResult.response, null, 2),
                 },
               ],
             };
@@ -482,21 +470,21 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
 
             logger.info('Listed available webhook events', { count: events.length });
 
-            const standardResponse: StandardWebhookResponse = {
-              success: true,
-              operation: 'list-events',
-              events,
-              metadata: {
-                timestamp: new Date().toISOString(),
-                count: events.length,
-              },
-            };
+            // Use AORP factory for consistent response format
+            const aorpResult = createAorpResponse(
+              'list-events',
+              `Retrieved ${events.length} available webhook events`,
+              { events }, // Preserve events data in details.data.events
+              {
+                count: events.length
+              }
+            );
 
             return {
               content: [
                 {
                   type: 'text' as const,
-                  text: JSON.stringify(standardResponse, null, 2),
+                  text: JSON.stringify(aorpResult.response, null, 2),
                 },
               ],
             };
