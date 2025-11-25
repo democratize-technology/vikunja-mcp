@@ -55,7 +55,6 @@ const CIRCUIT_BREAKER_OPTIONS: CircuitBreakerImpl.Options = {
   rollingCountTimeout: 60000, // 1 minute rolling window
   rollingCountBuckets: 12, // 12 buckets of 5 seconds each
   name: 'RateLimitMemoryStore',
-  enableMetrics: true,
 };
 
 /**
@@ -153,13 +152,9 @@ export class SecureRateLimitMiddleware {
     };
 
     // TESTING MODE: Allow shorter TTL for test compatibility
-    const storeOptions = testingMode ? {
-      windowMs: 1000, // 1 second window for tests
-    } : {};
-
     // Initialize MemoryStore instances
-    this.minuteStore = new MemoryStore(storeOptions);
-    this.hourStore = new MemoryStore(storeOptions);
+    this.minuteStore = new MemoryStore();
+    this.hourStore = new MemoryStore();
 
     // SECURITY: Wrap MemoryStore operations in circuit breakers
     this.minuteStoreBreaker = new CircuitBreakerImpl(
