@@ -17,7 +17,7 @@ import type {
   AorpStatus,
   AorpUrgency
 } from './types';
-import { ToolRecommendationEngine } from './tool-recommendations';
+import { ToolRecommendationEngine, type TaskData, type BulkOperationResults } from './tool-recommendations';
 
 /**
  * Default configuration for AORP Builder
@@ -482,36 +482,64 @@ export class AorpBuilder {
    * ARCH-001 Fix: Enhanced validation to check field validity, not just presence
    */
   private calculateFieldValidationPenalty(): number {
-    const { task, tasks, operation } = this.context;
+    const { task, operation } = this.context;
     let penalty = 0;
 
+    // Type guard for TaskData
+    const isTaskData = (data: unknown): data is TaskData => {
+      return data !== null && typeof data === 'object';
+    };
+
+    // Define validator function type
+    type FieldValidator = (val: unknown) => boolean;
+
     // Define critical fields by operation type with validation criteria
-    const criticalFields = {
+    const criticalFields: Record<string, Array<{ field: keyof TaskData; validator: FieldValidator }>> = {
       'create-task': [
-        { field: 'title', validator: (val: any) => val && typeof val === 'string' && val.trim().length > 0 },
-        { field: 'priority', validator: (val: any) => val !== undefined && val !== null && val >= 1 && val <= 5 }
+        {
+          field: 'title',
+          validator: (val: unknown): val is string =>
+            typeof val === 'string' && val.trim().length > 0
+        },
+        {
+          field: 'priority',
+          validator: (val: unknown): boolean =>
+            typeof val === 'number' && val >= 1 && val <= 5
+        }
       ],
       'update-task': [],
       'get-task': [],
       'list-tasks': [],
       'delete-task': [],
       'bulk-create-tasks': [
-        { field: 'title', validator: (val: any) => val && typeof val === 'string' && val.trim().length > 0 }
+        {
+          field: 'title',
+          validator: (val: unknown): val is string =>
+            typeof val === 'string' && val.trim().length > 0
+        }
       ],
       'bulk-update-tasks': [],
       'bulk-delete-tasks': []
     };
 
     // Define important fields with validation criteria
-    const importantFields = [
-      { field: 'due_date', validator: (val: any) => val && !isNaN(new Date(val).getTime()) },
-      { field: 'description', validator: (val: any) => val && typeof val === 'string' && val.trim().length > 5 }
+    const importantFields: Array<{ field: keyof TaskData; validator: FieldValidator }> = [
+      {
+        field: 'due_date',
+        validator: (val: unknown): boolean =>
+          typeof val === 'string' && !isNaN(new Date(val).getTime())
+      },
+      {
+        field: 'description',
+        validator: (val: unknown): boolean =>
+          typeof val === 'string' && val.trim().length > 5
+      }
     ];
 
-    const operationCriticalFields = criticalFields[operation as keyof typeof criticalFields] || [];
+    const operationCriticalFields = criticalFields[operation] || [];
 
-    if (task && typeof task === 'object') {
-      const taskData = task as any;
+    if (isTaskData(task)) {
+      const taskData = task;
 
       // Heavy penalties for invalid critical fields
       operationCriticalFields.forEach(({ field, validator }) => {
@@ -541,40 +569,66 @@ export class AorpBuilder {
 
     const { task, tasks, results } = this.context;
 
-    if (task && typeof task === 'object') {
-      const taskData = task as any;
+    // Type guards
+    const isTaskData = (data: unknown): data is TaskData => {
+      return data !== null && typeof data === 'object';
+    };
+
+    const isTaskDataArray = (data: unknown): data is TaskData[] => {
+      return Array.isArray(data);
+    };
+
+    const isBulkResults = (data: unknown): data is BulkOperationResults => {
+      return data !== null && typeof data === 'object';
+    };
+
+    // Define quality field interface
+    interface QualityField {
+      field: keyof TaskData;
+      weight: number;
+      validator: (val: unknown) => boolean;
+    }
+
+    if (isTaskData(task)) {
+      const taskData = task;
 
       // Enhanced field quality analysis with validation
-      const qualityFields = [
+      const qualityFields: QualityField[] = [
         {
           field: 'title',
           weight: 0.25,
-          validator: (val: any) => val && typeof val === 'string' && val.trim().length > 0
+          validator: (val: unknown): boolean =>
+            typeof val === 'string' && val.trim().length > 0
         },
         {
           field: 'description',
           weight: 0.2,
-          validator: (val: any) => val && typeof val === 'string' && val.trim().length > 10
+          validator: (val: unknown): boolean =>
+            typeof val === 'string' && val.trim().length > 10
         },
         {
           field: 'priority',
           weight: 0.2,
-          validator: (val: any) => val !== undefined && val !== null && val >= 1 && val <= 5
+          validator: (val: unknown): boolean =>
+            typeof val === 'number' && val >= 1 && val <= 5
         },
         {
           field: 'due_date',
           weight: 0.15,
-          validator: (val: any) => val && !isNaN(new Date(val).getTime())
+          validator: (val: unknown): boolean =>
+            typeof val === 'string' && !isNaN(new Date(val).getTime())
         },
         {
           field: 'assignees',
           weight: 0.1,
-          validator: (val: any) => Array.isArray(val) && val.length > 0
+          validator: (val: unknown): boolean =>
+            Array.isArray(val) && val.length > 0
         },
         {
           field: 'labels',
           weight: 0.1,
-          validator: (val: any) => Array.isArray(val) && val.length > 0
+          validator: (val: unknown): boolean =>
+            Array.isArray(val) && val.length > 0
         }
       ];
 
@@ -582,28 +636,28 @@ export class AorpBuilder {
         maxScore += weight;
         if (validator(taskData[field])) {
           score += weight;
-        } else if (taskData[field]) {
+        } else if (taskData[field] !== undefined) {
           // Partial score for field that exists but doesn't meet quality criteria
           score += weight * 0.3;
         }
       });
-    } else if (tasks && Array.isArray(tasks)) {
+    } else if (isTaskDataArray(tasks)) {
       // Enhanced task list quality analysis
       const totalTasks = tasks.length;
       if (totalTasks > 0) {
         maxScore = 1.0;
 
-        // More sophisticated data richness checks
-        const tasksWithValidTitles = tasks.filter((t: any) =>
+        // More sophisticated data richness checks with type safety
+        const tasksWithValidTitles = tasks.filter((t: TaskData) =>
           t.title && typeof t.title === 'string' && t.title.trim().length > 0
         ).length;
-        const tasksWithValidPriority = tasks.filter((t: any) =>
-          t.priority !== undefined && t.priority !== null && t.priority >= 1 && t.priority <= 5
+        const tasksWithValidPriority = tasks.filter((t: TaskData) =>
+          typeof t.priority === 'number' && t.priority >= 1 && t.priority <= 5
         ).length;
-        const tasksWithValidDueDates = tasks.filter((t: any) =>
+        const tasksWithValidDueDates = tasks.filter((t: TaskData) =>
           t.due_date && !isNaN(new Date(t.due_date).getTime())
         ).length;
-        const tasksWithAssignees = tasks.filter((t: any) =>
+        const tasksWithAssignees = tasks.filter((t: TaskData) =>
           Array.isArray(t.assignees) && t.assignees.length > 0
         ).length;
 
@@ -613,8 +667,8 @@ export class AorpBuilder {
         score += (tasksWithValidDueDates / totalTasks) * 0.25;
         score += (tasksWithAssignees / totalTasks) * 0.15;
       }
-    } else if (results && typeof results === 'object') {
-      const resultsData = results as any;
+    } else if (isBulkResults(results)) {
+      const resultsData = results;
       const total = (resultsData.successful || 0) + (resultsData.failed || 0);
 
       if (total > 0) {
@@ -637,7 +691,7 @@ export class AorpBuilder {
    * Calculate performance score based on response time and operation complexity
    */
   private calculatePerformanceScore(): number {
-    const { processingTime, operation, dataSize } = this.context;
+    const { processingTime, operation } = this.context;
 
     // Define acceptable response times by operation type (in ms)
     const acceptableTimes = {
@@ -672,6 +726,11 @@ export class AorpBuilder {
   private calculateErrorPenalty(): number {
     let totalPenalty = 0;
 
+    // Type guard for BulkOperationResults
+    const isBulkResults = (data: unknown): data is BulkOperationResults => {
+      return data !== null && typeof data === 'object';
+    };
+
     // For bulk operations, consider both error array and results failure rate
     if (this.context.operation.includes('bulk-')) {
       // Check for explicit errors in context
@@ -680,8 +739,8 @@ export class AorpBuilder {
       }
 
       // Check for failed operations in results
-      if (this.context.results && typeof this.context.results === 'object') {
-        const results = this.context.results as any;
+      if (isBulkResults(this.context.results)) {
+        const results = this.context.results;
         const failed = results.failed || 0;
         const total = (results.successful || 0) + failed;
 
@@ -714,6 +773,11 @@ export class AorpBuilder {
       return 0;
     }
 
+    // Type guard for BulkOperationResults
+    const isBulkResults = (data: unknown): data is BulkOperationResults => {
+      return data !== null && typeof data === 'object';
+    };
+
     // Different operations have different reliability patterns
     switch (operation) {
       case 'create-task':
@@ -731,8 +795,8 @@ export class AorpBuilder {
       case 'bulk-update-tasks':
       case 'bulk-delete-tasks':
         // Bonus based on success rate for bulk operations
-        if (this.context.results && typeof this.context.results === 'object') {
-          const results = this.context.results as any;
+        if (isBulkResults(this.context.results)) {
+          const results = this.context.results;
           const total = (results.successful || 0) + (results.failed || 0);
           if (total > 0) {
             const successRate = (results.successful || 0) / total;
