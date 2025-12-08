@@ -39,13 +39,14 @@ describe('Field Selector', () => {
 
   describe('Standard Verbosity', () => {
     it('should select core and context fields for standard verbosity', () => {
-      const availableFields = ['id', 'title', 'done', 'description', 'priority', 'due_date'];
+      // due_date is now in CONTEXT (STANDARD) since it's essential for task management
+      const availableFields = ['id', 'title', 'done', 'description', 'priority', 'due_date', 'created_at'];
       const config = { verbosity: Verbosity.STANDARD };
 
       const result = fieldSelector.selectFields(config, availableFields);
 
-      expect(result.includedFields).toEqual(['id', 'title', 'done', 'description', 'priority']);
-      expect(result.excludedFields).toEqual(['due_date']);
+      expect(result.includedFields).toEqual(['id', 'title', 'done', 'description', 'priority', 'due_date']);
+      expect(result.excludedFields).toEqual(['created_at']); // created_at remains in SCHEDULING
       expect(result.activeCategories).toEqual([FieldCategory.CORE, FieldCategory.CONTEXT]);
     });
 
@@ -95,7 +96,8 @@ describe('Field Selector', () => {
 
   describe('Complete Verbosity', () => {
     it('should select all available fields for complete verbosity', () => {
-      const availableFields = ['id', 'title', 'done', 'description', 'priority', 'due_date', 'hex_color', 'position', 'index'];
+      // Note: due_date is now in CONTEXT, so we need created_at for SCHEDULING category
+      const availableFields = ['id', 'title', 'done', 'description', 'priority', 'due_date', 'created_at', 'hex_color', 'position', 'index'];
       const config = { verbosity: Verbosity.COMPLETE };
 
       const result = fieldSelector.selectFields(config, availableFields);
@@ -194,10 +196,10 @@ describe('Field Selector', () => {
       expect(idField?.category).toBe(FieldCategory.CORE);
       expect(idField?.minVerbosity).toBe(Verbosity.MINIMAL);
 
-      // Check scheduling field definitions
+      // Check context field definitions (due_date moved to CONTEXT for STANDARD availability)
       const dueDateField = result.fieldDefinitions.find(f => f.fieldName === 'due_date');
-      expect(dueDateField?.category).toBe(FieldCategory.SCHEDULING);
-      expect(dueDateField?.minVerbosity).toBe(Verbosity.DETAILED);
+      expect(dueDateField?.category).toBe(FieldCategory.CONTEXT);
+      expect(dueDateField?.minVerbosity).toBe(Verbosity.STANDARD);
     });
 
     it('should infer categories for unknown fields when included via override', () => {

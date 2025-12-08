@@ -220,12 +220,12 @@ export const FIELD_CATEGORIES = {
   // Context fields (included in standard and above)
   CONTEXT_FIELDS: [
     'description', 'project_id', 'project', 'labels', 'assignees',
-    'creator', 'created_by', 'priority', 'identifier'
+    'creator', 'created_by', 'priority', 'identifier', 'due_date'
   ],
 
   // Scheduling fields (included in detailed and above)
   SCHEDULING_FIELDS: [
-    'due_date', 'start_date', 'end_date', 'reminders', 'created_at',
+    'start_date', 'end_date', 'reminders', 'created_at',
     'updated_at', 'completed_at', 'repeat_after'
   ],
 

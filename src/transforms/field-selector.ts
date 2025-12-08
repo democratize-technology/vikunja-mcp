@@ -39,10 +39,10 @@ export class FieldSelector {
       { fieldName: 'description', category: FieldCategory.CONTEXT, minVerbosity: Verbosity.STANDARD },
       { fieldName: 'project_id', category: FieldCategory.CONTEXT, minVerbosity: Verbosity.STANDARD },
       { fieldName: 'priority', category: FieldCategory.CONTEXT, minVerbosity: Verbosity.STANDARD },
+      { fieldName: 'due_date', category: FieldCategory.CONTEXT, minVerbosity: Verbosity.STANDARD },
     ];
 
     const schedulingFields: FieldDefinition[] = [
-      { fieldName: 'due_date', category: FieldCategory.SCHEDULING, minVerbosity: Verbosity.DETAILED },
       { fieldName: 'created_at', category: FieldCategory.SCHEDULING, minVerbosity: Verbosity.DETAILED },
       { fieldName: 'updated_at', category: FieldCategory.SCHEDULING, minVerbosity: Verbosity.DETAILED },
     ];
