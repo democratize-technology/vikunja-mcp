@@ -189,7 +189,7 @@ export class BulkOperationProcessor {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
@@ -282,7 +282,7 @@ export class BulkOperationProcessor {
           content: [
             {
               type: 'text' as const,
-              text: formatAorpAsMarkdown(response as any),
+              text: formatAorpAsMarkdown(response),
             },
           ],
         };
@@ -309,7 +309,7 @@ export class BulkOperationProcessor {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
@@ -496,7 +496,7 @@ export class BulkOperationProcessor {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
