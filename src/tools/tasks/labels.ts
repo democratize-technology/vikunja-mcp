@@ -2,8 +2,7 @@
  * Label operations for tasks
  */
 
-import type { StandardTaskResponse, MinimalTask } from '../../types/index';
-import { MCPError, ErrorCode } from '../../types/index';
+import { MCPError, ErrorCode, createStandardResponse } from '../../types/index';
 import { getClientFromContext } from '../../client';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../utils/retry';
@@ -66,22 +65,18 @@ export async function applyLabels(args: {
     // Fetch the updated task to show current labels
     const task = await client.tasks.getTask(args.id);
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'update',
-      message: `Label${labelIds.length > 1 ? 's' : ''} applied to task successfully`,
-      task: task,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        affectedFields: ['labels'],
-      },
-    };
+    const response = createStandardResponse(
+      'apply-label',
+      `Label${labelIds.length > 1 ? 's' : ''} applied to task successfully`,
+      { task },
+      { affectedFields: ['labels'] },
+    );
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
@@ -142,22 +137,18 @@ export async function removeLabels(args: {
     // Fetch the updated task to show current labels
     const task = await client.tasks.getTask(args.id);
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'update',
-      message: `Label${labelIds.length > 1 ? 's' : ''} removed from task successfully`,
-      task: task,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        affectedFields: ['labels'],
-      },
-    };
+    const response = createStandardResponse(
+      'remove-label',
+      `Label${labelIds.length > 1 ? 's' : ''} removed from task successfully`,
+      { task },
+      { affectedFields: ['labels'] },
+    );
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
@@ -191,27 +182,18 @@ export async function listTaskLabels(args: {
 
     const labels = task.labels || [];
 
-    const minimalTask: MinimalTask = {
-      ...(task.id !== undefined && { id: task.id }),
-      title: task.title,
-    };
-
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'get',
-      message: `Task has ${labels.length} label(s)`,
-      task: { ...minimalTask, labels: labels },
-      metadata: {
-        timestamp: new Date().toISOString(),
-        count: labels.length,
-      },
-    };
+    const response = createStandardResponse(
+      'list-labels',
+      `Task has ${labels.length} label(s)`,
+      { task: { id: task.id, title: task.title, labels } },
+      { count: labels.length },
+    );
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as any),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
