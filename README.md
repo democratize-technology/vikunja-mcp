@@ -1310,6 +1310,38 @@ FILTER_MAX_LENGTH=1000          # Maximum filter string length (default: 1000)
 FILTER_MAX_VALUE_LENGTH=200     # Maximum individual value length (default: 200)
 ```
 
+#### Tool Blocklist Configuration
+
+Disable specific tools to reduce token usage in AI assistants. This is useful when you don't need certain tools and want to minimize the tool definitions sent to the AI model.
+
+```bash
+# Disable specific tools (comma-separated list)
+# Core tools (auth, tasks) cannot be disabled
+VIKUNJA_DISABLED_TOOLS=teams,templates,webhooks,filters,batch-import
+```
+
+**Blockable Tools:**
+| Tool | Description |
+|------|-------------|
+| `projects` | Project management operations |
+| `labels` | Label management operations |
+| `teams` | Team operations |
+| `filters` | Saved filter management |
+| `templates` | Project template operations |
+| `webhooks` | Webhook management |
+| `batch-import` | Batch import operations |
+| `users` | User management (requires JWT) |
+| `export` | Data export (requires JWT) |
+
+**Protected Core Tools (cannot be disabled):**
+- `auth` - Authentication management
+- `tasks` - Task operations
+
+**Notes:**
+- Unknown tool names are logged as warnings but ignored
+- Without this variable set, all tools are registered (backwards compatible)
+- Token savings depend on which tools you disable
+
 For detailed rate limiting configuration, see [`docs/RATE_LIMITING.md`](docs/RATE_LIMITING.md).
 
 ## Roadmap

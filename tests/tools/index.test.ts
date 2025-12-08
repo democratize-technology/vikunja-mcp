@@ -268,4 +268,187 @@ describe('Tool Registration', () => {
       }
     });
   });
+
+  describe('registerTools with VIKUNJA_DISABLED_TOOLS blocklist', () => {
+    const originalEnv = process.env.VIKUNJA_DISABLED_TOOLS;
+    let consoleWarnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    });
+
+    afterEach(() => {
+      // Restore environment variable
+      if (originalEnv === undefined) {
+        delete process.env.VIKUNJA_DISABLED_TOOLS;
+      } else {
+        process.env.VIKUNJA_DISABLED_TOOLS = originalEnv;
+      }
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should register all tools when VIKUNJA_DISABLED_TOOLS is not set (backwards compatible)', () => {
+      // Arrange
+      delete process.env.VIKUNJA_DISABLED_TOOLS;
+      const mockClientFactory = { test: 'factory' };
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getAuthType.mockReturnValue('jwt');
+
+      // Act
+      registerTools(mockServer, mockAuthManager, mockClientFactory);
+
+      // Assert - all tools should be registered
+      expect(registerAuthTool).toHaveBeenCalledTimes(1);
+      expect(registerTasksTool).toHaveBeenCalledTimes(1);
+      expect(registerProjectsTool).toHaveBeenCalledTimes(1);
+      expect(registerLabelsTool).toHaveBeenCalledTimes(1);
+      expect(registerTeamsTool).toHaveBeenCalledTimes(1);
+      expect(registerFiltersTool).toHaveBeenCalledTimes(1);
+      expect(registerTemplatesTool).toHaveBeenCalledTimes(1);
+      expect(registerWebhooksTool).toHaveBeenCalledTimes(1);
+      expect(registerBatchImportTool).toHaveBeenCalledTimes(1);
+      expect(registerUsersTool).toHaveBeenCalledTimes(1);
+      expect(registerExportTool).toHaveBeenCalledTimes(1);
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not register blocked tools from VIKUNJA_DISABLED_TOOLS', () => {
+      // Arrange
+      process.env.VIKUNJA_DISABLED_TOOLS = 'teams,templates,webhooks';
+      const mockClientFactory = { test: 'factory' };
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getAuthType.mockReturnValue('jwt');
+
+      // Act
+      registerTools(mockServer, mockAuthManager, mockClientFactory);
+
+      // Assert - core tools and non-blocked tools should be registered
+      expect(registerAuthTool).toHaveBeenCalledTimes(1);
+      expect(registerTasksTool).toHaveBeenCalledTimes(1);
+      expect(registerProjectsTool).toHaveBeenCalledTimes(1);
+      expect(registerLabelsTool).toHaveBeenCalledTimes(1);
+      expect(registerFiltersTool).toHaveBeenCalledTimes(1);
+      expect(registerBatchImportTool).toHaveBeenCalledTimes(1);
+      expect(registerUsersTool).toHaveBeenCalledTimes(1);
+      expect(registerExportTool).toHaveBeenCalledTimes(1);
+
+      // Blocked tools should NOT be registered
+      expect(registerTeamsTool).not.toHaveBeenCalled();
+      expect(registerTemplatesTool).not.toHaveBeenCalled();
+      expect(registerWebhooksTool).not.toHaveBeenCalled();
+    });
+
+    it('should always register core tools (auth, tasks) even if in blocklist', () => {
+      // Arrange - try to block core tools
+      process.env.VIKUNJA_DISABLED_TOOLS = 'auth,tasks,teams';
+      const mockClientFactory = { test: 'factory' };
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getAuthType.mockReturnValue('jwt');
+
+      // Act
+      registerTools(mockServer, mockAuthManager, mockClientFactory);
+
+      // Assert - core tools should ALWAYS be registered
+      expect(registerAuthTool).toHaveBeenCalledTimes(1);
+      expect(registerTasksTool).toHaveBeenCalledTimes(1);
+
+      // Teams should be blocked
+      expect(registerTeamsTool).not.toHaveBeenCalled();
+
+      // Warning should be logged about protected tools
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Core tools cannot be disabled')
+      );
+    });
+
+    it('should log warning for unknown tool names', () => {
+      // Arrange
+      process.env.VIKUNJA_DISABLED_TOOLS = 'teams,unknown-tool,fake-tool';
+      const mockClientFactory = { test: 'factory' };
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getAuthType.mockReturnValue('jwt');
+
+      // Act
+      registerTools(mockServer, mockAuthManager, mockClientFactory);
+
+      // Assert - warning should be logged
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Unknown tools in VIKUNJA_DISABLED_TOOLS')
+      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('unknown-tool')
+      );
+
+      // Teams should still be blocked
+      expect(registerTeamsTool).not.toHaveBeenCalled();
+    });
+
+    it('should block all blockable tools when all specified', () => {
+      // Arrange
+      process.env.VIKUNJA_DISABLED_TOOLS =
+        'projects,labels,teams,filters,templates,webhooks,batch-import,users,export';
+      const mockClientFactory = { test: 'factory' };
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getAuthType.mockReturnValue('jwt');
+
+      // Act
+      registerTools(mockServer, mockAuthManager, mockClientFactory);
+
+      // Assert - only core tools should be registered
+      expect(registerAuthTool).toHaveBeenCalledTimes(1);
+      expect(registerTasksTool).toHaveBeenCalledTimes(1);
+
+      // All blockable tools should NOT be registered
+      expect(registerProjectsTool).not.toHaveBeenCalled();
+      expect(registerLabelsTool).not.toHaveBeenCalled();
+      expect(registerTeamsTool).not.toHaveBeenCalled();
+      expect(registerFiltersTool).not.toHaveBeenCalled();
+      expect(registerTemplatesTool).not.toHaveBeenCalled();
+      expect(registerWebhooksTool).not.toHaveBeenCalled();
+      expect(registerBatchImportTool).not.toHaveBeenCalled();
+      expect(registerUsersTool).not.toHaveBeenCalled();
+      expect(registerExportTool).not.toHaveBeenCalled();
+    });
+
+    it('should handle blocklist with whitespace correctly', () => {
+      // Arrange
+      process.env.VIKUNJA_DISABLED_TOOLS = '  teams , templates  ,  webhooks  ';
+      const mockClientFactory = { test: 'factory' };
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getAuthType.mockReturnValue('jwt');
+
+      // Act
+      registerTools(mockServer, mockAuthManager, mockClientFactory);
+
+      // Assert - blocked tools should NOT be registered despite whitespace
+      expect(registerTeamsTool).not.toHaveBeenCalled();
+      expect(registerTemplatesTool).not.toHaveBeenCalled();
+      expect(registerWebhooksTool).not.toHaveBeenCalled();
+
+      // Other tools should be registered
+      expect(registerProjectsTool).toHaveBeenCalledTimes(1);
+      expect(registerLabelsTool).toHaveBeenCalledTimes(1);
+    });
+
+    it('should respect both blocklist and JWT auth requirements', () => {
+      // Arrange - block export, use API token (which also excludes users/export)
+      process.env.VIKUNJA_DISABLED_TOOLS = 'export,teams';
+      const mockClientFactory = { test: 'factory' };
+      mockAuthManager.isAuthenticated.mockReturnValue(true);
+      mockAuthManager.getAuthType.mockReturnValue('api-token');
+
+      // Act
+      registerTools(mockServer, mockAuthManager, mockClientFactory);
+
+      // Assert - teams should be blocked by blocklist
+      expect(registerTeamsTool).not.toHaveBeenCalled();
+
+      // users and export not registered due to api-token auth (not blocklist)
+      expect(registerUsersTool).not.toHaveBeenCalled();
+      expect(registerExportTool).not.toHaveBeenCalled();
+
+      // Other tools should be registered
+      expect(registerProjectsTool).toHaveBeenCalledTimes(1);
+    });
+  });
 });
