@@ -4,8 +4,7 @@
  */
 
 import { z } from 'zod';
-import { MCPError, ErrorCode } from '../types/index';
-import type { StandardTaskResponse } from '../types/index';
+import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
 import { getClientFromContext } from '../client';
 import { logger } from '../utils/logger';
 import { validateId as validateSharedId } from '../utils/validation';
@@ -101,16 +100,12 @@ export async function handleRelationSubcommands(
         // Fetch the updated task to show all relations
         const updatedTask = await client.tasks.getTask(args.id);
 
-        const response: StandardTaskResponse = {
-          success: true,
-          operation: 'relate',
-          message: `Successfully created ${args.relationKind} relation between task ${args.id} and task ${args.otherTaskId}`,
-          task: updatedTask,
-          metadata: {
-            timestamp: new Date().toISOString(),
-            affectedFields: ['related_tasks'],
-          },
-        };
+        const response = createStandardResponse(
+          'relate',
+          `Successfully created ${args.relationKind} relation between task ${args.id} and task ${args.otherTaskId}`,
+          { task: updatedTask },
+          { affectedFields: ['related_tasks'] },
+        );
 
         logger.debug('Task relation created', {
           taskId: args.id,
@@ -122,7 +117,7 @@ export async function handleRelationSubcommands(
           content: [
             {
               type: 'text' as const,
-              text: formatAorpAsMarkdown(response as any),
+              text: formatAorpAsMarkdown(response),
             },
           ],
         };
@@ -165,16 +160,12 @@ export async function handleRelationSubcommands(
         // Fetch the updated task to show remaining relations
         const updatedTask = await client.tasks.getTask(args.id);
 
-        const response: StandardTaskResponse = {
-          success: true,
-          operation: 'unrelate',
-          message: `Successfully removed ${args.relationKind} relation between task ${args.id} and task ${args.otherTaskId}`,
-          task: updatedTask,
-          metadata: {
-            timestamp: new Date().toISOString(),
-            affectedFields: ['related_tasks'],
-          },
-        };
+        const response = createStandardResponse(
+          'unrelate',
+          `Successfully removed ${args.relationKind} relation between task ${args.id} and task ${args.otherTaskId}`,
+          { task: updatedTask },
+          { affectedFields: ['related_tasks'] },
+        );
 
         logger.debug('Task relation removed', {
           taskId: args.id,
@@ -186,7 +177,7 @@ export async function handleRelationSubcommands(
           content: [
             {
               type: 'text' as const,
-              text: formatAorpAsMarkdown(response as any),
+              text: formatAorpAsMarkdown(response),
             },
           ],
         };
@@ -205,27 +196,24 @@ export async function handleRelationSubcommands(
         // Fetch the task with its relations
         const task = await client.tasks.getTask(args.id);
 
-        const response: StandardTaskResponse = {
-          success: true,
-          operation: 'relations',
-          message: `Found ${task.related_tasks?.length || 0} relations for task ${args.id}`,
-          task: task,
-          metadata: {
-            timestamp: new Date().toISOString(),
-            count: task.related_tasks?.length || 0,
-          },
-        };
+        const relationCount = task.related_tasks?.length || 0;
+        const response = createStandardResponse(
+          'relations',
+          `Found ${relationCount} relations for task ${args.id}`,
+          { task },
+          { count: relationCount },
+        );
 
         logger.debug('Task relations retrieved', {
           taskId: args.id,
-          relationCount: task.related_tasks?.length || 0,
+          relationCount,
         });
 
         return {
           content: [
             {
               type: 'text' as const,
-              text: formatAorpAsMarkdown(response as any),
+              text: formatAorpAsMarkdown(response),
             },
           ],
         };
