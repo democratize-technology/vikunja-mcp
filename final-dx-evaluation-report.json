@@ -1,0 +1,69 @@
+{
+  "baseline": {
+    "score": 68,
+    "timeToFirstSuccess": 750000
+  },
+  "previous": {
+    "score": 89,
+    "timeToFirstSuccess": 45000
+  },
+  "current": {
+    "score": 99,
+    "timeToFirstSuccess": 1075
+  },
+  "improvements": {
+    "total": 31,
+    "recent": 10,
+    "totalPercentage": 46,
+    "recentPercentage": 11,
+    "timeImprovement": 43925,
+    "timeImprovementPercentage": 98
+  },
+  "tests": [
+    {
+      "name": "server_health",
+      "timestamp": 1762123578806,
+      "passed": true,
+      "responseTime": 1005,
+      "authenticated": true,
+      "score": 100
+    },
+    {
+      "name": "time_to_first_success",
+      "timestamp": 1762123579882,
+      "timeToSuccess": 1075,
+      "targetTime": 5000,
+      "score": 100,
+      "improved": true
+    },
+    {
+      "name": "enhanced_auth_errors",
+      "timestamp": 1762123579882,
+      "score": 100,
+      "scenarios": 3
+    },
+    {
+      "name": "aorp_intelligence",
+      "timestamp": 1762123581748,
+      "accuracy": 100,
+      "correctActivations": 3,
+      "totalTests": 3
+    },
+    {
+      "name": "error_message_quality",
+      "timestamp": 1762123581749,
+      "averageQuality": 89,
+      "actionableRate": 100,
+      "totalScenarios": 5
+    },
+    {
+      "name": "complete_user_journey",
+      "timestamp": 1762123584791,
+      "totalTime": 3042,
+      "averageStepTime": 761,
+      "successRate": 100,
+      "score": 97,
+      "steps": 4
+    }
+  ]
+}
