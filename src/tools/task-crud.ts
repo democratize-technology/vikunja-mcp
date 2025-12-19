@@ -13,7 +13,7 @@ import { MCPError, ErrorCode } from '../types/index';
 import { getClientFromContext, setGlobalClientFactory } from '../client';
 import { logger } from '../utils/logger';
 import { storageManager } from '../storage/index';
-import type { TaskListingArgs, FilteringMetadata } from './tasks/types/filters';
+import type { TaskListingArgs } from './tasks/types/filters';
 import type { CreateTaskArgs, UpdateTaskArgs, DeleteTaskArgs, GetTaskArgs } from './tasks/crud/index';
 import { TaskFilteringOrchestrator } from './tasks/filtering/index';
 import { createAuthRequiredError, handleFetchError } from '../utils/error-handler';
@@ -55,12 +55,12 @@ async function listTasks(
     const metadata = filteringResult.metadata || {};
 
     // Type the filtering metadata properly
-    const filteringMetadata = metadata as FilteringMetadata;
+    const filteringMetadata = metadata;
 
     const response = createSuccessResponse(
       'list-tasks',
       `Found ${tasks.length} tasks${filteringMessage}`,
-      { tasks: tasks as unknown as Task[] },
+      { tasks: tasks as Task[] }, // Convert from node-vikunja Task to our Task interface
       {
         count: tasks.length,
         filteringMethod: filteringMetadata.serverSideFilteringUsed ? 'server-side' :

@@ -104,7 +104,7 @@ export async function createProjectShare(
     validateId(projectId, 'project id');
 
     // Convert string rights to numeric rights for API
-    let numericRight!: number;
+    let numericRight: number;
     if (right === undefined) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,

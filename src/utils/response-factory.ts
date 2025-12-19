@@ -3,7 +3,7 @@
  * Replaces 2,925-line AORP system with clean, direct response formatting
  */
 
-import { createSuccessResponse, createErrorResponse, formatMcpResponse, type SimpleResponse } from './simple-response';
+import { createSuccessResponse, createErrorResponse, type SimpleResponse } from './simple-response';
 import type { ResponseMetadata } from '../types/responses';
 import type { ResponseData } from '../types/index';
 
@@ -47,7 +47,7 @@ export function createSimpleResponse(
     processingTimeMs?: number;
   }
 ): SimpleResponse {
-  const { success = true, metadata, processingTimeMs } = options || {};
+  const { success = true, metadata } = options || {};
 
   if (success) {
     return createSuccessResponse(operation, message, data, {
@@ -109,7 +109,7 @@ export function createSimpleErrorResponse(
   message: string,
   errorCode: string = 'UNKNOWN_ERROR',
   metadata?: ResponseMetadata
-) {
+): SimpleResponse {
   return createErrorResponse(operation, message, errorCode, metadata);
 }
 
@@ -134,7 +134,7 @@ export function createAorpFromData(
   message: string,
   success: boolean = true,
   details?: string
-) {
+): SimpleResponse {
   return createSimpleResponse(operation, details || message, undefined, { success });
 }
 

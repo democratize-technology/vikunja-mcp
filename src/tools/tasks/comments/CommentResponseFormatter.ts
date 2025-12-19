@@ -11,11 +11,11 @@ import { formatAorpAsMarkdown } from '../../../utils/response-factory';
 /**
  * Service for formatting comment operation responses
  */
-export class CommentResponseFormatter {
+export const commentResponseFormatter = {
   /**
    * Format successful comment creation response
    */
-  static formatCreateCommentResponse(comment: TaskComment): StandardTaskResponse {
+  formatCreateCommentResponse(comment: TaskComment): StandardTaskResponse {
     return {
       success: true,
       operation: 'comment',
@@ -25,12 +25,12 @@ export class CommentResponseFormatter {
         timestamp: new Date().toISOString(),
       },
     };
-  }
+  },
 
   /**
    * Format successful comment list response
    */
-  static formatListCommentsResponse(comments: TaskComment[]): StandardTaskResponse {
+  formatListCommentsResponse(comments: TaskComment[]): StandardTaskResponse {
     return {
       success: true,
       operation: 'list',
@@ -41,12 +41,12 @@ export class CommentResponseFormatter {
         count: comments.length,
       },
     };
-  }
+  },
 
   /**
    * Format MCP response wrapper
    */
-  static formatMcpResponse(response: StandardTaskResponse): { content: Array<{ type: 'text'; text: string }> } {
+  formatMcpResponse(response: StandardTaskResponse): { content: Array<{ type: 'text'; text: string }> } {
     // Handle metadata properly to avoid type issues
     const safeMetadata: ResponseMetadata = {
       timestamp: response.metadata?.timestamp || new Date().toISOString(),
@@ -75,4 +75,4 @@ export class CommentResponseFormatter {
       ],
     };
   }
-}
+};

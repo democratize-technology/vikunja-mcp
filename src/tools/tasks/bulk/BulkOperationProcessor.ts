@@ -2,22 +2,12 @@
  * Main orchestration for bulk operations
  */
 
-import { MCPError, ErrorCode, createStandardResponse, createErrorResponse, getClientFromContext, logger, isAuthenticationError, withRetry, RETRY_CONFIG, transformApiError, handleFetchError } from '../../../index';
+import { MCPError, ErrorCode, createStandardResponse, getClientFromContext, logger, isAuthenticationError, RETRY_CONFIG, transformApiError, handleFetchError } from '../../../index';
+import { withRetry } from '../../../utils/retry';
 import type { BatchResult } from '../../../utils/performance/batch-processor';
-import type { SimpleResponse } from '../../../utils/response-factory';
 import type { Task, VikunjaClient } from 'node-vikunja';
-import { BatchProcessorFactory } from './BatchProcessorFactory';
-import { BulkOperationValidator, type BulkUpdateArgs, type BulkDeleteArgs, type BulkCreateArgs, type BulkCreateTaskData } from './BulkOperationValidator';
-import { BulkOperationErrorHandler } from './BulkOperationErrorHandler';
+import { BatchProcessorFactory, BulkOperationValidator, BulkOperationErrorHandler, type BulkUpdateArgs, type BulkDeleteArgs, type BulkCreateArgs, type BulkCreateTaskData } from './index';
 import { convertRepeatConfiguration } from '../validation';
-import type {
-  BulkUpdateResult,
-  BulkDeleteResult,
-  BulkCreateResult,
-  BulkOperationFailure,
-  BulkCreateFailure,
-  BatchProcessingResult
-} from './BulkOperationTypes';
 
 import { formatAorpAsMarkdown } from '../../../utils/response-factory';
 /**
@@ -34,7 +24,7 @@ export class BulkOperationProcessor {
       BulkOperationValidator.preprocessFieldValue(args);
       BulkOperationValidator.validateFieldConstraints(args);
 
-      const taskIds = args.taskIds!;
+      const taskIds = args.taskIds!; // Validated by BulkOperationValidator.validateBulkUpdate
       const client = await getClientFromContext();
 
       // Try the proper bulk update API first
@@ -76,7 +66,7 @@ export class BulkOperationProcessor {
     // Note: args.field and args.value are validated to be non-undefined in BulkOperationValidator
     const bulkOperation = {
       task_ids: taskIds,
-      field: args.field!,
+      field: args.field!, // Validated by BulkOperationValidator.validateFieldConstraints
       value: args.value,
     };
 
@@ -199,7 +189,7 @@ export class BulkOperationProcessor {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as SimpleResponse),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
@@ -212,7 +202,7 @@ export class BulkOperationProcessor {
     try {
       BulkOperationValidator.validateBulkDelete(args);
 
-      const taskIds = args.taskIds!;
+      const taskIds = args.taskIds!; // Validated by BulkOperationValidator.validateBulkUpdate
       const client = await getClientFromContext();
 
       // Fetch tasks before deletion for response metadata
@@ -291,7 +281,7 @@ export class BulkOperationProcessor {
           content: [
             {
               type: 'text' as const,
-              text: formatAorpAsMarkdown(response as SimpleResponse),
+              text: formatAorpAsMarkdown(response),
             },
           ],
         };
@@ -318,7 +308,7 @@ export class BulkOperationProcessor {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as SimpleResponse),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
@@ -374,7 +364,7 @@ export class BulkOperationProcessor {
     client: VikunjaClient,
     projectId: number,
     taskData: BulkCreateTaskData,
-    index: number
+    _index: number
   ): Promise<Task> {
     // Create the base task
     const newTask: Task = {
@@ -436,8 +426,9 @@ export class BulkOperationProcessor {
           label_ids: taskData.labels || [],
         }),
         {
-          ...RETRY_CONFIG.AUTH_ERRORS,
-          shouldRetry: (error) => isAuthenticationError(error)
+          maxRetries: RETRY_CONFIG.AUTH_ERRORS.maxRetries,
+          timeout: RETRY_CONFIG.AUTH_ERRORS.initialDelay + RETRY_CONFIG.AUTH_ERRORS.maxDelay,
+          shouldRetry: (error: unknown) => isAuthenticationError(error)
         }
       );
     }
@@ -449,8 +440,9 @@ export class BulkOperationProcessor {
             user_ids: taskData.assignees || [],
           }),
           {
-            ...RETRY_CONFIG.AUTH_ERRORS,
-            shouldRetry: (error) => isAuthenticationError(error)
+            maxRetries: RETRY_CONFIG.AUTH_ERRORS.maxRetries,
+            timeout: RETRY_CONFIG.AUTH_ERRORS.initialDelay + RETRY_CONFIG.AUTH_ERRORS.maxDelay,
+            shouldRetry: (error: unknown) => isAuthenticationError(error)
           }
         );
       } catch (assigneeError) {
@@ -505,7 +497,7 @@ export class BulkOperationProcessor {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as SimpleResponse),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };

@@ -5,13 +5,11 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { Task } from 'node-vikunja';
 import type { AuthManager } from '../../auth/AuthManager';
 import type { VikunjaClientFactory } from '../../client/VikunjaClientFactory';
-import { MCPError, ErrorCode, type TaskResponseData, type TaskResponseMetadata } from '../../types';
+import { MCPError, ErrorCode } from '../../types';
 import { getClientFromContext, setGlobalClientFactory } from '../../client';
 import { logger } from '../../utils/logger';
-import type { AorpBuilderConfig } from '../../utils/response-factory';
 import { storageManager } from '../../storage';
 import { relationSchema, handleRelationSubcommands } from '../tasks-relations';
 import { TaskFilteringOrchestrator } from './filtering';
@@ -19,21 +17,6 @@ import type { TaskListingArgs } from './types/filters';
 import { createAuthRequiredError, handleFetchError } from '../../utils/error-handler';
 import { formatAorpAsMarkdown } from '../../utils/response-factory';
 
-/**
- * Zod schema for AorpBuilderConfig
- * Replaces z.any() with proper type validation
- */
-const AorpBuilderConfigSchema = z.object({
-  confidenceMethod: z.enum(['adaptive', 'weighted', 'simple']).optional(),
-  enableNextSteps: z.boolean().optional(),
-  enableQualityIndicators: z.boolean().optional(),
-  confidenceWeights: z.object({
-    success: z.number(),
-    dataSize: z.number(),
-    responseTime: z.number(),
-    completeness: z.number(),
-  }).optional(),
-}).optional();
 
 // Import all operation handlers
 import { createTask, getTask, updateTask, deleteTask, createTaskResponse } from './crud';

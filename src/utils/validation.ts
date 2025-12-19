@@ -48,7 +48,6 @@ const LogicalOperatorSchema: z.ZodType<LogicalOperator> = z.enum(['&&', '||']);
 /**
  * Allowed characters for additional strictness (optional, can be relaxed)
  */
-const ALLOWED_CHAR_PATTERN = /^[\x20-\x7E\s]*$/;
 
 /**
  * Validate and sanitize a string value to prevent XSS using pattern matching + HTML escaping
@@ -303,12 +302,6 @@ export function validateCondition(condition: unknown): {
 /**
  * Schema for filter expressions
  */
-const FilterExpressionSchema = z.object({
-  groups: z.array(z.object({
-    operator: LogicalOperatorSchema,
-    conditions: z.array(ConditionSchema).max(MAX_CONDITIONS),
-  })).max(MAX_NESTING_DEPTH),
-});
 
 /**
  * Validate a filter expression using custom logic

@@ -150,12 +150,12 @@ export async function healthCheckAllStorage(): Promise<{
 /**
  * Migration utility (no-op in simplified version)
  */
-export async function migrateMemoryToPersistent(): Promise<{
+export function migrateMemoryToPersistent(): {
   success: boolean;
   migratedSessions: number;
   migratedFilters: number;
   errors: string[];
-}> {
+} {
   logger.info('Migration not needed - using simplified storage');
   return {
     success: true,

@@ -14,11 +14,11 @@ export interface CommentOperationInput {
 /**
  * Service for validating comment operation inputs
  */
-export class CommentValidationService {
+export const commentValidationService = {
   /**
    * Validate input for comment operations (create or list)
    */
-  static validateCommentInput(args: CommentOperationInput): { taskId: number; commentText?: string } {
+  validateCommentInput(args: CommentOperationInput): { taskId: number; commentText?: string } {
     if (!args.id) {
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Task id is required for comment operation');
     }
@@ -34,12 +34,12 @@ export class CommentValidationService {
     }
 
     return result;
-  }
+  },
 
   /**
    * Validate input specifically for listing comments
    */
-  static validateListInput(args: { id?: number }): { taskId: number } {
+  validateListInput(args: { id?: number }): { taskId: number } {
     if (!args.id) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
@@ -51,12 +51,12 @@ export class CommentValidationService {
     return {
       taskId: args.id,
     };
-  }
+  },
 
   /**
    * Check if operation should create a comment or list comments
    */
-  static shouldCreateComment(commentText?: string): boolean {
+  shouldCreateComment(commentText?: string): boolean {
     return commentText !== undefined && commentText.trim() !== '';
   }
-}
+};

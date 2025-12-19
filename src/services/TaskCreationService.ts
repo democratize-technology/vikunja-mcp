@@ -1,5 +1,6 @@
 import { logger } from '../utils/logger';
-import { MCPError, ErrorCode, TaskCreationData } from '../types/index';
+import type { TaskCreationData } from '../types/index';
+import { MCPError, ErrorCode } from '../types/index';
 import { isAuthenticationError } from '../utils/auth-error-handler';
 import type { Task, Label, User } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
@@ -162,7 +163,10 @@ export class TaskCreationService {
     taskTitle: string
   ): Promise<Task> {
     try {
-      return await client.tasks.createTask(taskData.project_id as number, taskData as Task);
+      // TODO: Investigate proper type conversion between TaskCreationData and Task
+      // The node-vikunja library expects a Task interface, but we have TaskCreationData
+      // This assertion bridges the gap between our internal data format and the API requirement
+      return await client.tasks.createTask(taskData.project_id, taskData as Task);
     } catch (error) {
       // Check if it's an authentication error
       if (isAuthenticationError(error)) {

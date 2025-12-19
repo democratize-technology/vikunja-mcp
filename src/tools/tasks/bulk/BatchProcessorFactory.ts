@@ -29,11 +29,11 @@ const createBatchProcessor = new BatchProcessor({
 /**
  * Factory for selecting appropriate batch processor based on operation type
  */
-export class BatchProcessorFactory {
+export const batchProcessorFactory = {
   /**
    * Get the appropriate batch processor for an operation type
    */
-  static getProcessor(operationType: string): BatchProcessor {
+  getProcessor(operationType: string): BatchProcessor {
     if (operationType.includes('delete')) {
       return deleteBatchProcessor;
     }
@@ -41,38 +41,38 @@ export class BatchProcessorFactory {
       return createBatchProcessor;
     }
     return updateBatchProcessor;
-  }
+  },
 
   /**
    * Process items in batches using the appropriate processor
    */
-  static async processBatches<T>(
+  async processBatches<T>(
     items: number[],
     processor: (item: number, index: number) => Promise<T>,
     operationType: string
   ): Promise<BatchResult<T>> {
     const batchProcessor = this.getProcessor(operationType);
     return await batchProcessor.processBatches(items, processor);
-  }
+  },
 
   /**
    * Get the create batch processor specifically
    */
-  static getCreateProcessor(): BatchProcessor {
+  getCreateProcessor(): BatchProcessor {
     return createBatchProcessor;
-  }
+  },
 
   /**
    * Get the update batch processor specifically
    */
-  static getUpdateProcessor(): BatchProcessor {
+  getUpdateProcessor(): BatchProcessor {
     return updateBatchProcessor;
-  }
+  },
 
   /**
    * Get the delete batch processor specifically
    */
-  static getDeleteProcessor(): BatchProcessor {
+  getDeleteProcessor(): BatchProcessor {
     return deleteBatchProcessor;
   }
-}
+};

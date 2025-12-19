@@ -5,8 +5,8 @@
 
 import { MCPError, ErrorCode } from '../../../types';
 import { CommentOperationsService } from './CommentOperationsService';
-import { CommentValidationService } from './CommentValidationService';
-import { CommentResponseFormatter } from './CommentResponseFormatter';
+import { commentValidationService } from './CommentValidationService';
+import { commentResponseFormatter } from './CommentResponseFormatter';
 
 /**
  * Add a comment to a task or list task comments
@@ -16,23 +16,23 @@ export async function handleComment(args: {
   comment?: string;
 }): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
-    const { taskId, commentText } = CommentValidationService.validateCommentInput(args);
+    const { taskId, commentText } = commentValidationService.validateCommentInput(args);
 
     // If no comment text provided, list comments
-    if (!CommentValidationService.shouldCreateComment(commentText)) {
+    if (!commentValidationService.shouldCreateComment(commentText)) {
       const comments = await CommentOperationsService.fetchTaskComments(taskId);
 
       // Format and return response
-      const response = CommentResponseFormatter.formatListCommentsResponse(comments);
-      return CommentResponseFormatter.formatMcpResponse(response);
+      const response = commentResponseFormatter.formatListCommentsResponse(comments);
+      return commentResponseFormatter.formatMcpResponse(response);
     }
 
     // Create a new comment
     const newComment = await CommentOperationsService.createComment(taskId, commentText!);
 
     // Format and return response
-    const response = CommentResponseFormatter.formatCreateCommentResponse(newComment);
-    return CommentResponseFormatter.formatMcpResponse(response);
+    const response = commentResponseFormatter.formatCreateCommentResponse(newComment);
+    return commentResponseFormatter.formatMcpResponse(response);
 
   } catch (error) {
     throw new MCPError(
@@ -60,13 +60,13 @@ export async function listComments(args: {
   id?: number;
 }): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
-    const { taskId } = CommentValidationService.validateListInput(args);
+    const { taskId } = commentValidationService.validateListInput(args);
 
     const comments = await CommentOperationsService.fetchTaskComments(taskId);
 
     // Format and return response
-    const response = CommentResponseFormatter.formatListCommentsResponse(comments);
-    return CommentResponseFormatter.formatMcpResponse(response);
+    const response = commentResponseFormatter.formatListCommentsResponse(comments);
+    return commentResponseFormatter.formatMcpResponse(response);
 
   } catch (error) {
     throw new MCPError(

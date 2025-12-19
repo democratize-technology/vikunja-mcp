@@ -5,7 +5,7 @@
  * formats (string, JSON, etc.) with proper error handling and validation.
  */
 
-import type { FilterExpression, ParseResult } from '../../types/filters';
+import type { FilterExpression } from '../../types/filters';
 
 /**
  * Filter serialization result

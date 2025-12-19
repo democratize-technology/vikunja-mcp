@@ -78,9 +78,12 @@ export class AssigneeOperationsService {
     const client = await getClientFromContext();
     const task = await client.tasks.getTask(taskId);
     // Ensure required properties exist for TaskWithAssignees
+    if (!task.id) {
+      throw new MCPError(ErrorCode.INTERNAL_ERROR, 'Task returned from API is missing required id field');
+    }
     return {
       ...task,
-      id: task.id!,
+      id: task.id,
       title: task.title || '',
       assignees: task.assignees || [],
     };

@@ -202,11 +202,11 @@ export class SimpleFilterStorage implements FilterStorage {
   /**
    * Health check
    */
-  async healthCheck(): Promise<{
+  healthCheck(): {
     healthy: boolean;
     error?: string;
     details?: Record<string, unknown>;
-  }> {
+  } {
     return {
       healthy: true,
       details: {

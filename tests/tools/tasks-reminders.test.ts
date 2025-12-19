@@ -167,7 +167,7 @@ describe('Tasks Tool - Reminders', () => {
       expect(mockClient.tasks.updateTask).toHaveBeenCalledWith(
         1,
         expect.objectContaining({
-          reminders: [{ reminder: '2024-12-25T10:00:00Z' }],
+          reminders: [{ id: 0, reminder_date: '2024-12-25T10:00:00Z' }],
         }),
       );
 
@@ -198,7 +198,7 @@ describe('Tasks Tool - Reminders', () => {
         expect.objectContaining({
           reminders: [
             { id: 1, reminder_date: '2024-12-25T10:00:00Z' },
-            { reminder: '2024-12-31T23:59:00Z' },
+            { id: 0, reminder_date: '2024-12-31T23:59:00Z' },
           ],
         }),
       );

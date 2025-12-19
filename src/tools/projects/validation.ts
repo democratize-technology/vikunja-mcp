@@ -85,7 +85,10 @@ export function getMaxSubtreeDepth(projectId: number, allProjects: Project[]): n
 
     const children = allProjects.filter((p) => p.parent_project_id === currentId);
     for (const child of children) {
-      const childDepth = dfs(child.id!, currentDepth + 1);
+      if (child.id === undefined) {
+        continue; // Skip children without valid IDs
+      }
+      const childDepth = dfs(child.id, currentDepth + 1);
       maxDepth = Math.max(maxDepth, childDepth);
     }
 

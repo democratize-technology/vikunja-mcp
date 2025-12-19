@@ -6,9 +6,7 @@
 import { createAorpResponse } from '../../utils/response-factory';
 import type { ResponseMetadata } from '../../types/responses';
 import type { ResponseData } from '../../utils/simple-response';
-import type { Verbosity } from '../../transforms/index';
-import type { AorpFactoryOptions, AorpFactoryResult } from '../../types/index';
-import type { ComplexityFactors, AorpVerbosityLevel } from '../../utils/response-factory';
+import type { AorpFactoryResult, AorpVerbosityLevel } from '../../types/index';
 import type { Project } from 'node-vikunja';
 
 /**
@@ -25,17 +23,17 @@ interface ProjectTreeNode extends Project {
 export function createProjectResponse(
   operation: string,
   message: string,
-  data: unknown,
-  metadata: Partial<ResponseMetadata> = {},
-  verbosity?: string,
+  _data: unknown,
+  _metadata: Partial<ResponseMetadata> = {},
+  _verbosity?: string,
   _useOptimizedFormat?: boolean,
   _useAorp?: boolean
 ): AorpFactoryResult {
   // Default to standard verbosity if not specified
-  const selectedVerbosity = verbosity || 'standard';
+  const selectedVerbosity = 'standard';
 
   // Cast data to ResponseData for type compatibility
-  const responseData = data as ResponseData;
+  const responseData = _data as ResponseData;
 
   // Use simple response format
   const simpleAorpResult = createAorpResponse(operation, message, responseData, {
@@ -50,7 +48,7 @@ export function createProjectResponse(
     success: true,
     operation,
     message,
-    data,
+    data: responseData,
     metadata: {
       timestamp: new Date().toISOString(),
     }
@@ -63,12 +61,12 @@ export function createProjectResponse(
       context: {
         operation,
         success: true,
-        dataSize: JSON.stringify(data).length,
+        dataSize: JSON.stringify(responseData).length,
         processingTime: 0,
         verbosity: selectedVerbosity,
         verbosityLevel: 'simple' as AorpVerbosityLevel,
         complexityFactors: {
-        dataSize: JSON.stringify(data).length >= 1024,
+        dataSize: JSON.stringify(responseData).length >= 1024,
         hasWarnings: false,
         hasErrors: false,
         isBulkOperation: false,

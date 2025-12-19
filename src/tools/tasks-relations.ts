@@ -4,9 +4,7 @@
  */
 
 import { z } from 'zod';
-import { MCPError, ErrorCode } from '../types/index';
-import type { StandardTaskResponse } from '../types/index';
-import type { SimpleResponse } from '../utils/simple-response';
+import { MCPError, ErrorCode, type StandardTaskResponse } from '../types/index';
 import { getClientFromContext } from '../client';
 import { logger } from '../utils/logger';
 import { validateId as validateSharedId } from '../utils/validation';

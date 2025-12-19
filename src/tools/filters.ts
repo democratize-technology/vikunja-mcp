@@ -6,9 +6,9 @@ import { storageManager } from '../storage';
 import { FilterBuilder, validateFilterExpression, parseFilterString } from '../utils/filters';
 import type { FilterField, FilterOperator, SavedFilter } from '../types/filters';
 import { logger } from '../utils/logger';
-import { createStandardResponse, createErrorResponse } from '../types/index';
+import { createStandardResponse } from '../types/index';
 import { ErrorCode, MCPError, type FilterValue } from '../types/index';
-import { handleStatusCodeError, createValidationError, wrapToolError } from '../utils/error-handler';
+import { createValidationError } from '../utils/error-handler';
 import { formatAorpAsMarkdown } from '../utils/response-factory';
 import { createAorpErrorResponse } from '../utils/response-factory';
 
@@ -213,7 +213,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
             
             // Use title as name if name is not provided
             // Schema validation ensures at least one of name/title is provided
-            const name = params.name || (params.title as string);
+            const name = params.name ?? params.title;
             logger.debug(`Creating filter with name: ${name}`);
 
             let filterString = params.filter;
@@ -226,20 +226,24 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
                 const conditions: Array<{field: FilterField, operator: FilterOperator, value: FilterValue}> = [];
 
                 for (let i = 0; i < filter_by.length; i++) {
-                  const field = filter_by[i] as FilterField;
-                  const value = filter_value[i];
-                  const comparator = filter_comparator[i] as FilterOperator;
+                  const field = filter_by[i];
+                  const value = filter_value?.[i];
+                  const comparator = filter_comparator?.[i];
 
-                  if (!value) continue;
+                  if (!value || !field || !comparator) continue;
+
+                  // Validate field and operator are valid enums
+                  const validField = field as FilterField;
+                  const validComparator = comparator as FilterOperator;
 
                   let typedValue: string | number | boolean = value;
-                  if (field === 'priority' || field === 'percentDone') {
+                  if (validField === 'priority' || validField === 'percentDone') {
                     typedValue = Number(value);
-                  } else if (field === 'done') {
+                  } else if (validField === 'done') {
                     typedValue = value === 'true';
                   }
 
-                  conditions.push({ field, operator: comparator, value: typedValue });
+                  conditions.push({ field: validField, operator: validComparator, value: typedValue });
                 }
 
                 // Build filter with all conditions
@@ -270,13 +274,13 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
               throw createValidationError('No filter conditions provided');
             }
 
-            const existing = await storage.findByName(name);
+            const existing = await storage.findByName(name || '');
             if (existing) {
               throw createValidationError(`Filter with name "${name}" already exists`);
             }
 
             const filter = await storage.create({
-              name,
+              name: name || '',
               filter: filterString,
               isGlobal: params.isGlobal || params.is_favorite || false,
               ...(params.description && { description: params.description }),
@@ -403,8 +407,8 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
                 builder.or();
               }
               builder.where(
-                condition.field as FilterField,
-                condition.operator as FilterOperator,
+                condition.field,
+                condition.operator,
                 condition.value,
               );
             });

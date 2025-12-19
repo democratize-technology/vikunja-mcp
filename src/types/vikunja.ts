@@ -190,11 +190,16 @@ export interface TeamMember {
 
 // Attachment Types
 export interface Attachment {
-  id?: number;
+  id: number;
   task_id: number;
-  file: File | string;
-  created?: string;
-  created_by?: User;
+  file_name: string;
+  file_size: number;
+  created_by: {
+    id: number;
+    username: string;
+  };
+  created: string;
+  file?: File | string; // Optional for file upload scenarios
 }
 
 // Filter Types

@@ -303,8 +303,8 @@ function getTaskPropertyValue(task: Task, field: string): string | number | bool
   // Handle arrays - only allow string and number arrays for compatibility
   if (Array.isArray(value)) {
     // Filter and convert to string[] or number[] if possible
-    const stringArray = value.filter(item => typeof item === 'string') as string[];
-    const numberArray = value.filter(item => typeof item === 'number') as number[];
+    const stringArray = value.filter(item => typeof item === 'string');
+    const numberArray = value.filter(item => typeof item === 'number');
 
     // Return the appropriate array type based on content
     if (stringArray.length === value.length) return stringArray;

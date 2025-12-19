@@ -12,7 +12,7 @@ import { MCPError, ErrorCode } from '../types/index';
 import { getClientFromContext, setGlobalClientFactory } from '../client';
 import { logger } from '../utils/logger';
 import { createAuthRequiredError } from '../utils/error-handler';
-import { handleComment, removeComment, listComments } from '../tools/tasks/comments/index';
+import { handleComment } from '../tools/tasks/comments/index';
 
 /**
  * Register task comments tool

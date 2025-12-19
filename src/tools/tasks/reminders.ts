@@ -2,7 +2,7 @@
  * Reminder operations for tasks
  */
 
-import type { MinimalTask } from '../../types';
+import type { MinimalTask, TaskReminder } from '../../types';
 import { MCPError, ErrorCode } from '../../types';
 import { getClientFromContext } from '../../client';
 import { validateId, validateDateString } from './validation';
@@ -45,9 +45,9 @@ export async function addReminder(args: {
 
     // Combine existing reminders with new one
     // Transform reminders to the expected API format
-    const existingReminders = (currentTask.reminders || []).map((reminder: any) => ({
-      id: typeof reminder.id === 'number' ? reminder.id : Number(reminder.id) || 0,
-      reminder_date: reminder.reminder_date || '',
+    const existingReminders = (currentTask.reminders || []).map((reminder: TaskReminder) => ({
+      id: reminder.id,
+      reminder_date: reminder.reminder_date,
     }));
 
     const newReminderFormatted = {
@@ -131,7 +131,7 @@ export async function removeReminder(args: {
 
     // Filter out the reminder to be removed
     const updatedReminders = currentTask.reminders.filter(
-      (reminder: any) => reminder.id !== args.reminderId,
+      (reminder: TaskReminder) => reminder.id !== args.reminderId,
     );
 
     if (updatedReminders.length === currentTask.reminders.length) {

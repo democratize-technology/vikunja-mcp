@@ -35,11 +35,11 @@ export interface BulkCreateArgs {
 /**
  * Validator for bulk update operations
  */
-export class BulkOperationValidator {
+export const bulkOperationValidator = {
   /**
    * Validate bulk update arguments
    */
-  static validateBulkUpdate(args: BulkUpdateArgs): void {
+  validateBulkUpdate(args: BulkUpdateArgs): void {
     if (!args.taskIds || args.taskIds.length === 0) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
@@ -63,12 +63,12 @@ export class BulkOperationValidator {
     }
 
     args.taskIds.forEach((id) => validateId(id, 'task ID'));
-  }
+  },
 
   /**
    * Validate and preprocess field value for bulk update
    */
-  static preprocessFieldValue(args: BulkUpdateArgs): void {
+  preprocessFieldValue(args: BulkUpdateArgs): void {
     // Preprocess value to handle type coercion from MCP
     if (args.field === 'done' && typeof args.value === 'string') {
       if (args.value === 'true') {
@@ -79,18 +79,18 @@ export class BulkOperationValidator {
     }
 
     // Handle numeric fields that come as strings
-    if (['priority', 'project_id', 'repeat_after'].includes(args.field!) && typeof args.value === 'string') {
+    if (args.field && ['priority', 'project_id', 'repeat_after'].includes(args.field) && typeof args.value === 'string') {
       const numValue = Number(args.value);
       if (!isNaN(numValue)) {
         args.value = numValue;
       }
     }
-  }
+  },
 
   /**
    * Validate field and value constraints
    */
-  static validateFieldConstraints(args: BulkUpdateArgs): void {
+  validateFieldConstraints(args: BulkUpdateArgs): void {
     const allowedFields = [
       'done',
       'priority',
@@ -102,10 +102,10 @@ export class BulkOperationValidator {
       'repeat_mode',
     ];
 
-    if (!allowedFields.includes(args.field!)) {
+    if (!args.field || !allowedFields.includes(args.field)) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
-        `Invalid field: ${args.field}. Allowed fields: ${allowedFields.join(', ')}`,
+        `Invalid field: ${args.field || 'undefined'}. Allowed fields: ${allowedFields.join(', ')}`,
       );
     }
 
@@ -124,7 +124,7 @@ export class BulkOperationValidator {
       validateId(args.value, 'project_id');
     }
 
-    if (['assignees', 'labels'].includes(args.field!)) {
+    if (['assignees', 'labels'].includes(args.field)) {
       if (!Array.isArray(args.value)) {
         throw new MCPError(ErrorCode.VALIDATION_ERROR, `${args.field} must be an array of numbers`);
       }
@@ -155,12 +155,12 @@ export class BulkOperationValidator {
         );
       }
     }
-  }
+  },
 
   /**
    * Validate bulk delete arguments
    */
-  static validateBulkDelete(args: BulkDeleteArgs): void {
+  validateBulkDelete(args: BulkDeleteArgs): void {
     if (!args.taskIds || args.taskIds.length === 0) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
@@ -176,12 +176,12 @@ export class BulkOperationValidator {
     }
 
     args.taskIds.forEach((id) => validateId(id, 'task ID'));
-  }
+  },
 
   /**
    * Validate bulk create arguments
    */
-  static validateBulkCreate(args: BulkCreateArgs): void {
+  validateBulkCreate(args: BulkCreateArgs): void {
     if (!args.projectId) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
@@ -227,4 +227,4 @@ export class BulkOperationValidator {
       }
     });
   }
-}
+};

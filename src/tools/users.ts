@@ -32,48 +32,34 @@ function transformUser(rawUser: unknown): User {
       try {
         return JSON.stringify(value);
       } catch {
-        return '[object]';
+        return '[object Object]';
       }
     }
     return String(value || '');
   };
 
-  const result: Record<string, unknown> = {
+  const result = {
     id: Number(user.id) || 0,
     username: safeString(user.username),
-    frontend_settings: (user.frontend_settings as Record<string, unknown>) || {},
+    frontend_settings: (user.frontend_settings && typeof user.frontend_settings === 'object') ? user.frontend_settings : {},
   };
 
-  if (user.email) {
-    result.email = safeString(user.email);
-  }
-  if (user.name) {
-    result.name = safeString(user.name);
-  }
-  if (user.created) {
-    result.created = safeString(user.created);
-  }
-  if (user.updated) {
-    result.updated = safeString(user.updated);
-  }
-  // Extended settings - these may not be available in basic User response
-  if (user.language) {
-    result.language = safeString(user.language);
-  }
-  if (user.timezone) {
-    result.timezone = safeString(user.timezone);
-  }
-  if (user.week_start !== undefined) {
-    result.week_start = Number(user.week_start);
-  }
-  if (user.email_reminders_enabled !== undefined) {
-    result.email_reminders_enabled = Boolean(user.email_reminders_enabled);
-  }
-  if (user.overdue_tasks_reminders_enabled !== undefined) {
-    result.overdue_tasks_reminders_enabled = Boolean(user.overdue_tasks_reminders_enabled);
-  }
+  const userResult: User = {
+    id: result.id,
+    username: result.username,
+    frontend_settings: result.frontend_settings as Record<string, unknown>,
+    ...(user.email ? { email: safeString(user.email) } : {}),
+    ...(user.name ? { name: safeString(user.name) } : {}),
+    ...(user.created ? { created: safeString(user.created) } : {}),
+    ...(user.updated ? { updated: safeString(user.updated) } : {}),
+    ...(user.language ? { language: safeString(user.language) } : {}),
+    ...(user.timezone ? { timezone: safeString(user.timezone) } : {}),
+    ...(user.week_start !== undefined ? { week_start: Number(user.week_start) } : {}),
+    ...(user.email_reminders_enabled !== undefined ? { email_reminders_enabled: Boolean(user.email_reminders_enabled) } : {}),
+    ...(user.overdue_tasks_reminders_enabled !== undefined ? { overdue_tasks_reminders_enabled: Boolean(user.overdue_tasks_reminders_enabled) } : {}),
+  };
 
-  return result as unknown as User;
+  return userResult;
 }
 
 export function registerUsersTool(server: McpServer, authManager: AuthManager, _clientFactory?: VikunjaClientFactory): void {

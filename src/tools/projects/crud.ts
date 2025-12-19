@@ -25,9 +25,6 @@ interface ApiProjectResponse {
   total?: number;
 }
 
-interface ProjectUpdateRequest {
-  is_archived: boolean;
-}
 
 /**
  * Arguments for listing projects
@@ -255,7 +252,7 @@ export async function createProject(
         const allProjectsResponse = await client.projects.getProjects({ per_page: 1000 });
         const allProjectsApiData = allProjectsResponse as ApiProjectResponse;
         allProjects = allProjectsApiData.data || (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
-      } catch (error) {
+      } catch (_error) {
         // Continue with validation if we can't get all projects
       }
 
@@ -379,7 +376,7 @@ export async function updateProject(
         const allProjectsResponse = await client.projects.getProjects({ per_page: 1000 });
         const allProjectsApiData = allProjectsResponse as ApiProjectResponse;
         allProjects = allProjectsApiData.data || (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
-      } catch (error) {
+      } catch (_error) {
         // Continue if we can't get all projects
       }
     }

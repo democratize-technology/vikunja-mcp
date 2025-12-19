@@ -146,7 +146,7 @@ export async function getProjectTree(
     const rootProjects = allProjects.filter((p: Project) => !p.parent_project_id);
 
     // If specific ID is provided, find that project and its subtree
-    let rootNode: ProjectTreeNode | undefined;
+    let rootNode: ProjectTreeNode | null;
     let treeData: ProjectTreeNode[];
     let totalNodes = 0;
     let actualDepth = 0;
@@ -158,10 +158,16 @@ export async function getProjectTree(
         throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${id} not found`);
       }
 
-      rootNode = buildProjectTree(rootProject, allProjects, 0, maxDepth, includeArchived) || undefined;
-      treeData = [rootNode!];
-      totalNodes = countTreeNodes(rootNode!);
-      actualDepth = getTreeDepth(rootNode!);
+      rootNode = buildProjectTree(rootProject, allProjects, 0, maxDepth, includeArchived);
+      if (rootNode) {
+        treeData = [rootNode];
+        totalNodes = countTreeNodes(rootNode);
+        actualDepth = getTreeDepth(rootNode);
+      } else {
+        treeData = [];
+        totalNodes = 0;
+        actualDepth = 0;
+      }
     } else {
       // Build forest of all root projects
       treeData = rootProjects

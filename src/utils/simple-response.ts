@@ -108,7 +108,7 @@ export function formatSuccessMessage(
   message: string,
   data?: ResponseData
 ): string {
-  let content = `✅ ${operation}: ${message}\n\n`;
+  let content = `## ✅ Success\n\n${message}\n\n`;
 
   if (data) {
     // Check for known collection types first
@@ -141,7 +141,7 @@ export function formatErrorMessage(
   message: string,
   errorCode: string
 ): string {
-  return `❌ Error in ${operation}: ${message}\n\n**Error Code:** ${errorCode}\n\n`;
+  return `## ❌ Error\n\n${message}\n\n**Error Code:** ${errorCode}\n\n`;
 }
 
 /**

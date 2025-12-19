@@ -130,7 +130,7 @@ function getRiskLevel(estimatedMemoryMB: number): 'low' | 'medium' | 'high' {
 export function validateTaskCountLimit(
   taskCount: number,
   sampleTask?: Task,
-  options?: {
+  _options?: {
     filterExpression?: string;
     operationType?: string;
   }

@@ -9,7 +9,7 @@ import { logger } from '../../../utils/logger';
 import { formatAorpAsMarkdown } from '../../../utils/response-factory';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
-import { BatchProcessorFactory } from './BatchProcessorFactory';
+import { BatchProcessorFactory } from './index';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import type { BulkOperationFailure } from './BulkOperationTypes';
 import type { BulkUpdateArgs } from './BulkOperationValidator';
@@ -18,11 +18,11 @@ import type { BatchResult } from '../../../utils/performance/batch-processor';
 /**
  * Handles fallback logic when bulk APIs fail
  */
-export class BulkOperationErrorHandler {
+export const bulkOperationErrorHandler = {
   /**
    * Handle bulk update fallback when main API fails
    */
-  static async handleBulkUpdateFallback(
+  async handleBulkUpdateFallback(
     args: BulkUpdateArgs,
     taskIds: number[],
     bulkError: Error
@@ -45,12 +45,12 @@ export class BulkOperationErrorHandler {
 
     // Process results and handle failures
     return await this.processUpdateResults(args, taskIds, updateResult);
-  }
+  },
 
   /**
    * Update a single task as part of fallback logic
    */
-  private static async updateIndividualTask(
+  async updateIndividualTask(
     client: VikunjaClient,
     taskId: number,
     args: BulkUpdateArgs
@@ -95,12 +95,12 @@ export class BulkOperationErrorHandler {
     await this.handleSpecialFields(client, taskId, args, updatedTask);
 
     return updatedTask;
-  }
+  },
 
   /**
    * Handle fields that require separate API calls (assignees, labels)
    */
-  private static async handleSpecialFields(
+  async handleSpecialFields(
     client: VikunjaClient,
     taskId: number,
     args: BulkUpdateArgs,
@@ -121,12 +121,12 @@ export class BulkOperationErrorHandler {
         }
       );
     }
-  }
+  },
 
   /**
    * Handle assignee updates with proper error handling
    */
-  private static async handleAssigneeUpdate(
+  async handleAssigneeUpdate(
     client: VikunjaClient,
     taskId: number,
     newAssigneeIds: number[]
@@ -178,12 +178,12 @@ export class BulkOperationErrorHandler {
       }
       throw assigneeError;
     }
-  }
+  },
 
   /**
    * Process update results and handle various failure scenarios
    */
-  private static async processUpdateResults(
+  async processUpdateResults(
     args: BulkUpdateArgs,
     taskIds: number[],
     updateResult: BatchResult<Task>
@@ -219,7 +219,7 @@ export class BulkOperationErrorHandler {
       { tasks: updatedTasks },
       {
         timestamp: new Date().toISOString(),
-        affectedFields: [args.field!],
+        affectedFields: args.field ? [args.field] : [],
         count: taskIds.length,
         ...(failedFetches > 0 && { fetchErrors: failedFetches }),
         performanceMetrics: {
@@ -243,12 +243,12 @@ export class BulkOperationErrorHandler {
         },
       ],
     };
-  }
+  },
 
   /**
    * Handle various types of update failures
    */
-  private static async handleUpdateFailures(
+  async handleUpdateFailures(
     args: BulkUpdateArgs,
     failures: Array<{ index: number; error: unknown; originalItem: unknown }>,
     successCount: number
@@ -289,4 +289,4 @@ export class BulkOperationErrorHandler {
       );
     }
   }
-}
+};
