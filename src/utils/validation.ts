@@ -230,7 +230,7 @@ export function validateValue(value: unknown): string | number | boolean | strin
       return [];
     }
 
-    // Check array type consistency
+    // Check array type consistency with proper type guards
     const firstElementType = typeof value[0];
     if (firstElementType !== 'string' && firstElementType !== 'number') {
       throw new StorageDataError('Array elements must be all strings or all finite numbers, not mixed');
@@ -238,26 +238,48 @@ export function validateValue(value: unknown): string | number | boolean | strin
 
     // Validate all elements are of the same type and valid
     for (let i = 0; i < value.length; i++) {
-      const element = value[i];
+      const element: unknown = value[i];
       const elementType = typeof element;
+
+      // Additional safety: reject null/undefined/object elements
+      if (element === null || element === undefined || typeof element === 'object') {
+        throw new StorageDataError('Array elements must be strings, numbers, or booleans, not objects');
+      }
 
       if (elementType !== firstElementType) {
         throw new StorageDataError('Array elements must be all strings or all finite numbers, not mixed');
       }
 
-      if (firstElementType === 'number' && !Number.isFinite(element as number)) {
-        throw new StorageDataError('Array numeric values must be finite, not infinite or NaN');
+      if (firstElementType === 'number') {
+        // Type-safe numeric validation without casting
+        if (typeof element !== 'number' || !Number.isFinite(element)) {
+          throw new StorageDataError('Array numeric values must be finite, not infinite or NaN');
+        }
       }
 
       if (firstElementType === 'string') {
+        // Type-safe string validation
+        if (typeof element !== 'string') {
+          throw new StorageDataError('Array string elements must be strings');
+        }
         // Check for XSS in string arrays - this should be handled by the caller
-        if (typeof element === 'string' && element.toLowerCase().includes('<script')) {
+        if (element.toLowerCase().includes('<script')) {
           throw new StorageDataError('Array contains potentially dangerous content');
         }
       }
     }
 
-    return value as string[] | number[];
+    // Type-safe return without unsafe casting - we've validated the types above
+    if (firstElementType === 'string') {
+      // We've proven all elements are strings
+      return value as string[];
+    } else if (firstElementType === 'number') {
+      // We've proven all elements are finite numbers
+      return value as number[];
+    } else {
+      // This should never happen due to earlier validation
+      throw new StorageDataError('Array contains unsupported element types');
+    }
   }
 
   // Reject all other types
@@ -300,92 +322,89 @@ export function validateCondition(condition: unknown): {
 }
 
 /**
- * Schema for filter expressions
+ * Zod schema for filter groups
  */
+const FilterGroupSchema = z.object({
+  operator: LogicalOperatorSchema,
+  conditions: z.array(ConditionSchema).min(1).max(MAX_CONDITIONS)
+});
 
 /**
- * Validate a filter expression using custom logic
+ * Zod schema for filter expressions
+ */
+const FilterExpressionSchema = z.object({
+  groups: z.array(FilterGroupSchema).min(1).max(MAX_NESTING_DEPTH),
+  operator: LogicalOperatorSchema.optional()
+}).refine(
+  (expr) => {
+    // Check total conditions across all groups
+    const totalConditions = expr.groups.reduce((sum, group) => sum + group.conditions.length, 0);
+    return totalConditions <= MAX_CONDITIONS;
+  },
+  {
+    message: `Filter expression cannot exceed ${MAX_CONDITIONS} total conditions`
+  }
+);
+
+/**
+ * Validate a filter expression using Zod schema with comprehensive type safety
  */
 export function validateFilterExpression(expression: unknown): FilterExpression {
-  // Basic type validation
-  if (typeof expression !== 'object' || expression === null) {
-    throw new StorageDataError('Filter expression must be an object');
-  }
+  try {
+    // Use Zod for comprehensive type-safe validation
+    const result = FilterExpressionSchema.parse(expression);
 
-  const expr = expression as { groups?: unknown; [key: string]: unknown };
-
-  // Check for groups property
-  if (!('groups' in expr)) {
-    throw new StorageDataError('Filter expression must have groups property');
-  }
-
-  if (!Array.isArray(expr.groups)) {
-    throw new StorageDataError('Filter expression groups must be an array');
-  }
-
-  // Check for empty groups array
-  if (expr.groups.length === 0) {
-    throw new StorageDataError('Filter expression must have at least one group');
-  }
-
-  // Check nesting depth
-  if (expr.groups.length > MAX_NESTING_DEPTH) {
-    throw new StorageDataError(`Filter expression exceeds maximum nesting depth of ${MAX_NESTING_DEPTH}`);
-  }
-
-  // Validate each group and count total conditions
-  let totalConditions = 0;
-  for (let i = 0; i < expr.groups.length; i++) {
-    const group = expr.groups[i];
-
-    // Validate group structure
-    if (typeof group !== 'object' || group === null) {
-      throw new StorageDataError(`Group ${i} must be an object`);
+    // Additional runtime checks for edge cases Zod might not catch
+    if (result.groups.length === 0) {
+      throw new StorageDataError('Filter expression must have at least one group');
     }
 
-    if (!('operator' in group)) {
-      throw new StorageDataError(`Group ${i} missing operator property`);
-    }
+    // Validate each condition individually for additional safety
+    let totalConditions = 0;
+    for (let i = 0; i < result.groups.length; i++) {
+      const group = result.groups[i];
 
-    if (!('conditions' in group)) {
-      throw new StorageDataError(`Group ${i} missing conditions property`);
-    }
-
-    // Validate operator
-    try {
-      validateLogicalOperator(group.operator);
-    } catch (error) {
-      throw new StorageDataError(`Group ${i} has invalid operator: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-
-    // Validate conditions array
-    if (!Array.isArray(group.conditions)) {
-      throw new StorageDataError(`Group ${i} conditions must be an array`);
-    }
-
-    if (group.conditions.length > MAX_CONDITIONS) {
-      throw new StorageDataError(`Group ${i} exceeds maximum conditions: ${group.conditions.length} > ${MAX_CONDITIONS}`);
-    }
-
-    // Validate each condition
-    for (let j = 0; j < group.conditions.length; j++) {
-      const condition = group.conditions[j];
-      try {
-        validateCondition(condition);
-      } catch (error) {
-        throw new StorageDataError(`Group ${i}, condition ${j}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Type guard to ensure group is defined
+      if (!group) {
+        throw new StorageDataError(`Group ${i} is undefined`);
       }
-      totalConditions++;
+
+      // Validate operator with stricter validation
+      try {
+        validateLogicalOperator(group.operator);
+      } catch (error) {
+        throw new StorageDataError(`Group ${i} has invalid operator: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      // Validate each condition individually
+      for (let j = 0; j < group.conditions.length; j++) {
+        const condition = group.conditions[j];
+        try {
+          validateCondition(condition);
+        } catch (error) {
+          throw new StorageDataError(`Group ${i}, condition ${j}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+        totalConditions++;
+      }
     }
-  }
 
-  // Check total conditions limit
-  if (totalConditions > MAX_CONDITIONS) {
-    throw new StorageDataError(`Filter expression cannot exceed ${MAX_CONDITIONS} total conditions`);
-  }
+    // Final check for total conditions
+    if (totalConditions > MAX_CONDITIONS) {
+      throw new StorageDataError(`Filter expression cannot exceed ${MAX_CONDITIONS} total conditions`);
+    }
 
-  // If we got here, the expression is valid
-  return expr as FilterExpression;
+    // Type-safe return - Zod has validated the structure
+    return result as FilterExpression;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errorDetails = error.issues.map(issue => issue.message).join('; ');
+      throw new StorageDataError(`Invalid filter expression: ${errorDetails}`);
+    }
+    if (error instanceof StorageDataError) {
+      throw error; // Re-throw our own validation errors
+    }
+    throw new StorageDataError(`Filter expression validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 /**
@@ -411,7 +430,7 @@ export function safeJsonParse(jsonString: string): FilterExpression {
   const sanitized = sanitizeString(jsonString);
 
   try {
-    const parsed = JSON.parse(sanitized);
+    const parsed: unknown = JSON.parse(sanitized);
     return validateFilterExpression(parsed);
   } catch (error) {
     if (error instanceof SyntaxError) {
