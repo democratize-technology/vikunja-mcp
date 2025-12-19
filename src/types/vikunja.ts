@@ -291,6 +291,26 @@ export interface ApiResponse<T> {
   error?: VikunjaError;
 }
 
+// Task Creation and Update Types
+export interface TaskCreationData {
+  project_id: number;
+  title: string;
+  done?: boolean;
+  priority?: number;
+  percent_done?: number;
+  description?: string;
+  due_date?: string;
+  start_date?: string;
+  end_date?: string;
+  hex_color?: string;
+  repeat_after?: number;
+  repeat_mode?: string;
+}
+
+export interface TaskUpdateData extends Partial<TaskCreationData> {
+  id: number;
+}
+
 // Minimal Task Types
 export interface MinimalTask {
   id?: number;

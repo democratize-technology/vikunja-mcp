@@ -13,6 +13,8 @@ export {
   type Task,
   type TaskReminder,
   type Webhook,
+  type TaskCreationData,
+  type TaskUpdateData,
 } from './vikunja';
 
 // Export from errors
