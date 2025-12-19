@@ -7,7 +7,7 @@ import type { TaskListingArgs, TaskFilterExecutionResult, TaskFilterValidationCo
 import type { FilterValidationConfig } from '../../../types/filters';
 import { FilterValidator } from './FilterValidator';
 import { FilterExecutor } from './FilterExecutor';
-import { MCPError, ErrorCode } from '../../../types/index';
+import { MCPError, ErrorCode } from '../../../types';
 import { logger } from '../../../utils/logger';
 import type { SimpleFilterStorage } from '../../../storage';
 

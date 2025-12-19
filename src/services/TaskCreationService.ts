@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger';
-import type { TaskCreationData } from '../types/index';
-import { MCPError, ErrorCode } from '../types/index';
+import type { TaskCreationData } from '../types';
+import { MCPError, ErrorCode } from '../types';
 import { isAuthenticationError } from '../utils/auth-error-handler';
 import type { Task, Label, User } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';

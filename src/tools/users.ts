@@ -7,7 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
-import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
+import { MCPError, ErrorCode, createStandardResponse } from '../types';
 import { getClientFromContext } from '../client';
 import type { User, ExtendedUserSettings } from '../types/vikunja';
 import { handleAuthError } from '../utils/auth-error-handler';

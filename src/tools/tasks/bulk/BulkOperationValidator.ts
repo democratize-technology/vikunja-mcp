@@ -2,7 +2,7 @@
  * Validation and preprocessing utilities for bulk operations
  */
 
-import { MCPError, ErrorCode } from '../../../types/index';
+import { MCPError, ErrorCode } from '../../../types';
 import { validateDateString, validateId } from '../validation';
 import { MAX_BULK_OPERATION_TASKS } from '../constants';
 

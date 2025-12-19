@@ -6,7 +6,7 @@
 import type { Task } from 'node-vikunja';
 import type { FilterExpression, ParseResult } from '../../types/filters';
 import type { TaskListingArgs, TaskFilterValidationConfig, TaskFilterStorage } from '../../tools/tasks/types/filters';
-import { MCPError, ErrorCode } from '../../types/index';
+import { MCPError, ErrorCode } from '../../types';
 import { parseFilterString } from '../../utils/filters';
 import { validateTaskCountLimit } from '../../utils/memory';
 import { logger } from '../../utils/logger';

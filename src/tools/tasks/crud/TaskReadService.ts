@@ -4,7 +4,7 @@
  */
 
 import { MCPError, ErrorCode, getClientFromContext, transformApiError, handleFetchError, handleStatusCodeError, type AorpBuilderConfig } from '../../../index';
-import type { Task } from '../../../types/index';
+import type { Task } from '../../../types';
 import { validateId } from '../validation';
 import { createTaskResponse } from './TaskResponseFormatter';
 import { formatAorpAsMarkdown } from '../../../utils/response-factory';

@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import type { Task } from '../types';
-import { MCPError, ErrorCode } from '../types/index';
+import { MCPError, ErrorCode } from '../types';
 import { getClientFromContext, setGlobalClientFactory } from '../client';
 import { logger } from '../utils/logger';
 import { storageManager } from '../storage/index';

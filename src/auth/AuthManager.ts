@@ -3,8 +3,8 @@
  * Handles session management and token refresh for the MCP server
  */
 
-import type { AuthSession } from '../types/index';
-import { MCPError, ErrorCode } from '../types/index';
+import type { AuthSession } from '../types';
+import { MCPError, ErrorCode } from '../types';
 import { logger } from '../utils/logger';
 
 export class AuthManager {

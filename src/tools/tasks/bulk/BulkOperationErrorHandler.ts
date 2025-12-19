@@ -2,7 +2,7 @@
  * Error handling and fallback logic for bulk operations
  */
 
-import { MCPError, ErrorCode, createStandardResponse, type Assignee } from '../../../types/index';
+import { MCPError, ErrorCode, createStandardResponse, type Assignee } from '../../../types';
 import { getClientFromContext } from '../../../client';
 import type { Task, VikunjaClient } from 'node-vikunja';
 import { logger } from '../../../utils/logger';

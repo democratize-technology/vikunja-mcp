@@ -3,7 +3,7 @@
  * Provides consistent handling of authentication errors across all tools
  */
 
-import { MCPError, ErrorCode } from '../types/index';
+import { MCPError, ErrorCode } from '../types';
 import { logger } from './logger';
 
 /**

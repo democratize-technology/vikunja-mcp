@@ -3,7 +3,7 @@
  * Handles input validation for comment operations
  */
 
-import { MCPError, ErrorCode } from '../../../types/index';
+import { MCPError, ErrorCode } from '../../../types';
 import { validateId } from '../validation';
 
 export interface CommentOperationInput {

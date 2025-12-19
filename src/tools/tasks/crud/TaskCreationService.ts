@@ -3,7 +3,7 @@
  * Handles task creation with label/assignee management and rollback logic
  */
 
-import { MCPError, ErrorCode } from '../../../types/index';
+import { MCPError, ErrorCode } from '../../../types';
 import { getClientFromContext } from '../../../client';
 import type { Task, VikunjaClient } from 'node-vikunja';
 import { logger } from '../../../utils/logger';

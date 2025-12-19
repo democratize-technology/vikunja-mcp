@@ -3,8 +3,8 @@
  * Handles core business logic for task assignee management
  */
 
-import type { StandardTaskResponse, MinimalTask, TaskWithAssignees, Assignee } from '../../../types/index';
-import { MCPError, ErrorCode } from '../../../types/index';
+import type { StandardTaskResponse, MinimalTask, TaskWithAssignees, Assignee } from '../../../types';
+import { MCPError, ErrorCode } from '../../../types';
 import { getClientFromContext } from '../../../client';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';

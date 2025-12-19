@@ -4,7 +4,7 @@
  */
 
 import type { LinkSharing } from 'node-vikunja';
-import { MCPError, ErrorCode, type CreateShareRequest } from '../../types/index';
+import { MCPError, ErrorCode, type CreateShareRequest } from '../../types';
 import { getClientFromContext } from '../../client';
 import { transformApiError } from '../../utils/error-handler';
 import { validateId } from './validation';

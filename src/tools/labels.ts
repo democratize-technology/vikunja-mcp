@@ -7,7 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
-import { MCPError, ErrorCode, createStandardResponse } from '../types/index';
+import { MCPError, ErrorCode, createStandardResponse } from '../types';
 import { validateAndConvertId } from '../utils/validation';
 import { wrapToolError } from '../utils/error-handler';
 import { getClientFromContext } from '../client';

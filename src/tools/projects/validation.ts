@@ -3,7 +3,7 @@
  * Handles all validation logic for project operations
  */
 
-import { MCPError, ErrorCode } from '../../types/index';
+import { MCPError, ErrorCode } from '../../types';
 import type { Project } from 'node-vikunja';
 import { validateId as validateSharedId } from '../../utils/validation';
 

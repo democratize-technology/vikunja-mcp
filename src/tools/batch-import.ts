@@ -4,7 +4,7 @@ import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 import { getClientFromContext } from '../client';
 import { logger } from '../utils/logger';
-import { MCPError, ErrorCode } from '../types/index';
+import { MCPError, ErrorCode } from '../types';
 import { parseInputData } from '../parsers/InputParserFactory';
 import { EntityResolver } from '../services/EntityResolver';
 import { TaskCreationService } from '../services/TaskCreationService';

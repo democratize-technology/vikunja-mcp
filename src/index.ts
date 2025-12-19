@@ -115,9 +115,9 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
 
 // Core types that are commonly imported by external code
 export { MCPError, ErrorCode } from './types/errors';
-export type { TaskResponseData, FilterExpression, Task } from './types/index';
+export type { TaskResponseData, FilterExpression, Task } from './types';
 export type { ParseResult } from './types/filters';
-export type { AorpBuilderConfig, AorpFactoryResult } from './types/index';
+export type { AorpBuilderConfig, AorpFactoryResult } from './types';
 
 // Core utilities that are widely used across the codebase
 export { logger } from './utils/logger';

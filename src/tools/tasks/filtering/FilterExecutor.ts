@@ -9,7 +9,7 @@ import type { TaskListingArgs, TaskFilterExecutionResult } from '../types/filter
 import type { TaskFilterStorage, FilteringParams, FilteringMetadata, FilteringArgs } from '../types/filters';
 import { FilteringContext } from '../../../utils/filtering';
 import { validateTaskCountLimit, createTaskLimitExceededMessage, logMemoryUsage } from '../../../utils/memory';
-import { MCPError, ErrorCode } from '../../../types/index';
+import { MCPError, ErrorCode } from '../../../types';
 import { logger } from '../../../utils/logger';
 import { handleFetchError } from '../../../utils/error-handler';
 

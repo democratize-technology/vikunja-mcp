@@ -4,7 +4,7 @@
  */
 
 import type { Project } from 'node-vikunja';
-import { MCPError, ErrorCode } from '../../types/index';
+import { MCPError, ErrorCode } from '../../types';
 import { getClientFromContext } from '../../client';
 import { transformApiError, handleStatusCodeError } from '../../utils/error-handler';
 import { validateId, validateMoveConstraints } from './validation';

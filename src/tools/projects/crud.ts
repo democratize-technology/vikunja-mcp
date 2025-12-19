@@ -4,7 +4,7 @@
  */
 
 import type { Project, ProjectListParams } from 'node-vikunja';
-import { MCPError, ErrorCode, type CreateProjectRequest, type UpdateProjectRequest } from '../../types/index';
+import { MCPError, ErrorCode, type CreateProjectRequest, type UpdateProjectRequest } from '../../types';
 import { getClientFromContext } from '../../client';
 import { transformApiError, handleStatusCodeError } from '../../utils/error-handler';
 import { validateId, validateHexColor, validateProjectData, calculateProjectDepth } from './validation';

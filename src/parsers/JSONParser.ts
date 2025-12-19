@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MCPError, ErrorCode } from '../types/index';
+import { MCPError, ErrorCode } from '../types';
 
 /* ===================================================================
  * TYPE DEFINITIONS & SCHEMAS

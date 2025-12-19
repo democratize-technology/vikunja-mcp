@@ -62,7 +62,7 @@ export interface TaskListingArgs extends FilteringArgs {
   verbosity?: string;
   useOptimizedFormat?: boolean;
   useAorp?: boolean;
-  aorpConfig?: import('../../../types/index').AorpBuilderConfig;
+  aorpConfig?: import('../../../types').AorpBuilderConfig;
   sessionId?: string;
 }
 

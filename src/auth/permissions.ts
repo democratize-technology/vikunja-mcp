@@ -3,7 +3,7 @@
  * Centralizes authentication requirements and eliminates conditional tool registration
  */
 
-import type { AuthSession } from '../types/index';
+import type { AuthSession } from '../types';
 
 /**
  * Permissions required for different tool operations

@@ -5,7 +5,7 @@
 
 import { createSuccessResponse, createErrorResponse, type SimpleResponse } from './simple-response';
 import type { ResponseMetadata } from '../types/responses';
-import type { ResponseData } from '../types/index';
+import type { ResponseData } from '../types';
 
 /**
  * Simple response metadata

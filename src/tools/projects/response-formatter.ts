@@ -6,7 +6,7 @@
 import { createAorpResponse } from '../../utils/response-factory';
 import type { ResponseMetadata } from '../../types/responses';
 import type { ResponseData } from '../../utils/simple-response';
-import type { AorpFactoryResult, AorpVerbosityLevel } from '../../types/index';
+import type { AorpFactoryResult, AorpVerbosityLevel } from '../../types';
 import type { Project } from 'node-vikunja';
 
 /**

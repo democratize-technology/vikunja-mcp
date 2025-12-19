@@ -3,8 +3,8 @@
  * Handles response formatting for assignee operations
  */
 
-import type { StandardTaskResponse, MinimalTask, ResponseMetadata, TaskWithAssignees } from '../../../types/index';
-import { createStandardResponse } from '../../../types/index';
+import type { StandardTaskResponse, MinimalTask, ResponseMetadata, TaskWithAssignees } from '../../../types';
+import { createStandardResponse } from '../../../types';
 import { formatAorpAsMarkdown } from '../../../utils/response-factory';
 
 /**

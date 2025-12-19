@@ -3,7 +3,7 @@
  * Handles task updates with field diffing and relationship management
  */
 
-import { MCPError, ErrorCode } from '../../../types/index';
+import { MCPError, ErrorCode } from '../../../types';
 import { getClientFromContext } from '../../../client';
 import type { Task, VikunjaClient } from 'node-vikunja';
 import { validateDateString, validateId, convertRepeatConfiguration } from '../validation';

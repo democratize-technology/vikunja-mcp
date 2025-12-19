@@ -3,7 +3,7 @@
  * Refactored to use modular service architecture
  */
 
-import { MCPError, ErrorCode } from '../../../types/index';
+import { MCPError, ErrorCode } from '../../../types';
 import { AssigneeOperationsService } from './AssigneeOperationsService';
 import { AssigneeValidationService } from './AssigneeValidationService';
 import { AssigneeResponseFormatter } from './AssigneeResponseFormatter';

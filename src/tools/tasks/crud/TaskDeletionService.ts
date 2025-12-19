@@ -3,7 +3,7 @@
  * Handles task deletion with graceful error handling and response formatting
  */
 
-import { MCPError, ErrorCode } from '../../../types/index';
+import { MCPError, ErrorCode } from '../../../types';
 import { getClientFromContext } from '../../../client';
 import type { Task, VikunjaClient } from 'node-vikunja';
 import { validateId } from '../validation';
