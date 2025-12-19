@@ -216,7 +216,18 @@ export class TaskFilteringOrchestrator {
       input.sort = args.sort;
     }
 
-    const output: any = {
+    const output: {
+      taskCount: number;
+      serverSideFilteringUsed: boolean;
+      serverSideFilteringAttempted: boolean;
+      clientSideFiltering: boolean;
+      filteringNote: string;
+      memoryInfo?: {
+        actualCount: number;
+        maxAllowed: number;
+        estimatedMemoryMB: number;
+      };
+    } = {
         taskCount: result.tasks?.length || 0,
         serverSideFilteringUsed: result.metadata?.serverSideFilteringUsed || false,
         serverSideFilteringAttempted: result.metadata?.serverSideFilteringAttempted || false,
