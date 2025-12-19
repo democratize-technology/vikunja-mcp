@@ -10,6 +10,7 @@ import { logger } from '../../../utils/logger';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
 import { transformApiError, handleFetchError } from '../../../utils/error-handler';
+import { sanitizeString } from '../../../utils/validation';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from '../validation';
 import { createTaskResponse } from './TaskResponseFormatter';
@@ -54,6 +55,10 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'title is required to create a task');
     }
 
+    // Sanitize and validate user inputs for comprehensive security
+    const sanitizedTitle = sanitizeString(args.title);
+    const sanitizedDescription = args.description ? sanitizeString(args.description) : undefined;
+
     // Validate optional date fields
     if (args.dueDate) {
       validateDateString(args.dueDate, 'dueDate');
@@ -66,14 +71,14 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
 
     const client = await getClientFromContext();
 
-    // Build the initial task object
+    // Build the initial task object with sanitized values
     const newTask: Task = {
-      title: args.title,
+      title: sanitizedTitle,
       project_id: args.projectId,
     };
 
-    // Add optional fields
-    if (args.description !== undefined) newTask.description = args.description;
+    // Add optional fields with sanitized values
+    if (sanitizedDescription !== undefined) newTask.description = sanitizedDescription;
     if (args.dueDate !== undefined) newTask.due_date = args.dueDate;
     if (args.priority !== undefined) newTask.priority = args.priority;
 
