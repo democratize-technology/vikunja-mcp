@@ -12,6 +12,7 @@ import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mo
 
 // Mock dependencies
 jest.mock('../../src/client');
+jest.mock('../../src/auth/AuthManager');
 jest.mock('../../src/utils/logger', () => ({
   logger: {
     info: jest.fn(),

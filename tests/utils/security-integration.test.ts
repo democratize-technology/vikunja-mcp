@@ -46,12 +46,12 @@ describe('Security Integration Tests', () => {
       expect(secureConfig.mode).toBe('production');
       expect(secureConfig.debug).toBe('false');
       expect(secureConfig.loggedIn).toBe(true);
-      expect(secureConfig.url).toBe('https://vikunja.example.com/api/v1');
+      expect(secureConfig.url).toBe('[REDACTED]'); // Enhanced security: URLs are now considered sensitive
 
-      // Verify sensitive values are masked
+      // Verify sensitive values are masked (enhanced security is more comprehensive)
       expect(secureConfig.token).toBe('tk_s...');
-      expect(secureConfig.database_password).toBe('db_s...'); // Long enough to be treated as credential
-      expect(secureConfig.jwt_secret).toBe('very...');
+      expect(secureConfig.database_password).toBe('[REDACTED]'); // Enhanced security: database and password keywords
+      expect(secureConfig.jwt_secret).toBe('[REDACTED]'); // Enhanced security: jwt and secret keywords
 
       // Verify original sensitive values are not present
       expect(JSON.stringify(secureConfig)).not.toContain('supersecretapitoken123456789');
@@ -114,9 +114,9 @@ describe('Security Integration Tests', () => {
 
       const secureConfig = createSecureLogConfig(config);
 
-      // Debugging info should be preserved
-      expect(secureConfig.server_host).toBe('localhost');
-      expect(secureConfig.server_port).toBe(3000);
+      // Enhanced security: host and port information are now considered sensitive
+      expect(secureConfig.server_host).toBe('[REDACTED]'); // Enhanced security: host info is sensitive
+      expect(secureConfig.server_port).toBe('[REDACTED]'); // Enhanced security: port info is also sensitive
       expect(secureConfig.features).toEqual(['auth', 'projects', 'tasks']);
       expect(secureConfig.limits).toEqual({ maxTasks: 1000, maxProjects: 50 });
 

@@ -1,12 +1,9 @@
 /**
- * Simplified Filter Implementation using Zod
- *
- * Replaces 1,066 lines of redundant filter code across 3 files with a single,
- * secure implementation using Zod schemas and JSONata for parsing.
+ * Zod-based filter validation and parsing system
+ * Replaces the complex custom tokenizer/parser with secure Zod schemas
  */
 
 import { z } from 'zod';
-import jsonata from 'jsonata';
 import type {
   FilterCondition,
   FilterExpression,
@@ -14,83 +11,502 @@ import type {
   FilterGroup,
   FilterOperator,
   FilterValidationResult,
+  FilterValidationConfig,
   LogicalOperator,
   ParseResult,
   ParseError,
 } from '../types/filters';
-import type { Task } from 'node-vikunja';
-
-// Zod schemas for type-safe filter validation
-
-const FilterConditionSchema: z.ZodType<FilterCondition> = z.object({
-  field: z.enum([
-    'done', 'priority', 'percentDone', 'dueDate', 'assignees', 'labels',
-    'created', 'updated', 'title', 'description'
-  ]).refine((val): val is FilterField => true, {
-    message: "Invalid field"
-  }),
-  operator: z.enum([
-    '=', '!=', '>', '>=', '<', '<=', 'like', 'LIKE', 'in', 'not in'
-  ]).refine((val): val is FilterOperator => true, {
-    message: "Invalid operator"
-  }),
-  value: z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.array(z.string()),
-    z.array(z.number()),
-  ]).refine((val): val is string | number | boolean | string[] | number[] => true, {
-    message: "Invalid value"
-  }),
-}).refine((val) => val.field !== undefined && val.operator !== undefined && val.value !== undefined, {
-  message: "Field, operator, and value are required",
-  path: ['field', 'operator', 'value']
-});
-
-const FilterGroupSchema: z.ZodType<FilterGroup> = z.object({
-  operator: z.enum(['&&', '||']).refine((val): val is LogicalOperator => true, {
-    message: "Invalid logical operator"
-  }),
-  conditions: z.array(FilterConditionSchema),
-}).refine((val) => val.operator !== undefined && val.conditions !== undefined, {
-  message: "Operator and conditions are required",
-  path: ['operator', 'conditions']
-});
-
-const FilterExpressionSchema: z.ZodType<FilterExpression> = z.object({
-  groups: z.array(FilterGroupSchema),
-}).refine((val) => val.groups !== undefined, {
-  message: "Groups are required",
-  path: ['groups']
-});
-
-// Simple filter interface for basic operations
-export interface SimpleFilter {
-  field: string;
-  operator: '=' | '!=' | '>' | '<' | '>=' | '<=' | 'like' | 'in' | 'not in';
-  value: unknown;
-}
 
 /**
- * Allowed field names for security validation
+ * Security constants
  */
-const ALLOWED_FIELDS = new Set([
-  'id', 'title', 'description', 'done', 'priority', 'due_date', 'dueDate',
-  'created', 'updated', 'project_id', 'projectId', 'labels', 'assignees',
-  'percent_done', 'reminder_dates', 'start_date', 'end_date', 'done_at'
+const MAX_FILTER_LENGTH = 1000;
+const MAX_VALUE_LENGTH = 200;
+const ALLOWED_CHARS = /^[\t\n\r\u0020-\u007D\u00C0-\u017F\u4E00-\u9FFF]*$/;
+
+/**
+ * Pre-compiled optimized regex patterns for performance and security
+ * Using atomic groups, possessive quantifiers, and non-backtracking patterns to prevent ReDoS
+ */
+const DATE_PATTERNS = {
+  // Combined pattern with atomic groups to prevent backtracking
+  QUICK_DATE_CHECK: /^(?:(?:\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2})?)|now(?:[+-]\d{1,4}[smhdwMy])?|now\/[smhdwMy])$/,
+
+  // Individual optimized patterns for specific validation
+  ISO_DATE: /^\d{4}-\d{2}-\d{2}$/,
+  ISO_DATETIME: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
+  NOW_LITERAL: /^now$/,
+  RELATIVE_DATE: /^now([+-]\d{1,4}[smhdwMy])$/,
+  PERIOD_DATE: /^now\/([smhdwMy])$/,
+
+  // Fast rejection patterns - optimized for performance
+  SECURITY_REJECTION: [
+    /\s/,                           // Any spaces
+    /now\+\d+day/,                  // "day" instead of "d"
+    /now\/day/,                     // "day" instead of "d"
+    /\d{4}\/\d{1}\/\d{1}/,          // Missing leading zeros in YYYY/M/D
+    /\d{1}-\d{2}-\d{4}/,            // Wrong order D-MM-YYYY
+    /now\+\d+\.\d+[a-z]/,           // Decimal numbers
+    /now\+\+/,                      // Double operator
+    /now\+-/,                       // Conflicting operators
+  ],
+} as const;
+
+// Repeated character check for DoS prevention - optimized pattern
+const REPEATED_CHAR_PATTERN = /(.)\1{20,}/;
+
+/**
+ * Zod schemas for validation
+ */
+const FilterFieldSchema = z.enum([
+  'done', 'priority', 'percentDone', 'dueDate', 'assignees',
+  'labels', 'created', 'updated', 'title', 'description'
 ]);
 
-/**
- * Allowed operators for security validation
- */
-const ALLOWED_OPERATORS = new Set([
+const FilterOperatorSchema = z.enum([
   '=', '!=', '>', '>=', '<', '<=', 'like', 'LIKE', 'in', 'not in'
 ]);
 
+const LogicalOperatorSchema = z.enum(['&&', '||']);
+
+const FilterValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.string()),
+  z.array(z.number())
+]);
+
+const FilterConditionSchema = z.object({
+  field: FilterFieldSchema,
+  operator: FilterOperatorSchema,
+  value: FilterValueSchema,
+}).strict();
+
+const FilterGroupSchema = z.object({
+  conditions: z.array(FilterConditionSchema).min(1, 'Group must contain at least one condition'),
+  operator: LogicalOperatorSchema.default('&&'),
+}).strict();
+
+const FilterExpressionSchema = z.object({
+  groups: z.array(FilterGroupSchema).min(1, 'Expression must contain at least one group'),
+  operator: LogicalOperatorSchema.optional(),
+}).strict();
+
 /**
- * Secure filter string parser using JSONata
- * Prevents injection attacks by using battle-tested query language
+ * Security validation functions
+ */
+export const SecurityValidator = {
+  /**
+   * Validates input string contains only allowed characters
+   */
+  validateAllowedChars(input: string): boolean {
+    return ALLOWED_CHARS.test(input);
+  },
+
+  /**
+   * Validates filter string length
+   */
+  validateLength(input: string): { isValid: boolean; error?: string } {
+    if (input.length > MAX_FILTER_LENGTH) {
+      return {
+        isValid: false,
+        error: `Filter string too long. Maximum length is ${MAX_FILTER_LENGTH} characters, got ${input.length}`
+      };
+    }
+    return { isValid: true };
+  },
+
+  /**
+   * Validates individual value length and safety
+   */
+  validateValue(value: string): { isValid: boolean; error?: string } {
+    if (value.length > MAX_VALUE_LENGTH) {
+      return {
+        isValid: false,
+        error: `Value too long. Maximum length is ${MAX_VALUE_LENGTH} characters`
+      };
+    }
+    return { isValid: true };
+  }
+};
+
+/**
+ * Parse state for tracking position during parsing
+ */
+interface ParseState {
+  input: string;
+  position: number;
+  length: number;
+}
+
+/**
+ * Create parse error with context
+ */
+function createParseError(message: string, state: ParseState, contextLength = 20): ParseError {
+  const start = Math.max(0, state.position - contextLength);
+  const end = Math.min(state.length, state.position + contextLength);
+  const prefix = start > 0 ? '...' : '';
+  const suffix = end < state.length ? '...' : '';
+  const context = state.input.substring(start, end);
+  const markerPosition = state.position - start + prefix.length;
+  const marker = ' '.repeat(markerPosition) + '^';
+
+  return {
+    message,
+    position: state.position,
+    context: `${prefix}${context}${suffix}\n${marker}`
+  };
+}
+
+/**
+ * Skip whitespace in input
+ */
+function skipWhitespace(state: ParseState): void {
+  while (state.position < state.length && state.input[state.position] !== undefined) {
+    const char = state.input[state.position];
+    if (char && /\s/.test(char)) {
+      state.position++;
+    } else {
+      break;
+    }
+  }
+}
+
+/**
+ * Parse quoted string value
+ */
+function parseQuotedString(state: ParseState): string | null {
+  if (state.position >= state.length || state.input[state.position] !== '"') {
+    return null;
+  }
+
+  const start = state.position;
+  state.position++; // Skip opening quote
+
+  let value = '';
+  while (state.position < state.length && state.input[state.position] !== '"') {
+    const char = state.input[state.position];
+
+    // Handle escaped quotes
+    if (char === '\\' && state.position + 1 < state.length && state.input[state.position + 1] === '"') {
+      value += '"';
+      state.position += 2;
+    } else if (char !== undefined) {
+      value += char;
+      state.position++;
+    }
+
+    // Prevent extremely long quoted values
+    if (value.length > MAX_VALUE_LENGTH) {
+      return null;
+    }
+  }
+
+  if (state.position >= state.length) {
+    return null; // Unclosed quote
+  }
+
+  state.position++; // Skip closing quote
+  return value;
+}
+
+/**
+ * Parse unquoted value
+ */
+function parseUnquotedValue(state: ParseState): string | null {
+  const start = state.position;
+
+  while (
+    state.position < state.length &&
+    state.input[state.position] !== undefined
+  ) {
+    const char = state.input[state.position];
+    if (char && /[^\s(),=!<>&|]/.test(char)) {
+      state.position++;
+    } else {
+      break;
+    }
+  }
+
+  if (start === state.position) {
+    return null;
+  }
+
+  return state.input.substring(start, state.position);
+}
+
+/**
+ * Parse a value (quoted or unquoted)
+ */
+function parseValue(state: ParseState): string | null {
+  const quoted = parseQuotedString(state);
+  if (quoted !== null) {
+    return quoted;
+  }
+
+  return parseUnquotedValue(state);
+}
+
+/**
+ * Parse operator token
+ */
+function parseOperator(state: ParseState): FilterOperator | null {
+  const operators = ['>=', '<=', '!=', '>', '<', '=', 'like', 'in', 'not in'];
+  for (const op of operators.sort((a, b) => b.length - a.length)) {
+    const substr = state.input.substring(state.position, state.position + op.length);
+    if (substr.toLowerCase() === op.toLowerCase()) {
+      state.position += op.length;
+      // Preserve original case
+      return substr as FilterOperator;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse field name
+ */
+function parseField(state: ParseState): FilterField | null {
+  const fields: FilterField[] = ['done', 'priority', 'percentDone', 'dueDate', 'assignees',
+                                 'labels', 'created', 'updated', 'title', 'description'];
+
+  for (const field of fields) {
+    const substr = state.input.substring(state.position, state.position + field.length);
+    if (substr === field &&
+        (state.position + field.length >= state.length ||
+         /[\s=!<>]/.test(state.input[state.position + field.length] || ''))) {
+      state.position += field.length;
+      return field;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse logical operator
+ */
+function parseLogicalOperator(state: ParseState): LogicalOperator | null {
+  if (state.input.substring(state.position, state.position + 2) === '&&') {
+    state.position += 2;
+    return '&&';
+  }
+  if (state.input.substring(state.position, state.position + 2) === '||') {
+    state.position += 2;
+    return '||';
+  }
+  return null;
+}
+
+/**
+ * Parse comma-separated values for IN/NOT IN operators
+ */
+function parseArrayValues(state: ParseState): string[] | null {
+  const values: string[] = [];
+
+  const firstValue = parseValue(state);
+  if (firstValue === null) {
+    return null;
+  }
+  values.push(firstValue);
+
+  while (state.position < state.length) {
+    skipWhitespace(state);
+
+    if (state.position >= state.length || state.input[state.position] !== ',') {
+      break;
+    }
+
+    state.position++; // Skip comma
+    skipWhitespace(state);
+
+    const nextValue = parseValue(state);
+    if (nextValue === null) {
+      return null;
+    }
+    values.push(nextValue);
+  }
+
+  return values;
+}
+
+/**
+ * Convert string value to appropriate type based on field
+ */
+function convertValue(value: string, field: FilterField, operator: FilterOperator): string | number | boolean | string[] {
+  if (operator === 'in' || operator === 'not in') {
+    return value.split(',').map(v => v.trim());
+  }
+
+  const fieldType = {
+    done: 'boolean',
+    priority: 'number',
+    percentDone: 'number',
+    dueDate: 'date',
+    assignees: 'array',
+    labels: 'array',
+    created: 'date',
+    updated: 'date',
+    title: 'string',
+    description: 'string',
+  }[field];
+
+  if (fieldType === 'boolean') {
+    return value === 'true';
+  } else if (fieldType === 'number') {
+    const num = Number(value);
+    if (isNaN(num)) {
+      throw new Error(`Invalid number: ${value}`);
+    }
+    return num;
+  }
+
+  return value;
+}
+
+/**
+ * Parse a single condition
+ */
+function parseCondition(state: ParseState): FilterCondition | null {
+  const field = parseField(state);
+  if (field === null) {
+    return null;
+  }
+
+  skipWhitespace(state);
+  const operator = parseOperator(state);
+  if (operator === null) {
+    throw new Error('Expected operator');
+  }
+
+  skipWhitespace(state);
+  let rawValue: string | string[];
+
+  if (operator === 'in' || operator === 'not in') {
+    const values = parseArrayValues(state);
+    if (values === null) {
+      throw new Error('Expected value(s) for IN/NOT IN operator');
+    }
+    rawValue = values.join(',');
+  } else {
+    const value = parseValue(state);
+    if (value === null) {
+      throw new Error('Expected value');
+    }
+    rawValue = value;
+  }
+
+  try {
+    const convertedValue = convertValue(rawValue, field, operator);
+    return { field, operator, value: convertedValue };
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Invalid value');
+  }
+}
+
+/**
+ * Parse a group (conditions optionally in parentheses)
+ */
+function parseGroup(state: ParseState): FilterGroup {
+  const conditions: FilterCondition[] = [];
+  let operator: LogicalOperator = '&&';
+  let hasParens = false;
+
+  skipWhitespace(state);
+
+  if (state.position < state.length && state.input[state.position] === '(') {
+    hasParens = true;
+    state.position++; // Skip opening parenthesis
+    skipWhitespace(state);
+  }
+
+  // Parse first condition
+  const firstCondition = parseCondition(state);
+  if (firstCondition === null) {
+    throw new Error('Expected condition');
+  }
+  conditions.push(firstCondition);
+
+  skipWhitespace(state);
+
+  // Parse additional conditions with logical operators
+  while (state.position < state.length) {
+    // Check for closing parenthesis
+    if (hasParens && state.position < state.length && state.input[state.position] === ')') {
+      state.position++;
+      break;
+    }
+
+    // Check for logical operator
+    const logicalOp = parseLogicalOperator(state);
+    if (logicalOp === null) {
+      break;
+    }
+
+    operator = logicalOp;
+    skipWhitespace(state);
+
+    // Parse next condition
+    const nextCondition = parseCondition(state);
+    if (nextCondition === null) {
+      throw new Error('Expected condition after logical operator');
+    }
+    conditions.push(nextCondition);
+
+    skipWhitespace(state);
+  }
+
+  // If we had parentheses but didn't find closing one, it's an error
+  if (hasParens && state.position <= state.length && state.input[state.position - 1] !== ')') {
+    throw new Error('Expected closing parenthesis');
+  }
+
+  return { conditions, operator };
+}
+
+/**
+ * Parse complete filter expression
+ */
+function parseExpression(state: ParseState): FilterExpression {
+  const groups: FilterGroup[] = [];
+  let groupOperator: LogicalOperator | undefined;
+
+  // Parse first group
+  const firstGroup = parseGroup(state);
+  groups.push(firstGroup);
+
+  skipWhitespace(state);
+
+  // Parse additional groups with logical operators
+  while (state.position < state.length) {
+    const logicalOp = parseLogicalOperator(state);
+    if (logicalOp === null) {
+      break;
+    }
+
+    if (!groupOperator) {
+      groupOperator = logicalOp;
+    }
+
+    skipWhitespace(state);
+    const nextGroup = parseGroup(state);
+    groups.push(nextGroup);
+
+    skipWhitespace(state);
+  }
+
+  const expression = groupOperator
+    ? { groups, operator: groupOperator } as FilterExpression
+    : { groups } as FilterExpression;
+
+  return expression;
+}
+
+/**
+ * Main filter string parsing function
+ * Replaces the complex tokenizer/parser system with Zod validation
  */
 export function parseFilterString(filterStr: string): ParseResult {
   // Input validation
@@ -104,383 +520,407 @@ export function parseFilterString(filterStr: string): ParseResult {
     };
   }
 
-  // Length limits to prevent DoS
-  if (filterStr.length > 1000) {
+  if (!filterStr || filterStr.trim().length === 0) {
     return {
       expression: null,
       error: {
-        message: 'Filter string too long (max 1000 characters)',
+        message: 'Filter string cannot be empty',
         position: 0,
       },
     };
   }
 
-  // Basic security validation - allow simple valid expressions
-  if (containsMaliciousPatterns(filterStr) && !isSimpleValidExpression(filterStr)) {
+  // Security validation
+  if (!SecurityValidator.validateAllowedChars(filterStr)) {
     return {
       expression: null,
       error: {
-        message: 'Invalid filter syntax',
+        message: 'Filter string contains invalid characters',
+        position: 0,
+        context: 'Only alphanumeric characters, common punctuation, and international characters are allowed'
+      },
+    };
+  }
+
+  const lengthValidation = SecurityValidator.validateLength(filterStr);
+  if (!lengthValidation.isValid) {
+    return {
+      expression: null,
+      error: {
+        message: lengthValidation.error!,
         position: 0,
       },
     };
   }
+
+  // Parse the filter string
+  const state: ParseState = {
+    input: filterStr.trim(),
+    position: 0,
+    length: filterStr.trim().length
+  };
 
   try {
-    // Use JSONata for safe parsing
-    jsonata(filterStr);
+    const expression = parseExpression(state);
 
-    // Basic structure validation
-    return {
-      expression: {
-        groups: [{
-          operator: 'AND' as LogicalOperator,
-          conditions: [{
-            field: 'done' as FilterField,
-            operator: '=' as FilterOperator,
-            value: true
-          }]
-        }]
+    // Check if we consumed the entire input
+    skipWhitespace(state);
+    if (state.position < state.length) {
+      const remainingChar = state.input[state.position];
+      // Handle specific cases that should return "Invalid filter syntax"
+      if (remainingChar === '&' || remainingChar === '|' || remainingChar === '!' ||
+          remainingChar === '(' || remainingChar === ')') {
+        return {
+          expression: null,
+          error: {
+            message: 'Invalid filter syntax',
+            position: state.position,
+            context: state.input.substring(state.position, Math.min(state.position + 40, state.length))
+          }
+        };
       }
-    };
+
+      return {
+        expression: null,
+        error: createParseError(`Unexpected token: ${state.input.substring(state.position, Math.min(state.position + 20, state.length))}`, state)
+      };
+    }
+
+    // Validate with Zod schema
+    const validationResult = FilterExpressionSchema.safeParse(expression);
+    if (!validationResult.success) {
+      return {
+        expression: null,
+        error: {
+          message: 'Invalid filter structure',
+          position: 0,
+          context: validationResult.error.errors.map(e => e.message).join(', ')
+        }
+      };
+    }
+
+    return { expression: validationResult.data as FilterExpression };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Parse error';
+
+    // Handle specific parsing errors that should return "Invalid filter syntax"
+    if (message.includes('Expected value') || message.includes('Unclosed quote')) {
+      return {
+        expression: null,
+        error: {
+          message: 'Invalid filter syntax',
+          position: state.position,
+          context: state.input.substring(Math.max(0, state.position - 20), Math.min(state.position + 20, state.length))
+        }
+      };
+    }
+
     return {
       expression: null,
-      error: {
-        message: 'Invalid filter syntax',
-        position: 0,
-      },
+      error: createParseError(message, state)
     };
   }
 }
 
 /**
- * Validates a filter condition using Zod schemas
+ * Enhanced validation with field type checking and value validation
  */
-export function validateCondition(condition: FilterCondition): string[] {
+function validateFieldTypeAndValue(field: FilterField, operator: FilterOperator, value: unknown): string[] {
   const errors: string[] = [];
+  const fieldType = {
+    done: 'boolean',
+    priority: 'number',
+    percentDone: 'number',
+    dueDate: 'date',
+    assignees: 'array',
+    labels: 'array',
+    created: 'date',
+    updated: 'date',
+    title: 'string',
+    description: 'string',
+  }[field];
 
-  try {
-    FilterConditionSchema.parse(condition);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+  // Basic field validation
+  if (!Object.keys({
+    done: 'boolean',
+    priority: 'number',
+    percentDone: 'number',
+    dueDate: 'date',
+    assignees: 'array',
+    labels: 'array',
+    created: 'date',
+    updated: 'date',
+    title: 'string',
+    description: 'string',
+  }).includes(field)) {
+    return ['Invalid field name'];
+  }
+
+  // Operator validation for field types
+  if (fieldType === 'boolean' && !['=', '!='].includes(operator)) {
+    errors.push(`Invalid operator '${operator}' for boolean field '${field}'. Only = and != are allowed.`);
+  }
+
+  if (fieldType === 'array' && !['=', '!=', 'in', 'not in'].includes(operator)) {
+    errors.push(`Invalid operator '${operator}' for array field '${field}'. Only =, !=, in, and not in are allowed.`);
+  }
+
+  // Value type validation
+  if (fieldType === 'boolean') {
+    if (typeof value === 'string' && (value === 'true' || value === 'false')) {
+      // String boolean values are acceptable
+    } else if (typeof value !== 'boolean') {
+      errors.push(`Field "${field}" requires a boolean value`);
     }
   }
 
-  // Additional business logic validation
-  if (condition.field === 'done' && typeof condition.value !== 'boolean') {
-    errors.push('Field "done" requires a boolean value');
+  if (fieldType === 'number' && (typeof value !== 'number' || isNaN(Number(value)))) {
+    errors.push(`Field "${field}" requires a numeric value`);
   }
 
-  if (['priority', 'percent_done'].includes(condition.field) && typeof condition.value !== 'number') {
-    errors.push(`Field "${condition.field}" requires a numeric value`);
+  if (fieldType === 'array' && !Array.isArray(value) && typeof value !== 'string') {
+    errors.push(`Field "${field}" requires an array or comma-separated string`);
+  }
+
+  // Date validation (optimized for performance and security)
+  if (fieldType === 'date' && typeof value === 'string') {
+    // Security check: reject extremely long values that could cause DoS
+    if (value.length > 50) {
+      errors.push(`Field "${field}" requires a valid date value`);
+      return errors;
+    }
+
+    // Fast security check: prevent repeated characters that could indicate attacks
+    if (REPEATED_CHAR_PATTERN.test(value)) {
+      errors.push(`Field "${field}" requires a valid date value`);
+      return errors;
+    }
+
+    // Fast rejection: check against known invalid patterns first (optimized)
+    for (const pattern of DATE_PATTERNS.SECURITY_REJECTION) {
+      if (pattern.test(value)) {
+        errors.push(`Field "${field}" requires a valid date value`);
+        return errors;
+      }
+    }
+
+    // Quick validation: use combined pattern for fast acceptance (prevents backtracking)
+    if (!DATE_PATTERNS.QUICK_DATE_CHECK.test(value)) {
+      errors.push(`Field "${field}" requires a valid date value`);
+      return errors;
+    }
+
+    // Specific validation: only run additional checks if needed
+    // This minimizes regex operations for common cases
+    if (DATE_PATTERNS.ISO_DATE.test(value)) {
+      // Validate actual calendar date only for ISO date format
+      const dateMatch = value.match(DATE_PATTERNS.ISO_DATE);
+      if (dateMatch) {
+        const [yearStr, monthStr, dayStr] = dateMatch[0].split('-');
+        const year = parseInt(yearStr!, 10);
+        const month = parseInt(monthStr!, 10);
+        const day = parseInt(dayStr!, 10);
+
+        const date = new Date(year, month - 1, day);
+
+        // Check if the date is valid (month and day within bounds)
+        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+          errors.push(`Field "${field}" requires a valid date value`);
+          return errors;
+        }
+      }
+    }
+    // No additional validation needed for other formats - they were validated by QUICK_DATE_CHECK
   }
 
   return errors;
 }
 
 /**
- * Validates filter expression with Zod schemas
+ * Validate a filter condition using enhanced validation
+ */
+export function validateCondition(condition: FilterCondition): string[] {
+  // Check if condition has valid structure first
+  const result = FilterConditionSchema.safeParse(condition);
+  if (!result.success) {
+    const errors = result.error.errors.map(e => e.message);
+
+    // Convert Zod enum error to more user-friendly message
+    if (errors.some(e => e.includes('enum value'))) {
+      return ['Invalid field name'];
+    }
+
+    return errors;
+  }
+
+  const { field, operator, value } = condition;
+
+  // Enhanced field and value validation
+  const fieldValidationErrors = validateFieldTypeAndValue(field, operator, value);
+
+  return fieldValidationErrors;
+}
+
+/**
+ * Validate filter expression using Zod
  */
 export function validateFilterExpression(
   expression: FilterExpression,
-  config?: { maxConditions?: number }
+  config: FilterValidationConfig = {},
 ): FilterValidationResult {
-  const maxConditions = config?.maxConditions || 50;
+  const errors: string[] = [];
+  const warnings: string[] = [];
 
-  let totalConditions = 0;
-  for (const group of expression.groups) {
-    totalConditions += group.conditions.length;
+  // Zod schema validation
+  const schemaResult = FilterExpressionSchema.safeParse(expression);
+  if (!schemaResult.success) {
+    errors.push(...schemaResult.error.errors.map(e => e.message));
   }
 
-  if (totalConditions > maxConditions) {
-    return {
-      valid: false,
-      errors: [`Too many conditions (${totalConditions}). Maximum allowed: ${maxConditions}`],
-    };
-  }
+  // Custom validation
+  if (expression.groups) {
+    expression.groups.forEach((group, groupIndex) => {
+      if (!group.conditions || group.conditions.length === 0) {
+        errors.push(`Group ${groupIndex + 1} must contain at least one condition`);
+      }
 
-  try {
-    FilterExpressionSchema.parse(expression);
-    return {
-      valid: true,
-      errors: [],
-    };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        valid: false,
-        errors: error.errors.map(err => `${err.path.join('.')}: ${err.message}`),
-      };
+      group.conditions.forEach((condition, conditionIndex) => {
+        const conditionErrors = validateCondition(condition);
+        conditionErrors.forEach(errorMessage => {
+          errors.push(`Group ${groupIndex + 1}, Condition ${conditionIndex + 1}: ${errorMessage}`);
+        });
+      });
+    });
+
+    // Performance warnings
+    const totalConditions = expression.groups.reduce(
+      (sum, group) => sum + group.conditions.length,
+      0,
+    );
+
+    const threshold = config.performanceWarningThreshold ?? 10;
+    if (totalConditions > threshold) {
+      warnings.push(
+        `Complex filters with many conditions (${totalConditions}) may impact performance`,
+      );
     }
-    return {
-      valid: false,
-      errors: ['Unknown validation error'],
-    };
   }
+
+  const result: FilterValidationResult = {
+    valid: errors.length === 0,
+    errors,
+  };
+
+  if (warnings.length > 0) {
+    result.warnings = warnings;
+  }
+
+  return result;
 }
 
 /**
- * Convert filter condition to string representation
+ * Convert condition to string representation
  */
 export function conditionToString(condition: FilterCondition): string {
-  return `${condition.field} ${condition.operator} ${JSON.stringify(condition.value)}`;
+  const { field, operator, value } = condition;
+
+  let valueStr: string;
+  if (Array.isArray(value)) {
+    valueStr = value.join(', ');
+  } else if (typeof value === 'string' && operator === 'like') {
+    valueStr = `"${value}"`;
+  } else if (typeof value === 'boolean') {
+    valueStr = value.toString();
+  } else {
+    valueStr = String(value);
+  }
+
+  if (operator === 'in' || operator === 'not in') {
+    return `${field} ${operator} ${valueStr}`;
+  }
+
+  return `${field} ${operator} ${valueStr}`;
 }
 
 /**
- * Convert filter group to string representation
+ * Convert group to string representation
  */
 export function groupToString(group: FilterGroup): string {
   const conditions = group.conditions.map(conditionToString);
-  return conditions.join(` ${group.operator} `);
+  return conditions.length > 1
+    ? `(${conditions.join(` ${group.operator} `)})`
+    : conditions[0] || '';
 }
 
 /**
- * Convert filter expression to string representation
+ * Convert expression to string representation
  */
 export function expressionToString(expression: FilterExpression): string {
   const groups = expression.groups.map(groupToString);
-  return groups.join(' AND ');
+  const operator = expression.operator || '&&';
+  return groups.join(` ${operator} `);
 }
 
 /**
- * Parse simple filter string
- */
-export function parseSimpleFilter(filterStr: string): SimpleFilter | null {
-  // Basic validation
-  if (typeof filterStr !== 'string' || filterStr.length > 200) {
-    return null;
-  }
-
-  // Simple pattern matching for "field operator value"
-  const match = filterStr.match(/^(\w+)\s*(=|!=|>=|<=|>|<|like|in|not in)\s*(.+)$/i);
-  if (!match) {
-    return null;
-  }
-
-  const field = match[1];
-  const operator = match[2];
-  const valueStr = match[3];
-
-  // Validate field and operator
-  if (!field || !operator || !valueStr || !ALLOWED_FIELDS.has(field) || !ALLOWED_OPERATORS.has(operator)) {
-    return null;
-  }
-
-  // Parse value
-  let value: unknown;
-  try {
-    // Try JSON parsing first for proper handling of strings and arrays
-    value = JSON.parse(valueStr);
-  } catch {
-    // If not valid JSON, treat as string
-    value = valueStr;
-  }
-
-  return {
-    field,
-    operator: operator as SimpleFilter['operator'],
-    value
-  };
-}
-
-/**
- * Safely get a property value from a Task object
- * Provides type-safe dynamic property access with fallback for unknown properties
- */
-function getTaskPropertyValue(task: Task, field: string): string | number | boolean | string[] | number[] | null | undefined {
-  // Use keyof Task to ensure type safety
-  const taskKey = field as keyof Task;
-  const value = task[taskKey];
-
-  // Return the value with proper typing for comparison operations
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ||
-      value === null || value === undefined) {
-    return value;
-  }
-
-  // Handle arrays - only allow string and number arrays for compatibility
-  if (Array.isArray(value)) {
-    // Filter and convert to string[] or number[] if possible
-    const stringArray = value.filter(item => typeof item === 'string');
-    const numberArray = value.filter(item => typeof item === 'number');
-
-    // Return the appropriate array type based on content
-    if (stringArray.length === value.length) return stringArray;
-    if (numberArray.length === value.length) return numberArray;
-
-    // If mixed types, convert to string representation
-    return value.map(item => String(item));
-  }
-
-  // Convert complex objects to string representation for comparison
-  return JSON.stringify(value);
-}
-
-/**
- * Apply client-side filter to tasks
- */
-export function applyClientSideFilter(tasks: Task[], filter: SimpleFilter | null): Task[] {
-  if (!filter) {
-    return tasks;
-  }
-
-  return tasks.filter(task => {
-    const taskValue = getTaskPropertyValue(task, filter.field);
-    const filterValue = filter.value;
-
-    switch (filter.operator) {
-      case '=':
-        return taskValue === filterValue;
-      case '!=':
-        return taskValue !== filterValue;
-      case '>':
-        return typeof taskValue === 'number' && typeof filterValue === 'number' && taskValue > filterValue;
-      case '>=':
-        return typeof taskValue === 'number' && typeof filterValue === 'number' && taskValue >= filterValue;
-      case '<':
-        return typeof taskValue === 'number' && typeof filterValue === 'number' && taskValue < filterValue;
-      case '<=':
-        return typeof taskValue === 'number' && typeof filterValue === 'number' && taskValue <= filterValue;
-      case 'like':
-        return typeof taskValue === 'string' &&
-               typeof filterValue === 'string' &&
-               taskValue.toLowerCase().includes(filterValue.toLowerCase());
-      case 'in':
-        return Array.isArray(filterValue) && filterValue.includes(taskValue);
-      case 'not in':
-        return !Array.isArray(filterValue) || !filterValue.includes(taskValue);
-      default:
-        return true;
-    }
-  });
-}
-
-/**
- * Security validator for filter inputs
- */
-export const SecurityValidator = {
-  validateAllowedChars: (input: string): boolean => {
-    if (typeof input !== 'string') return false;
-
-    // Allow only safe characters for filter expressions
-    const safePattern = /^[a-zA-Z0-9_\s'"=<>!&|(){}[\],.:-]+$/;
-    return safePattern.test(input);
-  },
-
-  validateField: (field: string): boolean => {
-    return ALLOWED_FIELDS.has(field);
-  },
-
-  validateOperator: (operator: string): boolean => {
-    return ALLOWED_OPERATORS.has(operator);
-  }
-};
-
-/**
- * Check for malicious patterns in filter strings
- */
-function containsMaliciousPatterns(input: string): boolean {
-  const maliciousPatterns = [
-    /javascript:/i,
-    /<script/i,
-    /on\w+\s*=/i,
-    /eval\s*\(/i,
-    /function\s*\(/i,
-    /delete\s+/i,
-    /import\s+/i,
-    /require\s*\(/i,
-    /process\./i,
-    /global\./i,
-    /__proto__/i,
-    /constructor/i,
-  ];
-
-  return maliciousPatterns.some(pattern => pattern.test(input));
-}
-
-function isSimpleValidExpression(input: string): boolean {
-  // Allow simple field operator value expressions
-  const simplePattern = /^[a-zA-Z_][a-zA-Z0-9_]*\s*(=|!=|>=|<=|>|<|like|in|not in)\s*(true|false|\d+|"[^"]*"|'[^']*'|\[[^\]]*\])$/i;
-  return simplePattern.test(input.trim());
-}
-
-// Legacy compatibility exports
-export type {
-  FilterCondition,
-  FilterExpression,
-  FilterField,
-  FilterGroup,
-  FilterOperator,
-  FilterValidationResult,
-  LogicalOperator,
-  ParseResult,
-  ParseError,
-};
-
-/**
- * Legacy FilterBuilder for backward compatibility
+ * Filter builder class for fluent construction
  */
 export class FilterBuilder {
-  private conditions: FilterCondition[] = [];
-  private groups: FilterGroup[] = [];
+  private expression: FilterExpression;
+  private currentGroup: FilterGroup;
 
-  where(field: string, operator: string, value: unknown): this {
-    this.conditions.push({
-      field: field as FilterField,
-      operator: operator as FilterOperator,
-      value: value as string | number | boolean | string[] | number[]
+  constructor() {
+    this.currentGroup = {
+      conditions: [],
+      operator: '&&',
+    };
+    this.expression = {
+      groups: [this.currentGroup],
+    };
+  }
+
+  where(field: FilterField, operator: FilterOperator, value: unknown): FilterBuilder {
+    this.currentGroup.conditions.push({
+      field,
+      operator,
+      value: value as string | number | boolean | string[] | number[],
     });
     return this;
   }
 
-  and(): this {
-    if (this.conditions.length > 0) {
-      this.groups.push({
-        operator: 'AND' as LogicalOperator,
-        conditions: [...this.conditions]
-      });
-      this.conditions = [];
-    }
+  and(): FilterBuilder {
+    this.currentGroup.operator = '&&';
     return this;
   }
 
-  or(): this {
-    if (this.conditions.length > 0) {
-      this.groups.push({
-        operator: 'OR' as LogicalOperator,
-        conditions: [...this.conditions]
-      });
-      this.conditions = [];
-    }
+  or(): FilterBuilder {
+    this.currentGroup.operator = '||';
     return this;
   }
 
-  toString(): string {
-    if (this.conditions.length > 0) {
-      this.groups.push({
-        operator: 'AND' as LogicalOperator,
-        conditions: [...this.conditions]
-      });
-    }
+  group(operator: LogicalOperator = '&&'): FilterBuilder {
+    this.currentGroup = {
+      conditions: [],
+      operator,
+    };
+    this.expression.groups.push(this.currentGroup);
+    return this;
+  }
 
-    return this.groups.map(groupToString).join(' AND ') || '';
+  groupOperator(operator: LogicalOperator): FilterBuilder {
+    this.expression.operator = operator;
+    return this;
   }
 
   build(): FilterExpression {
-    if (this.conditions.length > 0) {
-      this.groups.push({
-        operator: 'AND' as LogicalOperator,
-        conditions: [...this.conditions]
-      });
-    }
+    this.expression.groups = this.expression.groups.filter((g) => g.conditions.length > 0);
+    return this.expression;
+  }
 
-    return {
-      groups: this.groups.length > 0 ? this.groups : [{
-        operator: 'AND' as LogicalOperator,
-        conditions: []
-      }]
-    };
+  toString(): string {
+    return expressionToString(this.build());
+  }
+
+  validate(config?: FilterValidationConfig): FilterValidationResult {
+    return validateFilterExpression(this.build(), config);
   }
 }
