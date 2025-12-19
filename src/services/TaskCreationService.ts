@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger';
-import { MCPError, ErrorCode } from '../types/index';
+import { MCPError, ErrorCode, TaskCreationData } from '../types/index';
 import { isAuthenticationError } from '../utils/auth-error-handler';
 import type { Task, Label, User } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
@@ -109,8 +109,8 @@ export class TaskCreationService {
    * @param projectId - The target project ID
    * @returns Formatted task data for the API
    */
-  private prepareTaskData(task: ImportedTask, projectId: number): Record<string, unknown> {
-    const taskData: Record<string, unknown> = {
+  private prepareTaskData(task: ImportedTask, projectId: number): TaskCreationData {
+    const taskData: TaskCreationData = {
       project_id: projectId,
       title: task.title,
       done: task.done || false,
@@ -124,20 +124,23 @@ export class TaskCreationService {
     }
 
     // Handle dates
-    if (task.dueDate) taskData['due_date'] = task.dueDate;
-    if (task.startDate) taskData['start_date'] = task.startDate;
-    if (task.endDate) taskData['end_date'] = task.endDate;
+    if (task.dueDate) taskData.due_date = task.dueDate;
+    if (task.startDate) taskData.start_date = task.startDate;
+    if (task.endDate) taskData.end_date = task.endDate;
 
     // Handle color
-    if (task.hexColor) taskData['hex_color'] = task.hexColor;
+    if (task.hexColor) taskData.hex_color = task.hexColor;
 
     // Handle repeat settings
-    if (task.repeatAfter) taskData['repeat_after'] = task.repeatAfter;
+    if (task.repeatAfter) taskData.repeat_after = task.repeatAfter;
     if (task.repeatMode !== undefined) {
       // Convert numeric repeat mode to string
       const repeatModes = ['day', 'week', 'month', 'year'];
       if (task.repeatMode >= 0 && task.repeatMode < repeatModes.length) {
-        taskData['repeat_mode'] = repeatModes[task.repeatMode];
+        const repeatMode = repeatModes[task.repeatMode];
+        if (repeatMode) {
+          taskData.repeat_mode = repeatMode;
+        }
       }
     }
 
@@ -155,7 +158,7 @@ export class TaskCreationService {
    */
   private async createBaseTask(
     client: TypedVikunjaClient,
-    taskData: Record<string, unknown>,
+    taskData: TaskCreationData,
     taskTitle: string
   ): Promise<Task> {
     try {
