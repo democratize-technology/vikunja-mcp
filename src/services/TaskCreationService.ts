@@ -8,6 +8,57 @@ import type { ImportedTask } from '../parsers/InputParserFactory';
 import type { EntityResolutionResult } from './EntityResolver';
 
 /**
+ * Converts TaskCreationData to a Task object compatible with node-vikunja API
+ * This ensures type safety by properly mapping fields and handling optional properties
+ */
+function convertTaskCreationDataToTask(taskData: TaskCreationData): Task {
+  // TaskCreationData is a subset of Task with all the required fields for API creation
+  // The node-vikunja Task interface accepts these fields, making them compatible
+  const convertedTask: Task = {
+    title: taskData.title,
+    project_id: taskData.project_id,
+  };
+
+  // Only include optional fields if they are provided (undefined values are excluded)
+  if (taskData.done !== undefined) {
+    convertedTask.done = taskData.done;
+  }
+  if (taskData.priority !== undefined) {
+    convertedTask.priority = taskData.priority;
+  }
+  if (taskData.percent_done !== undefined) {
+    convertedTask.percent_done = taskData.percent_done;
+  }
+  if (taskData.description !== undefined) {
+    convertedTask.description = taskData.description;
+  }
+  if (taskData.due_date !== undefined) {
+    convertedTask.due_date = taskData.due_date;
+  }
+  if (taskData.start_date !== undefined) {
+    convertedTask.start_date = taskData.start_date;
+  }
+  if (taskData.end_date !== undefined) {
+    convertedTask.end_date = taskData.end_date;
+  }
+  if (taskData.hex_color !== undefined) {
+    convertedTask.hex_color = taskData.hex_color;
+  }
+  if (taskData.repeat_after !== undefined) {
+    convertedTask.repeat_after = taskData.repeat_after;
+  }
+  if (taskData.repeat_mode !== undefined) {
+    // Only assign if it's a valid repeat_mode value
+    const validMode = taskData.repeat_mode;
+    if (['day', 'week', 'month', 'year'].includes(validMode)) {
+      convertedTask.repeat_mode = validMode as 'day' | 'week' | 'month' | 'year';
+    }
+  }
+
+  return convertedTask;
+}
+
+/**
  * Result of a task creation operation
  */
 export interface TaskCreationResult {
@@ -163,10 +214,9 @@ export class TaskCreationService {
     taskTitle: string
   ): Promise<Task> {
     try {
-      // TODO: Investigate proper type conversion between TaskCreationData and Task
-      // The node-vikunja library expects a Task interface, but we have TaskCreationData
-      // This assertion bridges the gap between our internal data format and the API requirement
-      return await client.tasks.createTask(taskData.project_id, taskData as Task);
+      // Safely convert TaskCreationData to Task interface expected by node-vikunja
+      const taskForApi = convertTaskCreationDataToTask(taskData);
+      return await client.tasks.createTask(taskData.project_id, taskForApi);
     } catch (error) {
       // Check if it's an authentication error
       if (isAuthenticationError(error)) {
