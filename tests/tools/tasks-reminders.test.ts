@@ -173,7 +173,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('add-reminder');
       expect(markdown).toContain('Reminder added successfully');
     });
@@ -205,7 +205,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('add-reminder');
     });
 
@@ -261,7 +261,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('remove-reminder');
       expect(markdown).toContain('Reminder 1 removed successfully');
     });
@@ -290,7 +290,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('remove-reminder');
     });
 
@@ -345,7 +345,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('list-reminders');
       expect(markdown).toContain('Found 2 reminder(s)');
     });
@@ -359,7 +359,7 @@ describe('Tasks Tool - Reminders', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('Found 0 reminder(s)');
     });
 

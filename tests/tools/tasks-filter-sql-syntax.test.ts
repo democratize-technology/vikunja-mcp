@@ -149,7 +149,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('list-tasks');
       expect(markdown).toContain('1 task');
     });
@@ -188,7 +188,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
     });
 
     it('should handle complex filter with multiple conditions', async () => {
@@ -215,7 +215,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
     });
 
     it('should combine filter with other query parameters', async () => {
@@ -240,7 +240,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
     });
 
     it('should handle API errors gracefully', async () => {
@@ -306,7 +306,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
         const markdown = result.content[0].text;
         const parsed = parseMarkdown(markdown);
-        expect(markdown).toContain("✅ success:");
+        expect(markdown).toContain("## ✅ Success");
       });
     });
   });
@@ -334,7 +334,7 @@ describe('Tasks Tool - SQL-like Filter Syntax', () => {
 
         const markdown = result.content[0].text;
         const parsed = parseMarkdown(markdown);
-        expect(markdown).toContain("✅ success:");
+        expect(markdown).toContain("## ✅ Success");
       });
     });
   });

@@ -146,7 +146,7 @@ describe('Export Tool', () => {
 
         const markdown = result.content[0].text;
         const parsed = parseMarkdown(markdown);
-        expect(markdown).toContain('✅ success:');
+        expect(markdown).toContain('## ✅ Success');
       });
     });
 
@@ -214,7 +214,7 @@ describe('Export Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain('✅ success:');
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Project exported successfully');
       expect(markdown).toContain('Test Project');
     });
@@ -271,7 +271,7 @@ describe('Export Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain('✅ success:');
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('Project exported successfully');
       expect(markdown).toContain('Parent Project');
     });
@@ -381,7 +381,7 @@ describe('Export Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain('✅ success:');
+      expect(markdown).toContain('## ✅ Success');
     });
   });
 
@@ -421,7 +421,7 @@ describe('Export Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain('✅ success:');
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('User data export requested successfully');
 
       expect(global.fetch).toHaveBeenCalledWith(
@@ -566,7 +566,7 @@ describe('Export Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain('✅ success:');
+      expect(markdown).toContain('## ✅ Success');
       expect(markdown).toContain('User data export downloaded successfully');
 
       expect(global.fetch).toHaveBeenCalledWith(

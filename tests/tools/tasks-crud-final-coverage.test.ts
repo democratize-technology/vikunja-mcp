@@ -66,7 +66,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('get-task');
       expect(markdown).toContain('Retrieved task "Test Task Title"');
       expect(markdown).toContain('TaskId');
@@ -91,7 +91,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('Retrieved task "undefined"');
       expect(markdown).toContain('TaskId');
     });
@@ -112,7 +112,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('Retrieved task "null"');
       expect(markdown).toContain('TaskId');
     });
@@ -152,7 +152,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('dueDate');
       expect(markdown).toContain('priority');
     });
@@ -184,7 +184,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       // For unchanged fields, they might not appear in affectedFields section
       // but the operation should still succeed
     });
@@ -302,7 +302,7 @@ describe('Tasks CRUD - Final Coverage', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       // Verify all affected fields are mentioned in the markdown output
       expect(markdown).toContain('title');
       expect(markdown).toContain('description');

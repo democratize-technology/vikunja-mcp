@@ -54,7 +54,7 @@ describe('Assignee operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('assign');
       expect(markdown).toContain('Users assigned to task successfully');
     });
@@ -156,7 +156,7 @@ describe('Assignee operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('unassign');
       expect(markdown).toContain('Users removed from task successfully');
     });
@@ -238,7 +238,7 @@ describe('Assignee operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('get');
       expect(markdown).toContain('Task has 2 assignee(s)');
     });

@@ -126,7 +126,7 @@ describe('Projects Tool Mock Fixes', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('delete-project');
       expect(markdown).toContain('Deleted project');
     });
@@ -151,7 +151,7 @@ describe('Projects Tool Mock Fixes', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('archive-project');
       expect(markdown).toContain('archived successfully');
     });
@@ -174,7 +174,7 @@ describe('Projects Tool Mock Fixes', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('unarchive-project');
       expect(markdown).toContain('unarchived successfully');
     });

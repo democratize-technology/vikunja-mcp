@@ -153,7 +153,7 @@ describe('Labels Tool', () => {
       expect(mockClient.labels.getLabels).toHaveBeenCalledWith({});
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('list-labels');
       expect(markdown).toContain('Retrieved 2 labels');
     });
@@ -170,7 +170,7 @@ describe('Labels Tool', () => {
       expect(mockClient.labels.getLabels).toHaveBeenCalledWith({});
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('list-labels');
       expect(markdown).toContain('Retrieved 2 labels');
     });
@@ -249,7 +249,7 @@ describe('Labels Tool', () => {
       expect(mockClient.labels.getLabel).toHaveBeenCalledWith(1);
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('get-label');
       expect(markdown).toContain('Retrieved label "Bug"');
     });
@@ -294,7 +294,7 @@ describe('Labels Tool', () => {
       });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('create-label');
       expect(markdown).toContain('Label "New Label" created successfully');
     });
@@ -322,7 +322,7 @@ describe('Labels Tool', () => {
       });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('create-label');
       expect(markdown).toContain('Label "Priority" created successfully');
     });
@@ -395,7 +395,7 @@ describe('Labels Tool', () => {
       });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('update-label');
       expect(markdown).toContain('Label "Updated Label" updated successfully');
     });
@@ -424,7 +424,7 @@ describe('Labels Tool', () => {
       });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('update-label');
       expect(markdown).toContain('Label "Complete Update" updated successfully');
     });
@@ -448,7 +448,7 @@ describe('Labels Tool', () => {
       });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('update-label');
       expect(markdown).toContain('Label "Label" updated successfully');
     });
@@ -491,7 +491,7 @@ describe('Labels Tool', () => {
       expect(mockClient.labels.deleteLabel).toHaveBeenCalledWith(1);
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('delete-label');
       expect(markdown).toContain('Label deleted successfully');
     });

@@ -41,7 +41,7 @@ describe('Comment operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('comment');
       expect(markdown).toContain('Comment added successfully');
     });
@@ -58,7 +58,7 @@ describe('Comment operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('list');
       expect(markdown).toContain('Found 1 comments');
     });
@@ -113,7 +113,7 @@ describe('Comment operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('list');
       expect(markdown).toContain('Found 0 comments');
     });
@@ -141,7 +141,7 @@ describe('Comment operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('list');
       expect(markdown).toContain('Found 2 comments');
     });
@@ -165,7 +165,7 @@ describe('Comment operations', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ success:");
+      expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('list');
       expect(markdown).toContain('Found 0 comments');
     });
