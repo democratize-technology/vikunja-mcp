@@ -122,7 +122,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
               'create-label',
               `Label "${label.title}" created successfully`,
               { label },
-              { affectedFields: Object.keys(labelData) },
+              { affectedFields: Object.keys(labelData).filter(key => typeof key === 'string') },
             );
 
             return {
@@ -159,7 +159,7 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
               'update-label',
               `Label "${label.title}" updated successfully`,
               { label },
-              { affectedFields: Object.keys(updates) },
+              { affectedFields: Object.keys(updates).filter(key => typeof key === 'string') },
             );
 
             return {

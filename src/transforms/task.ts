@@ -29,8 +29,23 @@ export interface Task {
   index?: number;
   parent_task_id?: number;
   repeat_after?: number;
-  // Add other task fields as needed
-  [key: string]: unknown;
+  // Define specific additional fields instead of using unknown
+  percent_done?: number;
+  repeat_mode?: number;
+  reminder_dates?: string[];
+  labels?: Array<{ id: number; title: string; description?: string; hex_color?: string }>;
+  assignees?: Array<{ id: number; username: string; email?: string }>;
+  subtasks?: Task[];
+  related_tasks?: Array<{
+    id: number;
+    relation_kind: 'parenttask' | 'subtask' | 'related';
+    created_by: number;
+  }>;
+  attachment_count?: number;
+  cover_image_attachment_id?: number;
+  is_favorite?: boolean;
+  // Allow dynamic field access for transformation with specific types
+  [key: string]: string | number | boolean | undefined | Array<string | number | boolean> | Array<{ id: number; title: string; description?: string; hex_color?: string }> | Array<{ id: number; username: string; email?: string }> | Array<Task> | Array<{ id: number; relation_kind: 'parenttask' | 'subtask' | 'related'; created_by: number }> | { id: number; title: string; description?: string; hex_color?: string } | { id: number; username: string; email?: string } | { id: number; relation_kind: 'parenttask' | 'subtask' | 'related'; created_by: number } | Task | { [key: string]: unknown } | null;
 }
 
 /**
@@ -47,8 +62,29 @@ export interface OptimizedTask {
   created_at?: string;
   updated_at?: string;
   project_id?: number;
-  // Other fields based on verbosity level
-  [key: string]: unknown;
+  hex_color?: string;
+  position?: number;
+  identifier?: string;
+  index?: number;
+  parent_task_id?: number;
+  repeat_after?: number;
+  // Specific additional fields for optimized output
+  percent_done?: number;
+  repeat_mode?: number;
+  reminder_dates?: string[];
+  labels?: Array<{ id: number; title: string; description?: string; hex_color?: string }>;
+  assignees?: Array<{ id: number; username: string; email?: string }>;
+  subtasks?: number[];
+  related_tasks?: Array<{
+    id: number;
+    relation_kind: 'parenttask' | 'subtask' | 'related';
+    created_by: number;
+  }>;
+  attachment_count?: number;
+  cover_image_attachment_id?: number;
+  is_favorite?: boolean;
+  // Allow dynamic field access for transformation with specific types
+  [key: string]: string | number | boolean | undefined | Array<string | number | boolean> | Array<{ id: number; title: string; description?: string; hex_color?: string }> | Array<{ id: number; username: string; email?: string }> | Array<Task> | Array<{ id: number; relation_kind: 'parenttask' | 'subtask' | 'related'; created_by: number }> | { id: number; title: string; description?: string; hex_color?: string } | { id: number; username: string; email?: string } | { id: number; relation_kind: 'parenttask' | 'subtask' | 'related'; created_by: number } | Task | { [key: string]: unknown } | null;
 }
 
 /**
@@ -62,7 +98,7 @@ export class TaskTransformer {
     const startTime = Date.now();
 
     // Get available fields from the task
-    const availableFields = Object.keys(task);
+    const availableFields = Object.keys(task).filter(key => typeof key === 'string');
 
     // Select fields based on configuration
     const fieldSelection = defaultFieldSelector.selectFields(config, availableFields);
@@ -139,7 +175,7 @@ export class TaskTransformer {
    * Apply field transformations to a task
    */
   private applyTransformations(task: Task, fieldDefinitions: FieldDefinition[]): OptimizedTask {
-    const optimizedTask: Record<string, unknown> = {};
+    const optimizedTask: Partial<OptimizedTask> = {};
 
     fieldDefinitions.forEach(fieldDef => {
       const sourceValue = task[fieldDef.fieldName];
@@ -157,7 +193,7 @@ export class TaskTransformer {
 
         // Use target name if specified, otherwise use field name
         const targetName = fieldDef.targetName || fieldDef.fieldName;
-        optimizedTask[targetName] = transformedValue;
+        (optimizedTask as Record<string, unknown>)[targetName] = transformedValue;
       }
     });
 
@@ -284,7 +320,13 @@ export class TaskTransformer {
    * Create a complete task representation
    */
   static createCompleteTask(task: Task): OptimizedTask {
-    const completeTask: OptimizedTask = { ...task };
+    // Transform subtasks to IDs for optimized version
+    const { subtasks, ...taskWithoutSubtasks } = task;
+    const optimizedTaskData: Partial<OptimizedTask> = {
+      ...taskWithoutSubtasks,
+      ...(subtasks && { subtasks: subtasks.map(subtask => subtask.id) })
+    };
+    const completeTask: OptimizedTask = optimizedTaskData as OptimizedTask;
 
     // Normalize date fields
     ['due_date', 'start_date', 'end_date', 'created_at', 'updated_at', 'completed_at'].forEach(dateField => {

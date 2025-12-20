@@ -102,7 +102,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               'create-team',
               `Team "${team.name}" created successfully`,
               { team },
-              { affectedFields: Object.keys(teamData) },
+              { affectedFields: Object.keys(teamData).filter(key => typeof key === 'string') },
             );
 
             return {
