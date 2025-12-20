@@ -188,7 +188,7 @@ export function sanitizeString(value: string): string {
 
     // LDAP injection patterns
     /(\*\)\([&*)]*)/gi,
-    /(\*\)([^\)]*\*)/gi,
+    /(\*\)([^\)]*\*)*)/gi,
     /(\|\()([^\)]*)(\)\|)/gi,
     /(!\()([^\)]*)(\))/gi,
 

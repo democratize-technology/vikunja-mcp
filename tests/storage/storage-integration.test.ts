@@ -365,7 +365,7 @@ describe('Storage Integration', () => {
       expect(result.success).toBe(true);
 
       // Verify data remains in memory storage (no migration in simplified version)
-      const metadataStorage = await storageManager.getStorage('metadata-session');
+      const verifyMetadataStorage = await storageManager.getStorage('metadata-session');
       const filters = await memoryStorage.list();
 
       expect(filters).toHaveLength(1);
