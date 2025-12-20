@@ -46,7 +46,7 @@ function transformUser(rawUser: unknown): User {
         return '[object Object]';
       }
     }
-    return String(value ?? '');
+    return value !== null && value !== undefined ? String(value) : '';
   };
 
   const result = {

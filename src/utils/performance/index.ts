@@ -3,6 +3,8 @@
  * Core performance monitoring and batch processing capabilities
  */
 
+import type { BatchOptions } from './batch-processor';
+
 export {
   BatchProcessor,
   createOptimizedBatchProcessor,
@@ -26,7 +28,7 @@ export {
 
 // Convenience function to create optimized bulk operation handler
 export interface OptimizedBulkConfig {
-  batchOptions?: Partial<import('./batch-processor').BatchOptions>;
+  batchOptions?: Partial<BatchOptions>;
   enableMonitoring?: boolean;
   operationType?: string;
 }

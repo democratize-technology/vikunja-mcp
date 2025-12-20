@@ -109,8 +109,8 @@ class SecureErrorHandler {
 
     // File paths and system details (absolute paths, file extensions with content)
     if (
-      /\b\/[a-zA-Z0-9_\-\/.]+\.[a-zA-Z]/.test(message) || // Unix paths with files
-      /\b[A-Z]:\\[a-zA-Z0-9_\\\-\/.]+\.[a-zA-Z]/.test(message) || // Windows paths
+      /\b\/[a-zA-Z0-9_\-/.]+\.[a-zA-Z]/.test(message) || // Unix paths with files
+      /\b[A-Z]:\\[a-zA-Z0-9_\\\-/.]+\.[a-zA-Z]/.test(message) || // Windows paths
       lowerMessage.includes('permission denied') ||
       lowerMessage.includes('no such file') ||
       lowerMessage.includes('secrets.json') ||

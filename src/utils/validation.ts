@@ -187,14 +187,10 @@ export function sanitizeString(value: string): string {
     /(c:\\\\windows\\\\system32|\\\\..\\\\)/gi,
 
     // LDAP injection patterns
-    // eslint-disable-next-line no-useless-escape
     /(\*\)\([&*)]*)/gi,
-    // eslint-disable-next-line no-useless-escape
-    /(\*\)([^\)]*\*)*)/gi,
-    // eslint-disable-next-line no-useless-escape
-    /(\|\()([^\)]*)(\)\|)/gi,
-    // eslint-disable-next-line no-useless-escape
-    /(!\()([^\)]*)(\))/gi,
+    /(\*\)([^)]*\*)*)/gi,
+    /(\|\()([^)]*)(\)\|)/gi,
+    /(!\()([^)]*)(\))/gi,
 
     // NoSQL injection patterns
     /(\$\w+\s*:)/gi,  // MongoDB operators like $gt, $lt, $where

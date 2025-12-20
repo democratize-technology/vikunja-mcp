@@ -10,11 +10,11 @@ import { formatAorpAsMarkdown } from '../../../utils/response-factory';
 /**
  * Service for formatting assignee operation responses
  */
-export class AssigneeResponseFormatter {
+export const AssigneeResponseFormatter = {
   /**
    * Format successful assign operation response
    */
-  static formatAssignResponse(task: TaskWithAssignees): StandardTaskResponse {
+  formatAssignResponse(task: TaskWithAssignees): StandardTaskResponse {
     return {
       success: true,
       operation: 'assign',
@@ -25,12 +25,12 @@ export class AssigneeResponseFormatter {
         affectedFields: ['assignees'],
       },
     };
-  }
+  },
 
   /**
    * Format successful unassign operation response
    */
-  static formatUnassignResponse(task: TaskWithAssignees): StandardTaskResponse {
+  formatUnassignResponse(task: TaskWithAssignees): StandardTaskResponse {
     return {
       success: true,
       operation: 'unassign',
@@ -41,12 +41,12 @@ export class AssigneeResponseFormatter {
         affectedFields: ['assignees'],
       },
     };
-  }
+  },
 
   /**
    * Format list assignees operation response
    */
-  static formatListAssigneesResponse(minimalTask: MinimalTask, assigneeCount: number): StandardTaskResponse {
+  formatListAssigneesResponse(minimalTask: MinimalTask, assigneeCount: number): StandardTaskResponse {
     return {
       success: true,
       operation: 'get',
@@ -57,12 +57,12 @@ export class AssigneeResponseFormatter {
         count: assigneeCount,
       },
     };
-  }
+  },
 
   /**
    * Format MCP response wrapper
    */
-  static formatMcpResponse(response: StandardTaskResponse): { content: Array<{ type: 'text'; text: string }> } {
+  formatMcpResponse(response: StandardTaskResponse): { content: Array<{ type: 'text'; text: string }> } {
     // Create proper AORP response instead of casting StandardTaskResponse
     const metadata: ResponseMetadata = {
       timestamp: response.metadata?.timestamp || new Date().toISOString(),
@@ -89,5 +89,5 @@ export class AssigneeResponseFormatter {
         },
       ],
     };
-  }
-}
+  },
+};
