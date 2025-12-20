@@ -82,7 +82,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
     'Manage user profiles, search users, and update user settings',
     {
       // Operation type
-      subcommand: z.enum(['current', 'search', 'settings', 'update-settings']).optional(),
+      subcommand: z.enum(['current', 'search', 'settings', 'update-settings']),
 
       // Search parameters
       search: z.string().optional(),
@@ -120,7 +120,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
       const client = await getClientFromContext();
 
       try {
-        const subcommand = args.subcommand || 'current';
+        const subcommand = args.subcommand;
 
         switch (subcommand) {
           case 'current': {
@@ -310,7 +310,7 @@ export function registerUsersTool(server: McpServer, authManager: AuthManager, _
         // Use consistent auth error handling
         handleAuthError(
           error,
-          `user.${args.subcommand || 'current'}`,
+          `user.${args.subcommand}`,
           `User operation error: ${error instanceof Error ? error.message : String(error)}`,
         );
       }

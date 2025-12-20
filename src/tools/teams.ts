@@ -29,7 +29,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
     'Manage teams and team memberships for collaborative project management',
     {
       // List all teams
-      subcommand: z.enum(['list', 'create', 'get', 'update', 'delete', 'members']).optional(),
+      subcommand: z.enum(['list', 'create', 'get', 'update', 'delete', 'members']),
 
       // List parameters
       page: z.number().positive().optional(),
@@ -54,7 +54,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
       }
 
       const client = await getClientFromContext() as TypedVikunjaClient;
-      const subcommand = args.subcommand || 'list';
+      const subcommand = args.subcommand;
 
       try {
 

@@ -134,7 +134,7 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
     'Manage webhooks for integrating Vikunja events with external services',
     {
       // Operation type
-      subcommand: z.enum(['list', 'get', 'create', 'update', 'delete', 'list-events']).optional(),
+      subcommand: z.enum(['list', 'get', 'create', 'update', 'delete', 'list-events']),
 
       // Common parameters
       projectId: z.number().int().positive().optional(),
@@ -154,7 +154,7 @@ export function registerWebhooksTool(server: McpServer, authManager: AuthManager
       }
 
       await getClientFromContext(); // Ensure client is initialized
-      const subcommand = args.subcommand || 'list';
+      const subcommand = args.subcommand;
       const session = authManager.getSession();
       const baseUrl = session.apiUrl;
       const headers = {
