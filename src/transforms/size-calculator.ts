@@ -155,9 +155,11 @@ export class SizeCalculator {
 
     if (Array.isArray(data)) {
       data.forEach(item => {
-        this.analyzeObjectBreakdown(item as Record<string, unknown>, breakdown);
+        if (item && typeof item === 'object') {
+          this.analyzeObjectBreakdown(item as Record<string, unknown>, breakdown);
+        }
       });
-    } else {
+    } else if (data && typeof data === 'object') {
       this.analyzeObjectBreakdown(data as Record<string, unknown>, breakdown);
     }
 
@@ -178,9 +180,11 @@ export class SizeCalculator {
 
     if (Array.isArray(data)) {
       data.forEach(item => {
-        this.analyzeObjectBreakdown(item as Record<string, unknown>, breakdown);
+        if (item && typeof item === 'object') {
+          this.analyzeObjectBreakdown(item as Record<string, unknown>, breakdown);
+        }
       });
-    } else {
+    } else if (data && typeof data === 'object') {
       this.analyzeObjectBreakdown(data as Record<string, unknown>, breakdown);
     }
 

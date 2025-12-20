@@ -23,7 +23,7 @@ export interface RetryOptions {
   resetTimeout?: number;
   errorThresholdPercentage?: number;
   volumeThreshold?: number;
-  shouldRetry?: (error: unknown) => boolean;
+  shouldRetry?: (error: Error | ErrorWithCode) => boolean;
 }
 
 // Production-ready defaults
@@ -92,7 +92,7 @@ export function getHealthStats(breaker: CircuitBreaker): CircuitBreaker.Stats {
 /**
  * Check if error is retryable (basic implementation)
  */
-export function isRetryableError(error: unknown): boolean {
+export function isRetryableError(error: unknown): error is ErrorWithCode {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     return message.includes('timeout') ||
@@ -108,7 +108,7 @@ export function isRetryableError(error: unknown): boolean {
 /**
  * Check if error is transient for circuit breaker purposes
  */
-export function isTransientError(error: unknown): boolean {
+export function isTransientError(error: unknown): error is ErrorWithCode {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     return message.includes('timeout') ||

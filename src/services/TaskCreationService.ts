@@ -121,7 +121,7 @@ export class TaskCreationService {
 
       // Handle reminders (API limitation)
       if (task.reminders && task.reminders.length > 0) {
-        warnings.push(this.handleReminders(createdTask.id, task.reminders));
+        warnings.push(this.handleReminders(createdTask.id, task.reminders as Array<{ reminder_date?: string; reminder?: string }>));
       }
 
       const result: TaskCreationResult = {
@@ -299,7 +299,7 @@ export class TaskCreationService {
           });
         }
       } catch (labelError) {
-        const warning = this.handleLabelAssignmentError(labelError, createdTask.id, task.labels);
+        const warning = this.handleLabelAssignmentError(labelError as Error | { code?: string; message?: string }, createdTask.id, task.labels);
         warnings.push(warning);
       }
     }
@@ -345,20 +345,20 @@ export class TaskCreationService {
    * @param labelNames - The label names that were being assigned
    * @returns Warning message
    */
-  private handleLabelAssignmentError(labelError: unknown, taskId: number | undefined, labelNames: string[]): string {
+  private handleLabelAssignmentError(labelError: Error | { code?: string; message?: string }, taskId: number | undefined, labelNames: string[]): string {
     // Check if this is an authentication error
     if (isAuthenticationError(labelError)) {
       logger.warn('Label assignment failed due to authentication issue', {
         taskId,
         labelNames,
-        error: labelError instanceof Error ? labelError.message : String(labelError),
+        error: labelError instanceof Error ? labelError.message : (labelError?.message ?? 'Unknown error'),
       });
       return `Label assignment requires JWT authentication. Labels were not assigned.`;
     } else {
       logger.error('Failed to assign labels to task', {
         taskId,
         labelNames,
-        error: labelError instanceof Error ? labelError.message : String(labelError),
+        error: labelError instanceof Error ? labelError.message : (labelError?.message ?? 'Unknown error'),
       });
       return `Failed to assign labels: ${labelError instanceof Error ? labelError.message : 'Unknown error'}`;
     }
@@ -437,7 +437,7 @@ export class TaskCreationService {
    * @param reminders - Array of reminder data
    * @returns Warning message about API limitation
    */
-  private handleReminders(taskId: number | undefined, reminders: unknown[]): string {
+  private handleReminders(taskId: number | undefined, reminders: Array<{ reminder_date?: string; reminder?: string }>): string {
     // Note: The API doesn't support adding reminders separately,
     // they need to be added during task creation
     // This is a limitation of the current implementation

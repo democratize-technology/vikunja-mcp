@@ -108,7 +108,12 @@ export class PerformanceMonitor {
       return;
     }
 
-    Object.assign(operation, updates);
+    // Type-safe assignment with validation
+    if (updates.successCount !== undefined) operation.successCount = updates.successCount;
+    if (updates.failureCount !== undefined) operation.failureCount = updates.failureCount;
+    if (updates.apiCallCount !== undefined) operation.apiCallCount = updates.apiCallCount;
+    if (updates.cacheHits !== undefined) operation.cacheHits = updates.cacheHits;
+    if (updates.cacheMisses !== undefined) operation.cacheMisses = updates.cacheMisses;
   }
 
   /**
