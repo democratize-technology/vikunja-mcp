@@ -9,8 +9,5 @@ export * from './ConfigurationManager';
 // Re-export commonly used functions for convenience
 export {
   getConfiguration,
-  getAuthConfig,
-  getLoggingConfig,
-  getRateLimitConfig,
   // AORP is always enabled - no feature flag exports needed
 } from './ConfigurationManager';

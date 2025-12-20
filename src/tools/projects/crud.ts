@@ -12,7 +12,7 @@ import { createProjectResponse, createProjectListResponse } from './response-for
 import { formatAorpAsMarkdown } from '../../utils/response-factory';
 
 // MCP response type
-type McpResponse = {
+export type McpResponse = {
   content: Array<{
     type: 'text';
     text: string;
@@ -252,7 +252,7 @@ export async function createProject(
         const allProjectsResponse = await client.projects.getProjects({ per_page: 1000 });
         const allProjectsApiData = allProjectsResponse as ApiProjectResponse;
         allProjects = allProjectsApiData.data || (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
-      } catch (_error) {
+      } catch {
         // Continue with validation if we can't get all projects
       }
 
@@ -376,7 +376,7 @@ export async function updateProject(
         const allProjectsResponse = await client.projects.getProjects({ per_page: 1000 });
         const allProjectsApiData = allProjectsResponse as ApiProjectResponse;
         allProjects = allProjectsApiData.data || (Array.isArray(allProjectsResponse) ? allProjectsResponse : [allProjectsResponse]);
-      } catch (_error) {
+      } catch {
         // Continue if we can't get all projects
       }
     }

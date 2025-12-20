@@ -25,10 +25,8 @@ export {
 } from './performance-monitor';
 
 // Convenience function to create optimized bulk operation handler
-import type { BatchOptions } from './batch-processor';
-
 export interface OptimizedBulkConfig {
-  batchOptions?: Partial<BatchOptions>;
+  batchOptions?: Partial<import('./batch-processor').BatchOptions>;
   enableMonitoring?: boolean;
   operationType?: string;
 }

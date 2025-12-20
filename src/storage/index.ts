@@ -39,7 +39,7 @@ export async function createFilterStorage(
   sessionId: string,
   userId?: string,
   apiUrl?: string,
-  forcePersistent = false,
+  _forcePersistent = false,
 ): Promise<FilterStorage> {
   // Ignore forcePersistent - always use simple in-memory storage
   logger.debug('Creating simple filter storage', {
@@ -165,5 +165,3 @@ export function migrateMemoryToPersistent(): {
   };
 }
 
-// Alias for SimpleFilterStorage - use the primary class
-export const InMemoryFilterStorage = SimpleFilterStorage;

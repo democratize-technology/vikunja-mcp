@@ -2,7 +2,7 @@
  * Reminder operations for tasks
  */
 
-import type { MinimalTask, TaskReminder } from '../../types';
+import type { TaskReminder } from '../../types';
 import { MCPError, ErrorCode } from '../../types';
 import { getClientFromContext } from '../../client';
 import { validateId, validateDateString } from './validation';
@@ -37,13 +37,6 @@ export async function addReminder(args: {
     // Get current task to preserve existing reminders
     const currentTask = await client.tasks.getTask(args.id);
 
-    // Create new reminder object
-    // The API expects 'reminder' field, not 'reminder_date'
-    const newReminder = {
-      reminder: args.reminderDate,
-    };
-
-    // Combine existing reminders with new one
     // Transform reminders to the expected API format
     const existingReminders = (currentTask.reminders || []).map((reminder: TaskReminder) => ({
       id: reminder.id,
@@ -67,7 +60,7 @@ export async function addReminder(args: {
     });
 
     // Fetch updated task
-    const updatedTask = await client.tasks.getTask(args.id);
+    await client.tasks.getTask(args.id);
 
     // Create proper AORP response
     const aorpResult = createAorpFromData(
@@ -148,7 +141,7 @@ export async function removeReminder(args: {
     });
 
     // Fetch updated task
-    const updatedTask = await client.tasks.getTask(args.id);
+    await client.tasks.getTask(args.id);
 
     // Create proper AORP response
     const aorpResult = createAorpFromData(

@@ -228,28 +228,7 @@ export class ConfigurationManager {
     return result;
   }
 
-  /**
-   * Set nested object value from dot-notation path
-   */
-  private setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
-    const keys = path.split('.');
-    let current: Record<string, unknown> = obj;
-    
-    for (let i = 0; i < keys.length - 1; i++) {
-      const key = keys[i];
-      if (!key) continue; // Skip empty keys
-      if (!(key in current) || typeof current[key] !== 'object' || current[key] === null) {
-        current[key] = {};
-      }
-      current = current[key] as Record<string, unknown>;
-    }
-    
-    const finalKey = keys[keys.length - 1];
-    if (finalKey) {
-      current[finalKey] = value;
-    }
-  }
-
+  
   /**
    * Validate configuration using Zod schema
    */
@@ -308,7 +287,4 @@ export class ConfigurationManager {
 
 // Export singleton instance getter
 export const getConfiguration = (): Promise<ApplicationConfig> => ConfigurationManager.getInstance().getConfiguration();
-export const getAuthConfig = (): Promise<AuthConfig> => ConfigurationManager.getInstance().getAuthConfig();
-export const getLoggingConfig = (): Promise<LoggingConfig> => ConfigurationManager.getInstance().getLoggingConfig();
-export const getRateLimitConfig = (): Promise<RateLimitConfig> => ConfigurationManager.getInstance().getRateLimitConfig();
 // AORP is always enabled - no feature flag exports needed
