@@ -68,7 +68,7 @@ export function registerTaskRemindersTool(
           default:
             throw new MCPError(
               ErrorCode.VALIDATION_ERROR,
-              `Unknown operation: ${args.operation}`,
+              `Unknown operation: ${String(args.operation)}`,
             );
         }
       } catch (error) {

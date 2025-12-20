@@ -15,11 +15,11 @@ import { logger } from '../../../utils/logger';
 /**
  * Executes filtering operations on tasks with comprehensive error handling
  */
-export class FilterExecutor {
+export const FilterExecutor = {
   /**
    * Executes task filtering with the provided parameters
    */
-  static async executeFiltering(
+  async executeFiltering(
     args: TaskListingArgs,
     filterExpression: FilterExpression | null,
     filterString: string | undefined,
@@ -83,10 +83,10 @@ export class FilterExecutor {
       logMemoryUsage('task listing', actualTaskCount);
 
       // Apply post-processing filters
-      const processedTasks = this.applyPostProcessingFilters(tasks, args);
+      const processedTasks = FilterExecutor.applyPostProcessingFilters(tasks, args);
 
       // Determine filtering method message and metadata from strategy result
-      const filteringMetadata = this.createFilteringMetadata(
+      const filteringMetadata = FilterExecutor.createFilteringMetadata(
         filterString,
         serverSideFilteringUsed,
         serverSideFilteringAttempted,
@@ -122,12 +122,12 @@ export class FilterExecutor {
       // Re-throw original error to be handled by main function
       throw error;
     }
-  }
+  },
 
   /**
    * Applies post-processing filters that aren't handled by the main filtering strategies
    */
-  private static applyPostProcessingFilters(tasks: Task[], args: TaskListingArgs): Task[] {
+  applyPostProcessingFilters(tasks: Task[], args: TaskListingArgs): Task[] {
     let filteredTasks = [...tasks];
 
     // Filter by done status if specified (this is a simpler filter that works)
@@ -136,12 +136,12 @@ export class FilterExecutor {
     }
 
     return filteredTasks;
-  }
+  },
 
   /**
    * Creates filtering metadata for response formatting
    */
-  private static createFilteringMetadata(
+  createFilteringMetadata(
     filterString: string | undefined,
     serverSideFilteringUsed: boolean,
     serverSideFilteringAttempted: boolean,
@@ -178,12 +178,12 @@ export class FilterExecutor {
         filteringNote,
       };
     }
-  }
+  },
 
   /**
    * Prepares query parameters for API calls
    */
-  static prepareQueryParameters(args: TaskListingArgs): GetTasksParams {
+  prepareQueryParameters(args: TaskListingArgs): GetTasksParams {
     const params: GetTasksParams = {};
 
     // Build query parameters
@@ -208,12 +208,12 @@ export class FilterExecutor {
     }
 
     return params;
-  }
+  },
 
   /**
    * Validates loaded tasks against memory constraints
    */
-  static validateLoadedTaskCount(tasks: Task[]): {
+  validateLoadedTaskCount(tasks: Task[]): {
     isValid: boolean;
     warnings: string[];
     shouldThrow: boolean;
@@ -250,5 +250,5 @@ export class FilterExecutor {
       warnings,
       shouldThrow: false
     };
-  }
-}
+  },
+};

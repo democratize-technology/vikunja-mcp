@@ -13,11 +13,11 @@ import { formatAorpAsMarkdown } from '../../../utils/response-factory';
 /**
  * Main processor for all bulk operations
  */
-export class BulkOperationProcessor {
+export const BulkOperationProcessor = {
   /**
    * Bulk update tasks with fallback support
    */
-  static async bulkUpdateTasks(args: BulkUpdateArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  async bulkUpdateTasks(args: BulkUpdateArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     try {
       // Validate inputs
       BulkOperationValidator.validateBulkUpdate(args);
@@ -32,7 +32,7 @@ export class BulkOperationProcessor {
 
       // Try the proper bulk update API first
       try {
-        return await this.attemptBulkUpdateAPI(args, taskIds, client);
+        return await BulkOperationProcessor.attemptBulkUpdateAPI(args, taskIds, client);
       } catch (bulkError) {
         // Fall back to individual updates
         return await BulkOperationErrorHandler.handleBulkUpdateFallback(args, taskIds, bulkError as Error);
@@ -55,12 +55,12 @@ export class BulkOperationProcessor {
       // Use standardized error transformation for all other errors
       throw transformApiError(error, 'Failed to bulk update tasks');
     }
-  }
+  },
 
   /**
    * Attempt the bulk update API first
    */
-  private static async attemptBulkUpdateAPI(
+  async attemptBulkUpdateAPI(
     args: BulkUpdateArgs,
     taskIds: number[],
     client: VikunjaClient
@@ -91,7 +91,7 @@ export class BulkOperationProcessor {
     const bulkUpdateResult = await client.tasks.bulkUpdateTasks(bulkOperation);
 
     // Handle inconsistent return types from the bulk update API
-    const { updatedTasks, bulkUpdateSuccessful } = await this.processBulkUpdateResult(args, bulkUpdateResult);
+    const { updatedTasks, bulkUpdateSuccessful } = await BulkOperationProcessor.processBulkUpdateResult(args, bulkUpdateResult);
 
     if (!bulkUpdateSuccessful) {
       throw new Error('Bulk update API reported success but did not update task values');
@@ -107,19 +107,19 @@ export class BulkOperationProcessor {
         'bulk_update_fetch'
       );
 
-      return this.createUpdateResponse(taskIds, fetchResult.successful, args.field || 'unknown', fetchResult.failed.length);
+      return BulkOperationProcessor.createUpdateResponse(taskIds, fetchResult.successful, args.field || 'unknown', fetchResult.failed.length);
     }
 
-    return this.createUpdateResponse(taskIds, updatedTasks, args.field || 'unknown', 0);
-  }
+    return BulkOperationProcessor.createUpdateResponse(taskIds, updatedTasks, args.field || 'unknown', 0);
+  },
 
   /**
    * Process the inconsistent bulk update API result
    */
-  private static async processBulkUpdateResult(
+  processBulkUpdateResult(
     args: BulkUpdateArgs,
-    bulkUpdateResult: Task[] | unknown
-  ): Promise<{ updatedTasks: Task[], bulkUpdateSuccessful: boolean }> {
+    bulkUpdateResult: unknown
+  ): { updatedTasks: Task[], bulkUpdateSuccessful: boolean } {
     let updatedTasks: Task[] = [];
     let bulkUpdateSuccessful = false;
 
@@ -130,7 +130,7 @@ export class BulkOperationProcessor {
         // Verify the returned tasks have the expected values
         for (const task of bulkUpdateResult) {
           const fieldName = args.field;
-          if (!fieldName || !this.verifyTaskFieldValue(task, fieldName, args.value)) {
+          if (!fieldName || !BulkOperationProcessor.verifyTaskFieldValue(task, fieldName, args.value)) {
             logger.warn(`Bulk update API returned task with unchanged ${fieldName || 'unknown'}`, {
               taskId: task.id,
               expected: args.value,
@@ -154,12 +154,12 @@ export class BulkOperationProcessor {
     }
 
     return { updatedTasks, bulkUpdateSuccessful };
-  }
+  },
 
   /**
    * Verify that a task field has the expected value
    */
-  private static verifyTaskFieldValue(task: Task, field: string, value: unknown): boolean {
+  verifyTaskFieldValue(task: Task, field: string, value: unknown): boolean {
     switch (field) {
       case 'priority':
       case 'done':
@@ -169,12 +169,12 @@ export class BulkOperationProcessor {
       default:
         return true; // For complex fields, assume success
     }
-  }
+  },
 
   /**
    * Create the update response
    */
-  private static createUpdateResponse(
+  createUpdateResponse(
     taskIds: number[],
     updatedTasks: Task[],
     field: string,
@@ -200,12 +200,12 @@ export class BulkOperationProcessor {
         },
       ],
     };
-  }
+  },
 
   /**
    * Bulk delete tasks
    */
-  static async bulkDeleteTasks(args: BulkDeleteArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  async bulkDeleteTasks(args: BulkDeleteArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     try {
       BulkOperationValidator.validateBulkDelete(args);
 
@@ -236,7 +236,7 @@ export class BulkOperationProcessor {
         'bulk_delete_execution'
       );
 
-      return this.processDeleteResults(taskIds, deletionResult, tasksToDelete);
+      return BulkOperationProcessor.processDeleteResults(taskIds, deletionResult, tasksToDelete);
     } catch (error) {
       // Re-throw MCPError instances without modification
       if (error instanceof MCPError) {
@@ -255,12 +255,12 @@ export class BulkOperationProcessor {
       // Use standardized error transformation for all other errors
       throw transformApiError(error, 'Failed to bulk delete tasks');
     }
-  }
+  },
 
   /**
    * Process delete operation results
    */
-  private static processDeleteResults(
+  processDeleteResults(
     taskIds: number[],
     deletionResult: BatchResult<{ taskId: number; deleted: boolean; }>,
     tasksToDelete: Task[]
@@ -322,12 +322,12 @@ export class BulkOperationProcessor {
         },
       ],
     };
-  }
+  },
 
   /**
    * Bulk create tasks
    */
-  static async bulkCreateTasks(args: BulkCreateArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  async bulkCreateTasks(args: BulkCreateArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     try {
       BulkOperationValidator.validateBulkCreate(args);
 
@@ -349,11 +349,11 @@ export class BulkOperationProcessor {
           if (!taskData) {
             throw new Error(`Task data at index ${index} is undefined`);
           }
-          return await this.createIndividualTask(client, projectId, taskData, index);
+          return await BulkOperationProcessor.createIndividualTask(client, projectId, taskData, index);
         }
       );
 
-      return this.processCreateResults(creationResult);
+      return BulkOperationProcessor.processCreateResults(creationResult);
     } catch (error) {
       // Re-throw MCPError instances without modification
       if (error instanceof MCPError) {
@@ -372,12 +372,12 @@ export class BulkOperationProcessor {
       // Use standardized error transformation for all other errors
       throw transformApiError(error, 'Failed to bulk create tasks');
     }
-  }
+  },
 
   /**
    * Create an individual task as part of bulk operation
    */
-  private static async createIndividualTask(
+  async createIndividualTask(
     client: VikunjaClient,
     projectId: number,
     taskData: BulkCreateTaskData,
@@ -411,7 +411,7 @@ export class BulkOperationProcessor {
 
     if (createdTask.id) {
       try {
-        await this.handleTaskPostCreation(client, createdTask.id, taskData);
+        await BulkOperationProcessor.handleTaskPostCreation(client, createdTask.id, taskData);
         // Fetch the complete task with labels and assignees
         return await client.tasks.getTask(createdTask.id);
       } catch (updateError) {
@@ -426,12 +426,12 @@ export class BulkOperationProcessor {
     }
 
     return createdTask;
-  }
+  },
 
   /**
    * Handle post-creation operations (labels, assignees)
    */
-  private static async handleTaskPostCreation(
+  async handleTaskPostCreation(
     client: VikunjaClient,
     taskId: number,
     taskData: BulkCreateTaskData
@@ -474,12 +474,12 @@ export class BulkOperationProcessor {
         throw assigneeError;
       }
     }
-  }
+  },
 
   /**
    * Process create operation results
    */
-  private static processCreateResults(creationResult: BatchResult<Task>): { content: Array<{ type: 'text'; text: string }> } {
+  processCreateResults(creationResult: BatchResult<Task>): { content: Array<{ type: 'text'; text: string }> } {
     const successfulTasks = creationResult.successful;
     const failedTasks = creationResult.failed.map((f) => ({
       index: f.originalItem as number,
@@ -518,5 +518,5 @@ export class BulkOperationProcessor {
         },
       ],
     };
-  }
-}
+  },
+};

@@ -220,7 +220,7 @@ export function registerProjectsTool(
           }
 
           default:
-            throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown subcommand: ${args.subcommand}`);
+            throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown subcommand: ${String(args.subcommand)}`);
         }
         })();
 
@@ -305,7 +305,7 @@ export function registerProjectTools(
               return await unarchiveProject(args as ArchiveProjectArgs);
 
             default:
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown CRUD subcommand: ${args.subcommand}`);
+              throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown CRUD subcommand: ${String(args.subcommand)}`);
           }
         })();
 
@@ -356,7 +356,7 @@ export function registerProjectTools(
               return await moveProject(args as MoveProjectArgs, context);
 
             default:
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown hierarchy subcommand: ${args.subcommand}`);
+              throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown hierarchy subcommand: ${String(args.subcommand)}`);
           }
         })();
 
@@ -430,7 +430,7 @@ export function registerProjectTools(
             }
 
             default:
-              throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown sharing subcommand: ${args.subcommand}`);
+              throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown sharing subcommand: ${String(args.subcommand)}`);
           }
         })();
 

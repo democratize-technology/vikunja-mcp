@@ -14,11 +14,11 @@ import { logger } from '../../../utils/logger';
 /**
  * Validates filter parameters for task listing operations
  */
-export class FilterValidator {
+export const FilterValidator = {
   /**
    * Validates and processes filter string or filter ID
    */
-  static async validateAndParseFilter(
+  async validateAndParseFilter(
     args: TaskListingArgs,
     storage: TaskFilterStorage
   ): Promise<{
@@ -72,12 +72,12 @@ export class FilterValidator {
         `Filter validation failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-  }
+  },
 
   /**
    * Validates pagination and memory constraints
    */
-  static validateMemoryConstraints(
+  validateMemoryConstraints(
     args: TaskListingArgs,
     requestedPageSize: number
   ): {
@@ -127,12 +127,12 @@ export class FilterValidator {
       riskLevel?: 'low' | 'medium' | 'high';
       estimatedMemoryMB?: number;
     };
-  }
+  },
 
   /**
    * Validates the actual loaded task count against limits
    */
-  static validateLoadedTasks(actualTaskCount: number, sampleTask?: Task): {
+  validateLoadedTasks(actualTaskCount: number, sampleTask?: Task): {
     isValid: boolean;
     warnings: string[];
     shouldThrow: boolean;
@@ -180,12 +180,12 @@ export class FilterValidator {
       riskLevel: finalTaskCountValidation.riskLevel,
       estimatedMemoryMB: finalTaskCountValidation.estimatedMemoryMB
     };
-  }
+  },
 
   /**
    * Validates task listing arguments
    */
-  static validateTaskListingArgs(args: TaskListingArgs): string[] {
+  validateTaskListingArgs(args: TaskListingArgs): string[] {
     const errors: string[] = [];
 
     // Validate numeric parameters
@@ -224,12 +224,12 @@ export class FilterValidator {
     }
 
     return errors;
-  }
+  },
 
   /**
    * Performs comprehensive validation of task filtering parameters
    */
-  static async validateTaskFiltering(
+  async validateTaskFiltering(
     args: TaskListingArgs,
     storage: TaskFilterStorage,
     _config: TaskFilterValidationConfig = {}
@@ -246,7 +246,7 @@ export class FilterValidator {
     const allWarnings: string[] = [];
 
     // Validate basic arguments
-    const argValidationErrors = this.validateTaskListingArgs(args);
+    const argValidationErrors = FilterValidator.validateTaskListingArgs(args);
     if (argValidationErrors.length > 0) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
@@ -255,12 +255,12 @@ export class FilterValidator {
     }
 
     // Validate and parse filter
-    const filterValidation = await this.validateAndParseFilter(args, storage);
+    const filterValidation = await FilterValidator.validateAndParseFilter(args, storage);
     allWarnings.push(...filterValidation.validationWarnings);
 
     // Validate memory constraints
     const pageSize = args.perPage || 1000; // Default pagination
-    const memoryValidation = this.validateMemoryConstraints(args, pageSize);
+    const memoryValidation = FilterValidator.validateMemoryConstraints(args, pageSize);
     allWarnings.push(...memoryValidation.warnings);
 
     return {
@@ -269,5 +269,5 @@ export class FilterValidator {
       validationWarnings: allWarnings,
       memoryValidation
     };
-  }
-}
+  },
+};

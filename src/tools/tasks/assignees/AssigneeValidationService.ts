@@ -14,11 +14,11 @@ export interface AssigneeOperationInput {
 /**
  * Service for validating assignee operation inputs
  */
-export class AssigneeValidationService {
+export const AssigneeValidationService = {
   /**
    * Validate input for assign operations
    */
-  static validateAssignInput(args: AssigneeOperationInput): { taskId: number; assigneeIds: number[] } {
+  validateAssignInput(args: AssigneeOperationInput): { taskId: number; assigneeIds: number[] } {
     if (!args.id) {
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Task id is required for assign operation');
     }
@@ -38,12 +38,12 @@ export class AssigneeValidationService {
       taskId: args.id,
       assigneeIds: args.assignees,
     };
-  }
+  },
 
   /**
    * Validate input for unassign operations
    */
-  static validateUnassignInput(args: AssigneeOperationInput): { taskId: number; userIds: number[] } {
+  validateUnassignInput(args: AssigneeOperationInput): { taskId: number; userIds: number[] } {
     if (!args.id) {
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Task id is required for unassign operation');
     }
@@ -63,12 +63,12 @@ export class AssigneeValidationService {
       taskId: args.id,
       userIds: args.assignees,
     };
-  }
+  },
 
   /**
    * Validate input for list assignees operation
    */
-  static validateListInput(args: { id?: number }): { taskId: number } {
+  validateListInput(args: { id?: number }): { taskId: number } {
     if (args.id === undefined) {
       throw new MCPError(
         ErrorCode.VALIDATION_ERROR,
@@ -80,5 +80,5 @@ export class AssigneeValidationService {
     return {
       taskId: args.id,
     };
-  }
-}
+  },
+};

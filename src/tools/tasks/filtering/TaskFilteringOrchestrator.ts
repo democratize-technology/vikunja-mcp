@@ -15,7 +15,7 @@ import type { SimpleFilterStorage } from '../../../storage';
  * Main orchestrator for task filtering operations
  * Coordinates validation, execution, and result processing
  */
-export class TaskFilteringOrchestrator {
+export const TaskFilteringOrchestrator = {
   /**
    * Executes the complete task filtering workflow
    *
@@ -24,7 +24,7 @@ export class TaskFilteringOrchestrator {
    * @param config - Optional validation configuration
    * @returns Promise resolving to filtering result with metadata
    */
-  static async executeTaskFiltering(
+  async executeTaskFiltering(
     args: TaskListingArgs,
     storage: SimpleFilterStorage,
     config: FilterValidationConfig = {}
@@ -100,13 +100,13 @@ export class TaskFilteringOrchestrator {
       // Re-throw original error to be handled by main function
       throw error;
     }
-  }
+  },
 
   /**
    * Validates task filtering parameters without executing the filtering
    * Useful for pre-validation or UI validation scenarios
    */
-  static async validateTaskFiltering(
+  async validateTaskFiltering(
     args: TaskListingArgs,
     storage: SimpleFilterStorage,
     config: FilterValidationConfig = {}
@@ -147,12 +147,12 @@ export class TaskFilteringOrchestrator {
         memoryValidation: { isValid: false, warnings: [] }
       };
     }
-  }
+  },
 
   /**
    * Prepares filtering context information for debugging and monitoring
    */
-  static createFilteringContext(
+  createFilteringContext(
     args: TaskListingArgs,
     result: TaskFilterExecutionResult
   ): {
@@ -246,12 +246,12 @@ export class TaskFilteringOrchestrator {
         timestamp: new Date().toISOString()
       }
     };
-  }
+  },
 
   /**
    * Analyzes filtering performance and provides recommendations
    */
-  static analyzeFilteringPerformance(
+  analyzeFilteringPerformance(
     args: TaskListingArgs,
     result: TaskFilterExecutionResult
   ): {
@@ -298,5 +298,5 @@ export class TaskFilteringOrchestrator {
       recommendations,
       issues
     };
-  }
-}
+  },
+};

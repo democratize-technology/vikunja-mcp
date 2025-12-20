@@ -9,30 +9,30 @@ import { getClientFromContext } from '../../../client';
 /**
  * Service for managing task comment operations
  */
-export class CommentOperationsService {
+export const CommentOperationsService = {
   /**
    * Create a new comment on a task
    */
-  static async createComment(taskId: number, commentText: string): Promise<TaskComment> {
+  async createComment(taskId: number, commentText: string): Promise<TaskComment> {
     const client = await getClientFromContext();
     return await client.tasks.createTaskComment(taskId, {
       task_id: taskId,
       comment: commentText,
     });
-  }
+  },
 
   /**
    * Fetch all comments for a task
    */
-  static async fetchTaskComments(taskId: number): Promise<TaskComment[]> {
+  async fetchTaskComments(taskId: number): Promise<TaskComment[]> {
     const client = await getClientFromContext();
     return await client.tasks.getTaskComments(taskId);
-  }
+  },
 
   /**
    * Get comment count from comments array
    */
-  static getCommentCount(comments: TaskComment[]): number {
+  getCommentCount(comments: TaskComment[]): number {
     return comments.length;
-  }
-}
+  },
+};

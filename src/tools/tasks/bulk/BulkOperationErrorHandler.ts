@@ -191,7 +191,7 @@ export const bulkOperationErrorHandler = {
     const successCount = updateResult.successful.length;
 
     if (failures.length > 0) {
-      await this.handleUpdateFailures(args, failures, successCount);
+      this.handleUpdateFailures(args, failures, successCount);
     }
 
     // Use successful tasks from the update operation, or fetch fresh if needed
@@ -247,11 +247,11 @@ export const bulkOperationErrorHandler = {
   /**
    * Handle various types of update failures
    */
-  async handleUpdateFailures(
+  handleUpdateFailures(
     args: BulkUpdateArgs,
     failures: Array<{ index: number; error: unknown; originalItem: unknown }>,
     successCount: number
-  ): Promise<void> {
+  ): void {
     const failedIds = failures.map((f) => f.originalItem);
 
     // Check if all failures are due to assignee auth errors
