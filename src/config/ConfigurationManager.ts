@@ -163,6 +163,32 @@ export class ConfigurationManager {
     return config.rateLimiting;
   }
 
+  /**
+   * Check if a feature is enabled
+   * AORP architecture has specific features always enabled or disabled
+   */
+  public isFeatureEnabled(featureName: string): boolean {
+    // AORP has fixed feature configuration for operational resilience
+    const enabledFeatures = new Set([
+      'enableServerSideFiltering', // Always enabled for performance
+    ]);
+
+    const disabledFeatures = new Set([
+      'enableAdvancedMetrics', // Disabled for operational simplicity
+    ]);
+
+    if (enabledFeatures.has(featureName)) {
+      return true;
+    }
+
+    if (disabledFeatures.has(featureName)) {
+      return false;
+    }
+
+    // Default to false for unknown features
+    return false;
+  }
+
   // AORP is always enabled - no feature flags needed
 
   /**

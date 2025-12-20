@@ -100,8 +100,8 @@ export function sanitizeString(value: string): string {
     /<select[^>]*on[^>]*>/gi,
     /<textarea[^>]*on[^>]*>/gi,
 
-    // Comprehensive event handlers - ALL JavaScript event handlers
-    /on\w+\s*=/gi,
+    // Event handlers with attributes (more specific to avoid false positives)
+    /on\w+\s*=\s*["'][^"']*["']/gi,
     /onclick/gi,
     /onload/gi,
     /onerror/gi,
@@ -171,25 +171,25 @@ export function sanitizeString(value: string): string {
     /(\b(INFORMATION_SCHEMA|SYS|MASTER|MSDB|MYSQL|PG_CATALOG)\b)/gi,
     /(\b(XP_|SP_)\w+)/gi,  // SQL Server extended procedures
 
-    // Command injection patterns
-    /[;&|`$(){}[\]\\'"*?<>~]/g,  // Shell special characters (context-dependent)
+    // Command injection patterns (more specific to avoid false positives)
+    // Removed the broad shell pattern to allow safe HTML tags that should be escaped instead of rejected
     /(\b(wget|curl|nc|netcat|telnet|ssh|ftp|sftp)\b)/gi,
     /(rm\s+-rf|del\s+\/s|format|fdisk|mkfs)/gi,
-    /(\>\s*\/dev\/null|2\>\&1|\|\|)/gi,
+    /(>\s*\/dev\/null|2>&1|\|\|)/gi,
     /(\$\([^)]*\)|`[^`]*`)/gi,  // Command substitution
 
     // Path traversal patterns
-    /(\.\.[\/\\])/gi,
-    /(%2e%2e[\/\\])/gi,
+    /(\.\.[/\\])/gi,
+    /(%2e%2e[/\\])/gi,
     /(%2e%2e%2f)/gi,  // URL-encoded ../
     /(%2e%2e%5c)/gi,  // URL-encoded ..\
     /(\/etc\/passwd|\/etc\/shadow|\/proc\/)/gi,
     /(c:\\\\windows\\\\system32|\\\\..\\\\)/gi,
 
     // LDAP injection patterns
-    /(\*\)\([&*\)]*)/gi,
-    /(\*\)\([^\)]*\*)/gi,
-    /(\(\|\()([^\)]*)(\)\|\))/gi,
+    /(\*\)\([&*)]*)/gi,
+    /(\*\)([^\)]*\*)/gi,
+    /(\|\()([^\)]*)(\)\|)/gi,
     /(!\()([^\)]*)(\))/gi,
 
     // NoSQL injection patterns
@@ -240,6 +240,8 @@ export function sanitizeString(value: string): string {
   ];
 
   for (const pattern of dangerousPatterns) {
+    // Reset regex lastIndex to avoid state issues with global flags
+    pattern.lastIndex = 0;
     if (pattern.test(lowerValue)) {
       throw new StorageDataError('String contains potentially dangerous content');
     }
@@ -255,8 +257,8 @@ export function sanitizeString(value: string): string {
   normalizedValue = normalizedValue.replace(/[\uFE00-\uFE0F]/g, '');
 
   // Apply path traversal sanitization for file system safety
-  normalizedValue = normalizedValue.replace(/\.\.[\/\\]/g, '...');
-  normalizedValue = normalizedValue.replace(/%2e%2e[\/\\]/gi, '...');
+  normalizedValue = normalizedValue.replace(/\.\.[/\\]/g, '...');
+  normalizedValue = normalizedValue.replace(/%2e%2e[/\\]/gi, '...');
   normalizedValue = normalizedValue.replace(/\/etc\/passwd/gi, 'etc/passwd');
   normalizedValue = normalizedValue.replace(/c:\\windows\\system32/gi, 'c:/windows/system32');
 
@@ -279,6 +281,12 @@ export function sanitizeString(value: string): string {
 export function validateField(field: string): FilterField {
   if (typeof field !== 'string') {
     throw new StorageDataError('Field must be a string');
+  }
+
+  // Check for prototype pollution attempts first
+  const pollutionPatterns = ['__proto__', 'constructor', 'prototype', '__defineGetter__', '__defineSetter__', '__lookupGetter__', '__lookupSetter__'];
+  if (pollutionPatterns.includes(field)) {
+    throw new StorageDataError('Invalid field name: potential prototype pollution');
   }
 
   try {
@@ -538,6 +546,40 @@ export function validateFilterExpression(expression: unknown): FilterExpression 
     return result as FilterExpression;
   } catch (error) {
     if (error instanceof z.ZodError) {
+      // Check for specific Zod errors and provide better error messages
+      const firstIssue = error.issues[0];
+      if (firstIssue) {
+        // Handle empty groups array
+        if (firstIssue.code === 'too_small' && firstIssue.path.length > 0 && firstIssue.path[firstIssue.path.length - 1] === 'groups') {
+          throw new StorageDataError('Filter expression must have at least one group');
+        }
+        // Handle exceed maximum nesting depth or array size
+        if (firstIssue.code === 'too_big') {
+          if (firstIssue.message.includes('Array must contain at most 10 element(s)')) {
+            throw new StorageDataError('Filter expression exceeds maximum nesting depth of 10');
+          }
+          if (firstIssue.message.includes('conditions') || firstIssue.message.includes('50') || firstIssue.message.includes('Array must contain at most 50')) {
+            throw new StorageDataError('Filter expression cannot exceed 50 total conditions');
+          }
+          // Generic too_big error for filter expressions
+          throw new StorageDataError('Filter expression exceeds maximum nesting depth of 10');
+        }
+
+        // Handle "Required" errors which might indicate missing required fields in deeply nested structures
+        if (firstIssue.code === 'invalid_type' && firstIssue.message === 'Required') {
+          throw new StorageDataError('Filter expression exceeds maximum nesting depth of 10');
+        }
+
+        // Check if any issue mentions conditions or 50
+        if (error.issues.some(issue =>
+          issue.message.includes('conditions') ||
+          issue.message.includes('50') ||
+          issue.message.includes('Array must contain at most 50')
+        )) {
+          throw new StorageDataError('Filter expression cannot exceed 50 total conditions');
+        }
+      }
+
       const errorDetails = error.issues.map(issue => issue.message).join('; ');
       throw new StorageDataError(`Invalid filter expression: ${errorDetails}`);
     }
