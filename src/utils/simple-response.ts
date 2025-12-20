@@ -108,7 +108,7 @@ export function formatSuccessMessage(
   message: string,
   data?: ResponseData
 ): string {
-  let content = `## ✅ Success\n\n${message}\n\n`;
+  let content = `## ✅ Success\n\n${message}\n\n**Operation:** ${operation}\n\n`;
 
   if (data) {
     // Check for known collection types first
@@ -168,7 +168,7 @@ function formatObjectData(data: Record<string, unknown>): string {
   return entries
     .filter(([_, value]) => value !== undefined && value !== null)
     .map(([key, value]) => {
-      const formattedValue = typeof value === 'object'
+      const formattedValue = typeof value === 'object' && value !== null
         ? JSON.stringify(value, null, 2)
         : String(value);
       return `**${key}:** ${formattedValue}`;
