@@ -14,7 +14,6 @@ import { sanitizeString } from '../../../utils/validation';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { validateDateString, validateId, convertRepeatConfiguration } from '../validation';
 import { createTaskResponse } from './TaskResponseFormatter';
-import type { AorpBuilderConfig } from '../../../utils/response-factory';
 import { formatAorpAsMarkdown } from '../../../utils/response-factory';
 
 export interface CreateTaskArgs {
