@@ -120,7 +120,7 @@ export async function createProjectShare(
           'Share right must be one of: read, write, admin'
         );
       }
-      numericRight = rightMap[normalizedRight];
+      numericRight = rightMap[normalizedRight] || 0;
     } else if (typeof right === 'number') {
       if (![0, 1, 2].includes(right)) {
         throw new MCPError(
@@ -305,10 +305,11 @@ export async function getProjectShare(
     const client = await getClientFromContext();
     const share = await client.projects.getLinkShare(projectId, Number(shareId));
 
-    const shareDisplayName = share.name || `Share #${shareId}`;
+    const safeShareId = typeof shareId === 'string' ? shareId : 'Unknown';
+    const shareDisplayName = share.name || `Share #${safeShareId}`;
     const result = createProjectResponse(
       'get_project_share',
-      `Retrieved link share: ${shareDisplayName}`,
+      `Retrieved link share: ${shareDisplayName as string}`,
       { share },
       { shareId },
       verbosity,
