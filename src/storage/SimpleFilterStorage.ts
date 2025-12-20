@@ -289,7 +289,7 @@ export class FilterStorageManager {
   private startCleanupTimer(): void {
     this.cleanupInterval = setInterval(() => {
       this.cleanupInactiveSessions().catch(error => {
-        logger.error('Failed to cleanup inactive sessions', { error });
+        logger.error('Failed to cleanup inactive sessions', { error: error instanceof Error ? error.message : String(error) });
       });
     }, this.CLEANUP_INTERVAL_MS);
   }

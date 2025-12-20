@@ -305,9 +305,10 @@ export async function getProjectShare(
     const client = await getClientFromContext();
     const share = await client.projects.getLinkShare(projectId, Number(shareId));
 
+    const shareDisplayName = share.name || `Share #${shareId}`;
     const result = createProjectResponse(
       'get_project_share',
-      `Retrieved link share: ${share.name || (typeof shareId === 'string' || typeof shareId === 'number' ? shareId : 'Unknown')}`,
+      `Retrieved link share: ${shareDisplayName}`,
       { share },
       { shareId },
       verbosity,

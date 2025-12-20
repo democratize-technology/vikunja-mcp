@@ -46,7 +46,8 @@ function transformUser(rawUser: unknown): User {
         return '[object Object]';
       }
     }
-    return value !== null && value !== undefined && typeof value !== 'object' && typeof value !== 'boolean' ? String(value) : '';
+    return value !== null && value !== undefined && typeof value !== 'object' && typeof value !== 'boolean' ?
+      (typeof value === 'string' || typeof value === 'number' ? value.toString() : '') : '';
   };
 
   const result = {

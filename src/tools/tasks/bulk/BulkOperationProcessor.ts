@@ -91,7 +91,7 @@ export const BulkOperationProcessor = {
     const bulkUpdateResult = await client.tasks.bulkUpdateTasks(bulkOperation);
 
     // Handle inconsistent return types from the bulk update API
-    const { updatedTasks, bulkUpdateSuccessful } = await BulkOperationProcessor.processBulkUpdateResult(args, bulkUpdateResult);
+    const { updatedTasks, bulkUpdateSuccessful } = BulkOperationProcessor.processBulkUpdateResult(args, bulkUpdateResult);
 
     if (!bulkUpdateSuccessful) {
       throw new Error('Bulk update API reported success but did not update task values');
@@ -129,6 +129,13 @@ export const BulkOperationProcessor = {
 
         // Verify the returned tasks have the expected values
         for (const task of bulkUpdateResult) {
+          // Type guard to ensure task is a valid Task object
+          if (!BulkOperationProcessor.isValidTask(task)) {
+            logger.warn('Bulk update API returned invalid task object', { task: JSON.stringify(task) });
+            bulkUpdateSuccessful = false;
+            break;
+          }
+
           const fieldName = args.field;
           if (!fieldName || !BulkOperationProcessor.verifyTaskFieldValue(task, fieldName, args.value)) {
             logger.warn(`Bulk update API returned task with unchanged ${fieldName || 'unknown'}`, {
@@ -142,7 +149,8 @@ export const BulkOperationProcessor = {
         }
 
         if (bulkUpdateSuccessful) {
-          updatedTasks = bulkUpdateResult;
+          // Cast to Task[] since we've validated each item
+          updatedTasks = bulkUpdateResult as Task[];
         }
       }
     } else if (
@@ -154,6 +162,23 @@ export const BulkOperationProcessor = {
     }
 
     return { updatedTasks, bulkUpdateSuccessful };
+  },
+
+  /**
+   * Type guard to validate that an object is a valid Task
+   */
+  isValidTask(obj: unknown): obj is Task {
+    if (obj === null || typeof obj !== 'object') {
+      return false;
+    }
+
+    const taskObj = obj as Record<string, unknown>;
+    return (
+      'project_id' in taskObj &&
+      'title' in taskObj &&
+      typeof taskObj.project_id === 'number' &&
+      typeof taskObj.title === 'string'
+    );
   },
 
   /**
