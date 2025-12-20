@@ -20,22 +20,33 @@ interface SearchParams {
 }
 
 /**
+ * Type guard to check if an object is a valid user structure
+ */
+function isUserObject(obj: unknown): obj is Record<string, unknown> {
+  return obj !== null && typeof obj === 'object' && !Array.isArray(obj);
+}
+
+/**
  * Safely transforms a node-vikunja User to our extended User interface
  */
 function transformUser(rawUser: unknown): User {
-  const user = rawUser as Record<string, unknown>;
+  if (!isUserObject(rawUser)) {
+    throw new Error('Invalid user data received');
+  }
+
+  const user = rawUser;
 
   const safeString = (value: unknown): string => {
     if (typeof value === 'string') return value;
     if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-    if (value && typeof value === 'object') {
+    if (value !== null && typeof value === 'object') {
       try {
         return JSON.stringify(value);
       } catch {
         return '[object Object]';
       }
     }
-    return String(value || '');
+    return String(value ?? '');
   };
 
   const result = {

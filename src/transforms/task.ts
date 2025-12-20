@@ -149,7 +149,7 @@ export class TaskTransformer {
         let transformedValue: unknown = sourceValue;
 
         if (fieldDef.transformer) {
-          transformedValue = fieldDef.transformer(sourceValue, task as Record<string, unknown>);
+          transformedValue = fieldDef.transformer(sourceValue, task);
         } else {
           // Apply default transformations based on field type
           transformedValue = this.applyDefaultTransformation(fieldDef.fieldName, sourceValue);

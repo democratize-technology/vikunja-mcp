@@ -101,18 +101,18 @@ export class ConfigurationManager {
       const environment = this.detectEnvironment();
       
       // 2. Load base configuration from environment profile
-      const profileConfig = ENVIRONMENT_PROFILES[environment] || {} as Record<string, unknown>;
+      const profileConfig = ENVIRONMENT_PROFILES[environment] || {};
       
       // 3. Load configuration from environment variables
       const envConfig = this.loadFromEnvironmentVariables();
       
       // 4. Load configuration from additional sources
-      const sourceConfig = this.loadOptions.sources || {} as Record<string, unknown>;
+      const sourceConfig = this.loadOptions.sources || {};
       
       // 5. Merge configurations using deep merge (sources override env vars, env vars override profile)
       const rawConfig = this.deepMerge(
-        { environment } as Record<string, unknown>,
-        profileConfig as Record<string, unknown>,
+        { environment },
+        profileConfig,
         envConfig,
         sourceConfig
       );
