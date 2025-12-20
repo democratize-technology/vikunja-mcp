@@ -3,6 +3,95 @@
  */
 
 import type { SimpleFilterStorage } from '../../src/storage';
+
+// Mock the client module before importing TaskFilteringOrchestrator
+jest.mock('../../src/client', () => ({
+  getClientFromContext: jest.fn().mockReturnValue({
+    tasks: {
+      list: jest.fn().mockResolvedValue({ results: [] }),
+      getProjectTasks: jest.fn().mockResolvedValue({ results: [] }),
+    },
+  }),
+  setGlobalClientFactory: jest.fn(),
+  clearGlobalClientFactory: jest.fn(),
+}));
+
+// Mock the logger to reduce noise
+jest.mock('../../src/utils/logger', () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+}));
+
+// Mock the retry module
+jest.mock('../../src/utils/retry', () => ({
+  withRetry: jest.fn((fn) => fn()),
+  RETRY_CONFIG: {},
+}));
+
+// Mock the error handler
+jest.mock('../../src/utils/error-handler', () => ({
+  MCPError: class MCPError extends Error {
+    constructor(public code: string, message: string) {
+      super(message);
+    }
+  },
+  ErrorCode: {
+    VALIDATION_ERROR: 'VALIDATION_ERROR',
+    INTERNAL_ERROR: 'INTERNAL_ERROR',
+    AUTH_REQUIRED: 'AUTH_REQUIRED',
+  },
+}));
+
+// Mock the filtering strategies to prevent actual API calls
+jest.mock('../../src/utils/filtering/HybridFilteringStrategy', () => ({
+  HybridFilteringStrategy: jest.fn().mockImplementation(() => ({
+    canHandle: jest.fn().mockReturnValue(false), // Always return false to skip server-side filtering
+    execute: jest.fn().mockResolvedValue({
+      tasks: [],
+      totalCount: 0,
+      metadata: {
+        serverSideFilteringUsed: false,
+        serverSideFilteringAttempted: false,
+        optimizationApplied: 'none',
+      }
+    }),
+  })),
+}));
+
+jest.mock('../../src/utils/filtering/ClientSideFilteringStrategy', () => ({
+  ClientSideFilteringStrategy: jest.fn().mockImplementation(() => ({
+    canHandle: jest.fn().mockReturnValue(true),
+    execute: jest.fn().mockResolvedValue({
+      tasks: [],
+      totalCount: 0,
+      metadata: {
+        serverSideFilteringUsed: false,
+        serverSideFilteringAttempted: false,
+        optimizationApplied: 'client-side',
+      }
+    }),
+  })),
+}));
+
+jest.mock('../../src/utils/filtering/ServerSideFilteringStrategy', () => ({
+  ServerSideFilteringStrategy: jest.fn().mockImplementation(() => ({
+    canHandle: jest.fn().mockReturnValue(false),
+    execute: jest.fn().mockResolvedValue({
+      tasks: [],
+      totalCount: 0,
+      metadata: {
+        serverSideFilteringUsed: false,
+        serverSideFilteringAttempted: false,
+        optimizationApplied: 'server-side',
+      }
+    }),
+  })),
+}));
+
 import { TaskFilteringOrchestrator } from '../../src/tools/tasks/filtering/TaskFilteringOrchestrator';
 
 // Mock SimpleFilterStorage for testing
