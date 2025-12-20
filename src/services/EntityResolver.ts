@@ -43,7 +43,6 @@ export class EntityResolver {
    * @returns Promise resolving to entity resolution results
    */
   async resolveEntities(client: VikunjaClient): Promise<EntityResolutionResult> {
-    // Initialize default result
     const result: EntityResolutionResult = {
       labelMap: new Map(),
       userMap: new Map(),
@@ -52,13 +51,10 @@ export class EntityResolver {
       projectUsers: [],
     };
 
-    // Fetch labels with comprehensive error handling
     await this.fetchLabels(client, result);
 
-    // Fetch users with authentication error handling
     await this.fetchUsers(client, result);
 
-    // Create the resolution maps
     this.createResolutionMaps(result);
 
     // Log the final result for debugging

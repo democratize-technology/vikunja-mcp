@@ -15,21 +15,15 @@ import { logger } from './utils/logger';
 import { createSecureConnectionMessage, createSecureLogConfig } from './utils/security';
 import { createVikunjaClientFactory, setGlobalClientFactory, type VikunjaClientFactory } from './client';
 
-// Load environment variables
 dotenv.config({ quiet: true });
 
-// Initialize server
 const server = new McpServer({
   name: 'vikunja-mcp',
   version: '0.2.0',
 });
 
-// Initialize auth manager
 const authManager = new AuthManager();
 
-// Modern client functions will be exported at the bottom of the file
-
-// Initialize client factory and register tools
 let clientFactory: VikunjaClientFactory | null = null;
 
 async function initializeFactory(): Promise<void> {
@@ -48,7 +42,6 @@ async function initializeFactory(): Promise<void> {
 // This ensures the factory is available for tests
 export const factoryInitializationPromise = initializeFactory()
   .then(() => {
-    // Register tools after factory initialization completes
     try {
       if (clientFactory) {
         registerTools(server, authManager, clientFactory);
@@ -63,11 +56,9 @@ export const factoryInitializationPromise = initializeFactory()
   })
   .catch((error) => {
     logger.warn('Failed to initialize client factory during module load:', error);
-    // Register tools without factory on failure
     registerTools(server, authManager, undefined);
   });
 
-// Auto-authenticate using environment variables if available
 if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
   const connectionMessage = createSecureConnectionMessage(
     process.env.VIKUNJA_URL, 
@@ -79,10 +70,7 @@ if (process.env.VIKUNJA_URL && process.env.VIKUNJA_API_TOKEN) {
   logger.info(`Using detected auth type: ${detectedAuthType}`);
 }
 
-// Start the server
 async function main(): Promise<void> {
-  // Tools are already registered during module initialization
-  // Wait for factory initialization to complete before starting server
   await factoryInitializationPromise;
 
   const transport = new StdioServerTransport();
@@ -90,7 +78,6 @@ async function main(): Promise<void> {
 
   logger.info('Vikunja MCP server started');
   
-  // Create secure configuration for logging
   const config = createSecureLogConfig({
     mode: process.env.MCP_MODE,
     debug: process.env.DEBUG,

@@ -94,13 +94,10 @@ export class TaskCreationService {
     const warnings: string[] = [];
 
     try {
-      // Prepare task data for API
       const taskData = this.prepareTaskData(task, projectId);
 
-      // Create the base task
       const createdTask = await this.createBaseTask(client, taskData, task.title);
 
-      // Handle label assignment
       const labelWarnings = await this.handleLabelAssignment(
         client,
         createdTask,
@@ -109,7 +106,6 @@ export class TaskCreationService {
       );
       warnings.push(...labelWarnings);
 
-      // Handle user assignment
       const assigneeWarnings = await this.handleUserAssignment(
         client,
         createdTask,
@@ -119,7 +115,6 @@ export class TaskCreationService {
       );
       warnings.push(...assigneeWarnings);
 
-      // Handle reminders (API limitation)
       if (task.reminders && task.reminders.length > 0) {
         warnings.push(this.handleReminders(createdTask.id, task.reminders as Array<{ reminder_date?: string; reminder?: string }>));
       }
@@ -180,13 +175,10 @@ export class TaskCreationService {
     if (task.startDate) taskData.start_date = task.startDate;
     if (task.endDate) taskData.end_date = task.endDate;
 
-    // Handle color
     if (task.hexColor) taskData.hex_color = task.hexColor;
 
-    // Handle repeat settings
     if (task.repeatAfter) taskData.repeat_after = task.repeatAfter;
     if (task.repeatMode !== undefined) {
-      // Convert numeric repeat mode to string
       const repeatModes = ['day', 'week', 'month', 'year'];
       if (task.repeatMode >= 0 && task.repeatMode < repeatModes.length) {
         const repeatMode = repeatModes[task.repeatMode];
