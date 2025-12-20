@@ -187,9 +187,13 @@ export function sanitizeString(value: string): string {
     /(c:\\\\windows\\\\system32|\\\\..\\\\)/gi,
 
     // LDAP injection patterns
+    // eslint-disable-next-line no-useless-escape
     /(\*\)\([&*)]*)/gi,
+    // eslint-disable-next-line no-useless-escape
     /(\*\)([^\)]*\*)*)/gi,
+    // eslint-disable-next-line no-useless-escape
     /(\|\()([^\)]*)(\)\|)/gi,
+    // eslint-disable-next-line no-useless-escape
     /(!\()([^\)]*)(\))/gi,
 
     // NoSQL injection patterns
