@@ -3,8 +3,7 @@
  * Handles task retrieval operations with comprehensive error handling
  */
 
-import { MCPError, ErrorCode, getClientFromContext, transformApiError, handleFetchError, handleStatusCodeError, type AorpBuilderConfig } from '../../../index';
-import type { Task } from '../../../types';
+import { MCPError, ErrorCode, getClientFromContext, transformApiError, handleFetchError, handleStatusCodeError } from '../../../index';
 import { validateId } from '../validation';
 import { createTaskResponse } from './TaskResponseFormatter';
 import { formatAorpAsMarkdown } from '../../../utils/response-factory';

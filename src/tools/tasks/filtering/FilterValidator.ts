@@ -232,7 +232,7 @@ export class FilterValidator {
   static async validateTaskFiltering(
     args: TaskListingArgs,
     storage: TaskFilterStorage,
-    config: TaskFilterValidationConfig = {}
+    _config: TaskFilterValidationConfig = {}
   ): Promise<{
     filterExpression: FilterExpression | null;
     filterString: string | undefined;

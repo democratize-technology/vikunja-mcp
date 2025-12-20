@@ -28,7 +28,10 @@ export async function handleComment(args: {
     }
 
     // Create a new comment
-    const newComment = await CommentOperationsService.createComment(taskId, commentText!);
+    if (!commentText) {
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Comment text is required for comment creation');
+    }
+    const newComment = await CommentOperationsService.createComment(taskId, commentText);
 
     // Format and return response
     const response = commentResponseFormatter.formatCreateCommentResponse(newComment);

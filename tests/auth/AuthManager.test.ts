@@ -4,7 +4,7 @@
 
 import { AuthManager } from '../../src/auth/AuthManager';
 import { MCPError, ErrorCode } from '../../src/types';
-import { createTestableAuthManager, type TestableAuthManager } from '../../src/auth/AuthManagerTestUtils';
+import { createTestableAuthManager, type TestableAuthManager } from '../utils/test-utils';
 
 describe('AuthManager', () => {
   let authManager: AuthManager;

@@ -3,7 +3,7 @@
  * Main service that coordinates all filtering operations for tasks
  */
 
-import type { TaskListingArgs, TaskFilterExecutionResult, TaskFilterValidationConfig } from '../types/filters';
+import type { TaskListingArgs, TaskFilterExecutionResult } from '../types/filters';
 import type { FilterValidationConfig } from '../../../types/filters';
 import { FilterValidator } from './FilterValidator';
 import { FilterExecutor } from './FilterExecutor';

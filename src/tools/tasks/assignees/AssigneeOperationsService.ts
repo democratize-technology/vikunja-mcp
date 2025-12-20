@@ -3,7 +3,7 @@
  * Handles core business logic for task assignee management
  */
 
-import type { StandardTaskResponse, MinimalTask, TaskWithAssignees, Assignee } from '../../../types';
+import type { MinimalTask, TaskWithAssignees, Assignee } from '../../../types';
 import { MCPError, ErrorCode } from '../../../types';
 import { getClientFromContext } from '../../../client';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
@@ -13,11 +13,11 @@ import { AUTH_ERROR_MESSAGES } from '../constants';
 /**
  * Service for managing task assignee operations
  */
-export class AssigneeOperationsService {
+export const AssigneeOperationsService = {
   /**
    * Assign multiple users to a task
    */
-  static async assignUsersToTask(taskId: number, assigneeIds: number[]): Promise<void> {
+  async assignUsersToTask(taskId: number, assigneeIds: number[]): Promise<void> {
     const client = await getClientFromContext();
 
     try {
@@ -40,12 +40,12 @@ export class AssigneeOperationsService {
       }
       throw assigneeError;
     }
-  }
+  },
 
   /**
    * Remove multiple users from a task
    */
-  static async removeUsersFromTask(taskId: number, userIds: number[]): Promise<void> {
+  async removeUsersFromTask(taskId: number, userIds: number[]): Promise<void> {
     const client = await getClientFromContext();
 
     // Remove users from the task with retry logic
@@ -69,12 +69,12 @@ export class AssigneeOperationsService {
         throw removeError;
       }
     }
-  }
+  },
 
   /**
    * Fetch task data to get current assignees
    */
-  static async fetchTaskWithAssignees(taskId: number): Promise<TaskWithAssignees> {
+  async fetchTaskWithAssignees(taskId: number): Promise<TaskWithAssignees> {
     const client = await getClientFromContext();
     const task = await client.tasks.getTask(taskId);
     // Ensure required properties exist for TaskWithAssignees
@@ -87,20 +87,20 @@ export class AssigneeOperationsService {
       title: task.title || '',
       assignees: task.assignees || [],
     };
-  }
+  },
 
   /**
    * Extract assignee information from task
    */
-  static extractAssignees(task: TaskWithAssignees): Assignee[] {
+  extractAssignees(task: TaskWithAssignees): Assignee[] {
     return task.assignees || [];
-  }
+  },
 
   /**
    * Create minimal task representation with assignees
    */
-  static createMinimalTaskWithAssignees(task: TaskWithAssignees): MinimalTask {
-    const assignees = this.extractAssignees(task);
+  createMinimalTaskWithAssignees(task: TaskWithAssignees): MinimalTask {
+    const assignees = AssigneeOperationsService.extractAssignees(task);
 
     return {
       ...(task.id !== undefined && { id: task.id }),
@@ -108,4 +108,4 @@ export class AssigneeOperationsService {
       assignees: assignees,
     };
   }
-}
+};

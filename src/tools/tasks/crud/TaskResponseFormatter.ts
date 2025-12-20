@@ -3,7 +3,7 @@
  * Centralizes AORP response formatting logic for task operations
  */
 
-import { type TaskResponseData, type TaskResponseMetadata, type QualityIndicatorFunction, type AorpTransformationContext, type AorpBuilderConfig, type AorpVerbosityLevel } from '../../../types';
+import { type TaskResponseData, type TaskResponseMetadata, type AorpBuilderConfig, type AorpVerbosityLevel } from '../../../types';
 import { createAorpResponse, createTaskAorpResponse, createAorpErrorResponse } from '../../../utils/response-factory';
 import type { AorpFactoryResult } from '../../../types';
 import type { Task } from '../../../types/vikunja';
@@ -90,7 +90,7 @@ export function createTaskResponse(
   _sessionId?: string
 ): AorpFactoryResult {
   // Use standard AORP configuration - no more verbosity options
-  const aorpBuilderConfig = _aorpConfig || generateAorpConfig(operation, _data, 'standard');
+  generateAorpConfig(operation, _data, 'standard');
 
   // For task operations, use specialized task AORP response
   const taskData = _data.task || _data.tasks;
@@ -207,7 +207,10 @@ export function createTaskErrorResponse(
   }
 ): AorpFactoryResult {
   // Extract error message
-  const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorMessage = error instanceof Error ? error.message :
+    (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string')
+      ? error.message
+      : 'Unknown error occurred';
   const errorCode = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
     ? error.code
     : 'UNKNOWN_ERROR';

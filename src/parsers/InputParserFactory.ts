@@ -40,8 +40,7 @@ export function parseInputData(options: ParseInputOptions): ImportedTask[] {
         return parseCSVInput(data, skipErrors);
 
       default: {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const exhaustiveCheck: never = format;
+        // Use format directly for error message
         throw new MCPError(
           ErrorCode.VALIDATION_ERROR,
           `Unsupported format: ${String(format)}. Supported formats are: csv, json`

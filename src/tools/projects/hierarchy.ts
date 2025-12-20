@@ -76,7 +76,7 @@ interface ProjectTreeNode extends Project {
  */
 export async function getProjectChildren(
   args: GetChildrenArgs,
-  context: unknown
+  _context: unknown
 ): Promise<McpResponse> {
   const { id, includeArchived = false, verbosity, useOptimizedFormat, useAorp } = args;
 
@@ -128,7 +128,7 @@ export async function getProjectChildren(
  */
 export async function getProjectTree(
   args: GetTreeArgs,
-  context: unknown
+  _context: unknown
 ): Promise<McpResponse> {
   const { id, maxDepth = 10, includeArchived = false, verbosity, useOptimizedFormat, useAorp } = args;
 
@@ -193,11 +193,6 @@ export async function getProjectTree(
       options1.useAorp = useAorp;
     }
 
-    // Custom message to match test expectations
-    const customMessage = id
-      ? `Retrieved project tree with ${totalNodes} projects starting from project ID ${id}`
-      : `Retrieved project tree with ${totalNodes} projects`;
-
     const result = createProjectTreeResponse(
       treeData,
       actualDepth,
@@ -226,7 +221,7 @@ export async function getProjectTree(
  */
 export async function getProjectBreadcrumb(
   args: GetBreadcrumbArgs,
-  context: unknown
+  _context: unknown
 ): Promise<McpResponse> {
   const { id, verbosity, useOptimizedFormat, useAorp } = args;
 
@@ -260,9 +255,6 @@ export async function getProjectBreadcrumb(
       options2.useAorp = useAorp;
     }
 
-    // Custom message to match test expectations
-    const customBreadcrumbMessage = `Retrieved breadcrumb path with ${breadcrumb.length} projects from root to project ID ${id}`;
-
     const result = createBreadcrumbResponse(
       breadcrumb,
       options2
@@ -289,7 +281,7 @@ export async function getProjectBreadcrumb(
  */
 export async function moveProject(
   args: MoveProjectArgs,
-  context: unknown
+  _context: unknown
 ): Promise<McpResponse> {
   const { id, parentProjectId, verbosity, useOptimizedFormat, useAorp } = args;
 

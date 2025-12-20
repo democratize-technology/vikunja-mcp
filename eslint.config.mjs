@@ -72,7 +72,7 @@ export default [
     },
   },
   {
-    files: ['src/auth/AuthManager.ts', 'src/auth/AuthManagerTestUtils.ts'],
+    files: ['src/auth/AuthManager.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',

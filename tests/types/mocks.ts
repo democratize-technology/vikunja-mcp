@@ -1,5 +1,5 @@
 import { AuthManager } from '../../src/auth/AuthManager';
-import type { TestableAuthManager } from '../../src/auth/AuthManagerTestUtils';
+import type { TestableAuthManager } from '../utils/test-utils';
 import { Server } from '@modelcontextprotocol/sdk/server';
 import {
   Task,

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { AuthManager } from '../../auth/AuthManager';
 import type { VikunjaClientFactory } from '../../client/VikunjaClientFactory';
 import { MCPError, ErrorCode } from '../../types';
+import type { McpResponse } from './crud';
 import { createAuthRequiredError, wrapToolError } from '../../utils/error-handler';
 import { validateId } from './validation';
 
@@ -106,7 +107,7 @@ export function registerProjectsTool(
       }
 
       try {
-        const result = await (async () => {
+        const result = await (async (): Promise<McpResponse> => {
           switch (args.subcommand) {
             // CRUD operations
             case 'list':
@@ -206,7 +207,7 @@ export function registerProjectsTool(
             }
             return await deleteProjectShare(args as DeleteShareArgs);
 
-          case 'auth-share':
+          case 'auth-share': {
             if (!args.shareHash) {
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Share hash is required');
             }
@@ -216,6 +217,7 @@ export function registerProjectsTool(
             if (args.projectId !== undefined) authShareArgs.projectId = args.projectId;
             if (args.password !== undefined) authShareArgs.password = args.password;
             return await authProjectShare(authShareArgs);
+          }
 
           default:
             throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown subcommand: ${args.subcommand}`);
@@ -258,9 +260,9 @@ export function registerProjectTools(
       useOptimizedFormat: z.boolean().optional(),
       useAorp: z.boolean().optional(),
     },
-    async (args, context) => {
+    async (args, _context) => {
       try {
-        const result = await (async () => {
+        const result = await (async (): Promise<McpResponse> => {
           switch (args.subcommand) {
             case 'list':
               return await listProjects(args as ListProjectsArgs);
@@ -330,7 +332,7 @@ export function registerProjectTools(
     },
     async (args, context) => {
       try {
-        const result = await (async () => {
+        const result = await (async (): Promise<McpResponse> => {
           switch (args.subcommand) {
             case 'children':
               if (!args.id) {
@@ -384,9 +386,9 @@ export function registerProjectTools(
       useOptimizedFormat: z.boolean().optional(),
       useAorp: z.boolean().optional(),
     },
-    async (args, context) => {
+    async (args, _context) => {
       try {
-        const result = await (async () => {
+        const result = await (async (): Promise<McpResponse> => {
           switch (args.subcommand) {
             case 'create_share':
               if (!args.projectId) {
@@ -415,7 +417,7 @@ export function registerProjectTools(
               }
               return await deleteProjectShare(args as DeleteShareArgs);
 
-            case 'auth_share':
+            case 'auth_share': {
               if (!args.shareHash) {
                 throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Share hash is required for auth_share operation');
               }
@@ -425,6 +427,7 @@ export function registerProjectTools(
               if (args.projectId !== undefined) authShareArgs.projectId = args.projectId;
               if (args.password !== undefined) authShareArgs.password = args.password;
               return await authProjectShare(authShareArgs);
+            }
 
             default:
               throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown sharing subcommand: ${args.subcommand}`);

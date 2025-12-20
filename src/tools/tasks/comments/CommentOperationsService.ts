@@ -3,7 +3,6 @@
  * Handles core business logic for task comment management
  */
 
-import type { StandardTaskResponse } from '../../../types';
 import type { TaskComment } from '../../../types/vikunja';
 import { getClientFromContext } from '../../../client';
 

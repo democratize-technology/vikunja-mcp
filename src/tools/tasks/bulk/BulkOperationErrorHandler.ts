@@ -11,7 +11,6 @@ import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
 import { BatchProcessorFactory } from './index';
 import { AUTH_ERROR_MESSAGES } from '../constants';
-import type { BulkOperationFailure } from './BulkOperationTypes';
 import type { BulkUpdateArgs } from './BulkOperationValidator';
 import type { BatchResult } from '../../../utils/performance/batch-processor';
 
@@ -104,7 +103,7 @@ export const bulkOperationErrorHandler = {
     client: VikunjaClient,
     taskId: number,
     args: BulkUpdateArgs,
-    updatedTask: Task
+    _updatedTask: Task
   ): Promise<void> {
     if (args.field === 'assignees' && Array.isArray(args.value)) {
       await this.handleAssigneeUpdate(client, taskId, args.value as number[]);

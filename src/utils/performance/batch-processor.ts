@@ -99,11 +99,14 @@ export class BatchProcessor {
 
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
       const batch = batches[batchIndex];
+      if (!batch) {
+        throw new Error(`Batch at index ${batchIndex} is undefined`);
+      }
       const batchStartTime = Date.now();
-      
+
       // Process batch with controlled concurrency
       const batchResults = await this.processBatchConcurrently(
-        batch!,
+        batch,
         processor,
         opts.maxConcurrency,
         batchIndex * opts.batchSize // base index for this batch
@@ -125,7 +128,7 @@ export class BatchProcessor {
 
       logger.debug('Batch completed', {
         batchIndex,
-        batchSize: batch!.length,
+        batchSize: batch.length,
         duration: batchDuration,
         successful: batchResults.filter(r => r.status === 'fulfilled').length,
         failed: batchResults.filter(r => r.status === 'rejected').length,

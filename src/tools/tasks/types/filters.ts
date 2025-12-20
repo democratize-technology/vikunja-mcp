@@ -7,10 +7,11 @@ import type { Task } from 'node-vikunja';
 import type {
   FilterExpression,
   SavedFilter,
-  FilterValidationResult,
   FilterValidationConfig
 } from '../../../types/filters';
 import type { GetTasksParams } from 'node-vikunja';
+import type { AorpBuilderConfig } from '../../../types';
+import type { SimpleFilterStorage } from '../../../storage';
 
 /**
  * Arguments for filtering operations
@@ -51,7 +52,7 @@ export interface FilteringMetadata {
  * Result of a filtering operation
  */
 export interface FilteringResult {
-  tasks: import('node-vikunja').Task[];
+  tasks: Task[];
   metadata: FilteringMetadata;
 }
 
@@ -62,7 +63,7 @@ export interface TaskListingArgs extends FilteringArgs {
   verbosity?: string;
   useOptimizedFormat?: boolean;
   useAorp?: boolean;
-  aorpConfig?: import('../../../types').AorpBuilderConfig;
+  aorpConfig?: AorpBuilderConfig;
   sessionId?: string;
 }
 
@@ -76,9 +77,7 @@ export interface TaskFilteringParams extends FilteringParams {
 /**
  * Enhanced filtering result with task-specific metadata
  */
-export interface TaskFilteringResult extends FilteringResult {
-  /** Additional task-specific metadata can be added here */
-}
+export type TaskFilteringResult = FilteringResult;
 
 /**
  * Task filtering validation configuration
@@ -118,7 +117,7 @@ export interface TaskFilteringContext {
   /** Task listing arguments */
   args: TaskListingArgs;
   /** Storage interface for saved filters */
-  storage: import('../../../storage').SimpleFilterStorage;
+  storage: SimpleFilterStorage;
 }
 
 /**

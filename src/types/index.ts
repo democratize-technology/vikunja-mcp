@@ -2,6 +2,9 @@
  * Type exports
  */
 
+import type { SimpleResponse } from '../utils/simple-response';
+import type { ResponseMetadata } from './responses';
+
 // Export from vikunja
 export {
   type LoginCredentials,
@@ -171,9 +174,6 @@ export interface AorpFactoryOptions {
   [key: string]: unknown; // More specific than any
 }
 
-// Import these types for use in interfaces
-type SimpleResponse = import('../utils/simple-response').SimpleResponse;
-type ResponseMetadata = import('../types/responses').ResponseMetadata;
 
 export interface AorpFactoryResult {
   response: SimpleResponse; // Use proper SimpleResponse type

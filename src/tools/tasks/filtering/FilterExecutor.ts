@@ -11,7 +11,6 @@ import { FilteringContext } from '../../../utils/filtering';
 import { validateTaskCountLimit, createTaskLimitExceededMessage, logMemoryUsage } from '../../../utils/memory';
 import { MCPError, ErrorCode } from '../../../types';
 import { logger } from '../../../utils/logger';
-import { handleFetchError } from '../../../utils/error-handler';
 
 /**
  * Executes filtering operations on tasks with comprehensive error handling
@@ -25,7 +24,7 @@ export class FilterExecutor {
     filterExpression: FilterExpression | null,
     filterString: string | undefined,
     params: GetTasksParams,
-    storage: TaskFilterStorage
+    _storage: TaskFilterStorage
   ): Promise<TaskFilterExecutionResult> {
     try {
       // Execute filtering using strategy pattern

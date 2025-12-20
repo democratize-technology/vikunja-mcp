@@ -24,7 +24,10 @@ export class BulkOperationProcessor {
       BulkOperationValidator.preprocessFieldValue(args);
       BulkOperationValidator.validateFieldConstraints(args);
 
-      const taskIds = args.taskIds!; // Validated by BulkOperationValidator.validateBulkUpdate
+      const taskIds = args.taskIds; // Validated by BulkOperationValidator.validateBulkUpdate
+      if (!taskIds) {
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'taskIds is required after validation');
+      }
       const client = await getClientFromContext();
 
       // Try the proper bulk update API first
@@ -64,9 +67,12 @@ export class BulkOperationProcessor {
   ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
     // Build the bulk update operation
     // Note: args.field and args.value are validated to be non-undefined in BulkOperationValidator
+    if (!args.field) {
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Field is required for bulk update operation');
+    }
     const bulkOperation = {
       task_ids: taskIds,
-      field: args.field!, // Validated by BulkOperationValidator.validateFieldConstraints
+      field: args.field, // Validated by BulkOperationValidator.validateFieldConstraints
       value: args.value,
     };
 
@@ -101,10 +107,10 @@ export class BulkOperationProcessor {
         'bulk_update_fetch'
       );
 
-      return this.createUpdateResponse(taskIds, fetchResult.successful, args.field!, fetchResult.failed.length);
+      return this.createUpdateResponse(taskIds, fetchResult.successful, args.field || 'unknown', fetchResult.failed.length);
     }
 
-    return this.createUpdateResponse(taskIds, updatedTasks, args.field!, 0);
+    return this.createUpdateResponse(taskIds, updatedTasks, args.field || 'unknown', 0);
   }
 
   /**
@@ -123,8 +129,9 @@ export class BulkOperationProcessor {
 
         // Verify the returned tasks have the expected values
         for (const task of bulkUpdateResult) {
-          if (!this.verifyTaskFieldValue(task, args.field!, args.value)) {
-            logger.warn(`Bulk update API returned task with unchanged ${args.field}`, {
+          const fieldName = args.field;
+          if (!fieldName || !this.verifyTaskFieldValue(task, fieldName, args.value)) {
+            logger.warn(`Bulk update API returned task with unchanged ${fieldName || 'unknown'}`, {
               taskId: task.id,
               expected: args.value,
               actual: task[args.field as keyof Task],
@@ -202,7 +209,10 @@ export class BulkOperationProcessor {
     try {
       BulkOperationValidator.validateBulkDelete(args);
 
-      const taskIds = args.taskIds!; // Validated by BulkOperationValidator.validateBulkUpdate
+      const taskIds = args.taskIds; // Validated by BulkOperationValidator.validateBulkUpdate
+      if (!taskIds) {
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'taskIds is required after validation');
+      }
       const client = await getClientFromContext();
 
       // Fetch tasks before deletion for response metadata
@@ -322,13 +332,20 @@ export class BulkOperationProcessor {
       BulkOperationValidator.validateBulkCreate(args);
 
       const client = await getClientFromContext();
-      const projectId = args.projectId!;
+      const projectId = args.projectId;
+      if (!projectId) {
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'projectId is required for bulk task creation');
+      }
 
       // Create tasks using batch processor
+      const tasks = args.tasks;
+      if (!tasks) {
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'tasks array is required for bulk task creation');
+      }
       const creationResult = await BatchProcessorFactory.getCreateProcessor().processBatches(
-        args.tasks!.map((_, index) => index), // Use indices as items
+        tasks.map((_, index) => index), // Use indices as items
         async (index: number) => {
-          const taskData = args.tasks![index];
+          const taskData = tasks[index];
           if (!taskData) {
             throw new Error(`Task data at index ${index} is undefined`);
           }

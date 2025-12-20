@@ -181,7 +181,6 @@ function parseQuotedString(state: ParseState): string | null {
     return null;
   }
 
-  const start = state.position;
   state.position++; // Skip opening quote
 
   let value = '';
@@ -547,7 +546,7 @@ export function parseFilterString(filterStr: string): ParseResult {
     return {
       expression: null,
       error: {
-        message: lengthValidation.error!,
+        message: lengthValidation.error || 'Filter string too long',
         position: 0,
       },
     };
@@ -717,9 +716,14 @@ function validateFieldTypeAndValue(field: FilterField, operator: FilterOperator,
       const dateMatch = value.match(DATE_PATTERNS.ISO_DATE);
       if (dateMatch) {
         const [yearStr, monthStr, dayStr] = dateMatch[0].split('-');
-        const year = parseInt(yearStr!, 10);
-        const month = parseInt(monthStr!, 10);
-        const day = parseInt(dayStr!, 10);
+        if (!yearStr || !monthStr || !dayStr) {
+          errors.push(`Field "${field}" requires a valid date in YYYY-MM-DD format`);
+          return errors;
+        }
+
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monthStr, 10);
+        const day = parseInt(dayStr, 10);
 
         const date = new Date(year, month - 1, day);
 

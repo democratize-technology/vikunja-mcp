@@ -9,7 +9,6 @@ import type { Task, VikunjaClient } from 'node-vikunja';
 import { validateId } from '../validation';
 import { transformApiError, handleFetchError, handleStatusCodeError } from '../../../utils/error-handler';
 import { createTaskResponse } from './TaskResponseFormatter';
-import type { AorpBuilderConfig } from '../../../utils/response-factory';
 import { formatAorpAsMarkdown } from '../../../utils/response-factory';
 
 export interface DeleteTaskArgs {
@@ -103,7 +102,7 @@ async function gatherDeletionContext(client: VikunjaClient, taskId: number): Pro
   try {
     taskToDelete = await client.tasks.getTask(taskId);
     retrievalSuccess = true;
-  } catch (error) {
+  } catch {
     // If we can't get the task, proceed with deletion anyway
     // This handles cases where the task exists but isn't accessible due to permissions
     // or the task is already deleted/inconsistent state

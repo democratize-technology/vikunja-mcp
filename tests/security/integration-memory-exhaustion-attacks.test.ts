@@ -10,7 +10,7 @@ import type { Task } from 'node-vikunja';
 import { MCPError, ErrorCode } from '../../src/types';
 import { registerTasksTool } from '../../src/tools/tasks';
 import { getClientFromContext } from '../../src/client';
-import { createMockTestableAuthManager } from '../../src/auth/AuthManagerTestUtils';
+import { createMockTestableAuthManager } from '../utils/test-utils';
 import type { MockVikunjaClient, MockAuthManager, MockServer } from '../types/mocks';
 
 // Mock dependencies

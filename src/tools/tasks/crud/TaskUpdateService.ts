@@ -8,11 +8,10 @@ import { getClientFromContext } from '../../../client';
 import type { Task, VikunjaClient } from 'node-vikunja';
 import { validateDateString, validateId, convertRepeatConfiguration } from '../validation';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
-import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
+import { RETRY_CONFIG } from '../../../utils/retry';
 import { transformApiError, handleFetchError, handleStatusCodeError } from '../../../utils/error-handler';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { createTaskResponse } from './TaskResponseFormatter';
-import type { AorpBuilderConfig } from '../../../utils/response-factory';
 import { formatAorpAsMarkdown } from '../../../utils/response-factory';
 
 export interface UpdateTaskArgs {

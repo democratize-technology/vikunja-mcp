@@ -2,6 +2,9 @@
  * Filter-related type definitions for Vikunja MCP Server
  */
 
+import type { Task } from 'node-vikunja';
+import type { FilteringMetadata } from '../utils/filtering/types';
+
 /**
  * Supported filter operators
  */
@@ -116,7 +119,7 @@ export interface FilterValidationConfig {
   /** Threshold for performance warning (default: 10) */
   performanceWarningThreshold?: number;
   /** Custom validator function */
-  customValidator?: (expression: FilterExpression) => FilterValidationResult | void;
+  customValidator?: (expression: FilterExpression) => FilterValidationResult;
 }
 
 /**
@@ -157,7 +160,7 @@ export interface TaskFilterExecutionResult {
   /** Whether filtering was successful */
   success: boolean;
   /** Filtered tasks (if successful) */
-  tasks?: import('./vikunja').Task[];
+  tasks?: Task[];
   /** Error message (if failed) */
   error?: string;
   /** Number of tasks returned */
@@ -165,7 +168,7 @@ export interface TaskFilterExecutionResult {
   /** Total number of tasks matching filter */
   total?: number;
   /** Filtering metadata */
-  metadata?: import('../utils/filtering/types').FilteringMetadata;
+  metadata?: FilteringMetadata;
   /** Memory usage information */
   memoryInfo?: {
     actualCount: number;

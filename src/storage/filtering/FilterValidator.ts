@@ -14,11 +14,11 @@ import { logger } from '../../utils/logger';
 /**
  * Validates filter parameters for task listing operations
  */
-export class FilterValidator {
+export const FilterValidator = {
   /**
    * Validates and processes filter string or filter ID
    */
-  static async validateAndParseFilter(
+  async validateAndParseFilter(
     args: TaskListingArgs,
     storage: TaskFilterStorage
   ): Promise<{
@@ -72,12 +72,12 @@ export class FilterValidator {
         `Filter validation failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-  }
+  },
 
   /**
    * Validates pagination and memory constraints
    */
-  static validateMemoryConstraints(
+  validateMemoryConstraints(
     args: TaskListingArgs,
     requestedPageSize: number
   ): {
@@ -127,12 +127,12 @@ export class FilterValidator {
       riskLevel?: 'low' | 'medium' | 'high';
       estimatedMemoryMB?: number;
     };
-  }
+  },
 
   /**
    * Validates the actual loaded task count against limits
    */
-  static validateLoadedTasks(actualTaskCount: number, sampleTask?: Task): {
+  validateLoadedTasks(actualTaskCount: number, sampleTask?: Task): {
     isValid: boolean;
     warnings: string[];
     shouldThrow: boolean;
@@ -180,12 +180,12 @@ export class FilterValidator {
       riskLevel: finalTaskCountValidation.riskLevel,
       estimatedMemoryMB: finalTaskCountValidation.estimatedMemoryMB
     };
-  }
+  },
 
   /**
    * Validates task listing arguments
    */
-  static validateTaskListingArgs(args: TaskListingArgs): string[] {
+  validateTaskListingArgs(args: TaskListingArgs): string[] {
     const errors: string[] = [];
 
     // Validate numeric parameters
@@ -224,15 +224,15 @@ export class FilterValidator {
     }
 
     return errors;
-  }
+  },
 
   /**
    * Performs comprehensive validation of task filtering parameters
    */
-  static async validateTaskFiltering(
+  async validateTaskFiltering(
     args: TaskListingArgs,
     storage: TaskFilterStorage,
-    config: TaskFilterValidationConfig = {}
+    _config: TaskFilterValidationConfig = {}
   ): Promise<{
     filterExpression: FilterExpression | null;
     filterString: string | undefined;
@@ -270,4 +270,4 @@ export class FilterValidator {
       memoryValidation
     };
   }
-}
+};

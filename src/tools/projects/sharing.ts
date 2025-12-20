@@ -414,7 +414,7 @@ export async function deleteProjectShare(
 export async function authProjectShare(
   args: AuthShareArgs
 ): Promise<McpResponse> {
-  const { shareHash, projectId, password, verbosity, useOptimizedFormat, useAorp } = args;
+  const { shareHash, password, verbosity, useOptimizedFormat, useAorp } = args;
 
   try {
     if (!shareHash || typeof shareHash !== 'string' || shareHash.trim().length === 0) {
