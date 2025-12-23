@@ -28,9 +28,9 @@ describe('Circuit Breaker State Sharing', () => {
       const operation1 = async () => 'operation1-result';
       const operation2 = async () => 'operation2-result';
 
-      // Create two circuit breakers with the same name
-      const breaker1 = createCircuitBreaker('shared-test', operation1);
-      const breaker2 = createCircuitBreaker('shared-test', operation2);
+      // Create two circuit breakers with the same name (operation, name)
+      const breaker1 = createCircuitBreaker(operation1, 'shared-test');
+      const breaker2 = createCircuitBreaker(operation2, 'shared-test');
 
       // They should share the same underlying circuit breaker
       const stats1 = circuitBreakerRegistry.getAllStats();
@@ -44,9 +44,9 @@ describe('Circuit Breaker State Sharing', () => {
       const operation1 = async () => 'operation1-result';
       const operation2 = async () => 'operation2-result';
 
-      // Create two circuit breakers with different names
-      const breaker1 = createCircuitBreaker('test-1', operation1);
-      const breaker2 = createCircuitBreaker('test-2', operation2);
+      // Create two circuit breakers with different names (operation, name)
+      const breaker1 = createCircuitBreaker(operation1, 'test-1');
+      const breaker2 = createCircuitBreaker(operation2, 'test-2');
 
       // Execute operations to generate different stats
       await breaker1.fire();
@@ -63,8 +63,8 @@ describe('Circuit Breaker State Sharing', () => {
     });
 
     it('should provide access to all circuit breaker stats', () => {
-      createCircuitBreaker('test-a', async () => 'result-a');
-      createCircuitBreaker('test-b', async () => 'result-b');
+      createCircuitBreaker(async () => 'result-a', 'test-a');
+      createCircuitBreaker(async () => 'result-b', 'test-b');
 
       const allStats = circuitBreakerRegistry.getAllStats();
 

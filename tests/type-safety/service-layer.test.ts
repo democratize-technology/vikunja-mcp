@@ -104,10 +104,10 @@ describe('Service Layer Type Safety', () => {
       it('should maintain type safety through fire operation', async () => {
         // Create a new circuit breaker for this specific operation
         const testBreaker = createCircuitBreaker(
-          'test-fire-operation',
           async () => {
             return 'test-result';
           },
+          'test-fire-operation',
           {
             timeout: 30000,
             resetTimeout: 30000
@@ -126,7 +126,6 @@ describe('Service Layer Type Safety', () => {
       it('should maintain type safety for complex return types', async () => {
         // Create a new circuit breaker for this specific operation
         const testBreaker = createCircuitBreaker(
-          'test-complex-operation',
           async () => {
             return {
               id: 123,
@@ -135,6 +134,7 @@ describe('Service Layer Type Safety', () => {
               metadata: { count: 1, timestamp: new Date().toISOString() }
             };
           },
+          'test-complex-operation',
           {
             timeout: 30000,
             resetTimeout: 30000

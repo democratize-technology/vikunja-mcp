@@ -127,7 +127,7 @@ describe('Projects Tool Mock Fixes', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain('delete-project');
+      expect(markdown).toContain('delete_project');
       expect(markdown).toContain('Deleted project');
     });
   });
@@ -152,7 +152,7 @@ describe('Projects Tool Mock Fixes', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain('archive-project');
+      expect(markdown).toContain('archive_project');
       expect(markdown).toContain('archived successfully');
     });
   });
@@ -175,7 +175,7 @@ describe('Projects Tool Mock Fixes', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
       expect(markdown).toContain("## ✅ Success");
-      expect(markdown).toContain('unarchive-project');
+      expect(markdown).toContain('unarchive_project');
       expect(markdown).toContain('unarchived successfully');
     });
   });
