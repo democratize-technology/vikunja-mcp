@@ -191,7 +191,7 @@ describe('Bulk operations', () => {
         const parsed = parseMarkdown(markdown);
         expect(markdown).toContain("## ✅ Success");
         expect(markdown).toContain('Successfully updated 2 tasks');
-        expect(markdown).toContain('**Operation**: update-task');
+        expect(markdown).toContain('**Operation:** update-task');
         expect(markdown).toContain('**Count**: 2');
       });
 
@@ -370,7 +370,7 @@ describe('Bulk operations', () => {
         const parsed = parseMarkdown(markdown);
         expect(markdown).toContain("## ✅ Success");
         expect(markdown).toContain('Successfully deleted 2 tasks');
-        expect(markdown).toContain('**Operation**: delete-task');
+        expect(markdown).toContain('**Operation:** delete-task');
         expect(markdown).toContain('**Count**: 2');
       });
 
@@ -498,7 +498,7 @@ describe('Bulk operations', () => {
         const parsed = parseMarkdown(markdown);
         expect(markdown).toContain("## ✅ Success");
         expect(markdown).toContain('Successfully created 1 tasks');
-        expect(markdown).toContain('**Operation**: create-tasks');
+        expect(markdown).toContain('**Operation:** create-tasks');
         expect(markdown).toContain('**Count**: 1');
       });
 
