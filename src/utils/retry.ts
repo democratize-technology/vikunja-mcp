@@ -7,6 +7,47 @@ import CircuitBreaker from 'opossum';
 import { logger } from './logger';
 
 /**
+ * Simple circuit breaker registry for tracking and managing circuit breakers
+ */
+class CircuitBreakerRegistry {
+  private breakers = new Map<string, CircuitBreaker>();
+
+  register(name: string, breaker: CircuitBreaker): void {
+    this.breakers.set(name, breaker);
+  }
+
+  get(name: string): CircuitBreaker | undefined {
+    return this.breakers.get(name);
+  }
+
+  async resetAll(): Promise<void> {
+    const promises = Array.from(this.breakers.values()).map(breaker => {
+      return new Promise<void>((resolve) => {
+        if (breaker.opened) {
+          breaker.close();
+        }
+        resolve();
+      });
+    });
+    await Promise.all(promises);
+  }
+
+  getAllStats(): Record<string, any> {
+    const stats: Record<string, any> = {};
+    for (const [name, breaker] of this.breakers.entries()) {
+      stats[name] = breaker.stats;
+    }
+    return stats;
+  }
+
+  getAllStatsSync(): Record<string, any> {
+    return this.getAllStats();
+  }
+}
+
+export const circuitBreakerRegistry = new CircuitBreakerRegistry();
+
+/**
  * Interface for errors that have code properties (like Node.js system errors)
  */
 interface ErrorWithCode extends Error {
@@ -43,6 +84,12 @@ export function createCircuitBreaker<T>(
   name: string,
   options: RetryOptions = {}
 ): CircuitBreaker {
+  // Check if a circuit breaker with this name already exists
+  const existingBreaker = circuitBreakerRegistry.get(name);
+  if (existingBreaker) {
+    return existingBreaker;
+  }
+
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   const breaker = new CircuitBreaker(operation, {
@@ -51,6 +98,9 @@ export function createCircuitBreaker<T>(
     errorThresholdPercentage: opts.errorThresholdPercentage,
     volumeThreshold: opts.volumeThreshold
   });
+
+  // Register with the global registry
+  circuitBreakerRegistry.register(name, breaker);
 
   // Essential logging only
   breaker.on('open', () => logger.warn(`Circuit breaker ${name} opened`));
@@ -159,3 +209,42 @@ export const RETRY_CONFIG = {
     circuitBreakerName: 'bulk_operations'
   }
 } as const;
+
+/**
+ * Circuit breaker name constants for consistent naming across the application
+ */
+export const CIRCUIT_BREAKER_NAMES = {
+  AUTH_CONNECT: 'vikunja-auth-connect',
+  AUTH_REFRESH: 'vikunja-auth-refresh',
+  AUTH_STATUS: 'vikunja-auth-status',
+  API_OPERATIONS: 'vikunja-api-operations',
+  TASK_CREATE: 'vikunja-task-create',
+  TASK_UPDATE: 'vikunja-task-update',
+  TASK_DELETE: 'vikunja-task-delete',
+  TASK_GET: 'vikunja-task-get',
+  BULK_OPERATIONS: 'vikunja-bulk-operations'
+} as const;
+
+/**
+ * Execute task operations with task-specific circuit breaker
+ */
+export async function withTaskRetry<T>(
+  operation: () => Promise<T>,
+  operationType: 'create' | 'update' | 'delete' | 'get',
+  options: RetryOptions = {}
+): Promise<T> {
+  const name = `vikunja-task-${operationType}`;
+  return withNamedRetry(operation, name, options);
+}
+
+/**
+ * Execute bulk operations with bulk-specific circuit breaker
+ */
+export async function withBulkRetry<T>(
+  operation: () => Promise<T>,
+  operationType: 'import' | 'export',
+  options: RetryOptions = {}
+): Promise<T> {
+  const name = `vikunja-bulk-${operationType}`;
+  return withNamedRetry(operation, name, options);
+}
