@@ -187,7 +187,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ get-project-children:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-project-children");
       expect(markdown).toContain('Found 2 child projects for project ID 1');
     });
 
@@ -198,7 +199,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ get-project-children:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-project-children");
       expect(markdown).toContain('Found 0 child projects for project ID 4');
     });
 
@@ -229,7 +231,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ get-project-tree:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-project-tree");
       expect(markdown).toContain('Retrieved project tree with 4 nodes at depth 2');
     });
 
@@ -240,7 +243,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ get-project-tree:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-project-tree");
       expect(markdown).toContain('Retrieved project tree with 1 nodes at depth 0');
     });
 
@@ -257,7 +261,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const parsed = parseMarkdown(markdown);
 
       // Should still work but prevent infinite loops
-      expect(markdown).toContain("✅ get-project-tree:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-project-tree");
     });
 
     it('should throw error for non-existent project', async () => {
@@ -281,7 +286,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ get-project-breadcrumb:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-project-breadcrumb");
       expect(markdown).toContain('Retrieved breadcrumb path with 3 items');
     });
 
@@ -292,7 +298,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ get-project-breadcrumb:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-project-breadcrumb");
       expect(markdown).toContain('Root Project');
     });
 
@@ -334,7 +341,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ move_project:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** move_project");
       expect(markdown).toContain('Moved project "Orphan Project" to parent project 1');
       expect(mockClient.projects.updateProject).toHaveBeenCalledWith(5, { parent_project_id: 1 });
     });
@@ -350,7 +358,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ move_project:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** move_project");
       expect(markdown).toContain('Moved project "Child Project 1" to root level');
     });
 
@@ -445,7 +454,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ create_project:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** create_project");
       expect(mockClient.projects.createProject).toHaveBeenCalled();
     });
 
@@ -479,7 +489,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
 
-      expect(markdown).toContain("✅ update_project:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** update_project");
       expect(mockClient.projects.updateProject).toHaveBeenCalled();
     });
 
@@ -568,7 +579,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const parsed = parseMarkdown(markdown);
 
       // Only children with valid IDs will be included
-      expect(markdown).toContain("✅ get-project-tree:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-project-tree");
       expect(markdown).toContain('Retrieved project tree with 15 nodes at depth 9');
     });
 
@@ -720,7 +732,8 @@ describe('Projects Tool - Nested Project Features', () => {
       const parsed = parseMarkdown(markdown);
 
       // Breadcrumb should contain only the root project itself
-      expect(markdown).toContain("✅ get-project-breadcrumb:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-project-breadcrumb");
       expect(markdown).toContain('Root');
     });
   });

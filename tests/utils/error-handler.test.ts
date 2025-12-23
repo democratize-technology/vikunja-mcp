@@ -130,11 +130,11 @@ describe('Error Handler Utilities', () => {
     it('should handle primitive error values', () => {
       const result1 = transformApiError('String error', 'Processing request');
       const result2 = transformApiError(42, 'Calculating result');
-      
+
       expect(result1.code).toBe(ErrorCode.API_ERROR);
-      expect(result1.message).toBe('Processing request: Unknown error');
+      expect(result1.message).toBe('Processing request: String error');
       expect(result2.code).toBe(ErrorCode.API_ERROR);
-      expect(result2.message).toBe('Calculating result: Unknown error');
+      expect(result2.message).toBe('Calculating result: 42');
     });
   });
 

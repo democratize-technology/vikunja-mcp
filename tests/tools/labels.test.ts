@@ -191,7 +191,8 @@ describe('Labels Tool', () => {
       });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ list-labels:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** list-labels");
       expect(markdown).toContain('Retrieved 1 label');
     });
 
@@ -209,7 +210,8 @@ describe('Labels Tool', () => {
       });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ list-labels:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** list-labels");
       expect(markdown).toContain('Retrieved 1 label');
     });
   });

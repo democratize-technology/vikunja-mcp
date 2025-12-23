@@ -65,10 +65,10 @@ describe('Archive/Unarchive Logic', () => {
       expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
       expect(mockClient.projects.updateProject).not.toHaveBeenCalled();
 
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" is already archived');
-      expect(parsed.data.project).toEqual(archivedProject);
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('Project "Test Project" is already archived');
+      expect(markdown).toContain('**Operation:** archive_project');
     });
 
     it('should archive project if not already archived', async () => {
@@ -83,9 +83,10 @@ describe('Archive/Unarchive Logic', () => {
         is_archived: true
       });
 
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" archived successfully');
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('Project "Test Project" archived successfully');
+      expect(markdown).toContain('**Operation:** archive_project');
     });
   });
 
@@ -98,10 +99,10 @@ describe('Archive/Unarchive Logic', () => {
       expect(mockClient.projects.getProject).toHaveBeenCalledWith(1);
       expect(mockClient.projects.updateProject).not.toHaveBeenCalled();
 
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" is already active (not archived)');
-      expect(parsed.data.project).toEqual(mockProject);
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('Project "Test Project" is already active (not archived)');
+      expect(markdown).toContain('**Operation:** unarchive_project');
     });
 
     it('should unarchive project if currently archived', async () => {
@@ -116,9 +117,10 @@ describe('Archive/Unarchive Logic', () => {
         is_archived: false
       });
 
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.success).toBe(true);
-      expect(parsed.message).toBe('Project "Test Project" unarchived successfully');
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('Project "Test Project" unarchived successfully');
+      expect(markdown).toContain('**Operation:** unarchive_project');
     });
   });
 });

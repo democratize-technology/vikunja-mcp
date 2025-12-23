@@ -153,8 +153,9 @@ describe('Task Relations Tool', () => {
       const markdown = (result as any).content[0].text;
       const parsed = parseMarkdown(markdown);
       const aorpStatus = parsed.getAorpStatus();
-      expect(aorpStatus.type).toBe('unknown'); // New format doesn't use Success/Error headings
-      expect(markdown).toContain('✅ relate:');
+      expect(aorpStatus.type).toBe('success'); // New format returns success for successful operations
+      expect(markdown).toContain('## ✅ Success');
+      expect(markdown).toContain('**Operation:** relate');
       expect(markdown).toContain('Successfully created related relation');
     });
 
@@ -229,7 +230,7 @@ describe('Task Relations Tool', () => {
         const markdown = (result as any).content[0].text;
         const parsed = parseMarkdown(markdown);
         const aorpStatus = parsed.getAorpStatus();
-      expect(aorpStatus.type).toBe('unknown'); // New format doesn't use Success/Error headings
+      expect(aorpStatus.type).toBe('success'); // New format returns success for successful operations
         expect(markdown).toContain(kind);
       }
     });
@@ -282,7 +283,7 @@ describe('Task Relations Tool', () => {
       const markdown = (result as any).content[0].text;
       const parsed = parseMarkdown(markdown);
       const aorpStatus = parsed.getAorpStatus();
-      expect(aorpStatus.type).toBe('unknown'); // New format doesn't use Success/Error headings
+      expect(aorpStatus.type).toBe('success'); // New format returns success for successful operations
       expect(markdown).toContain('unrelate');
       expect(markdown).toContain('Successfully removed subtask relation');
     });
@@ -357,7 +358,7 @@ describe('Task Relations Tool', () => {
       const markdown = (result as any).content[0].text;
       const parsed = parseMarkdown(markdown);
       const aorpStatus = parsed.getAorpStatus();
-      expect(aorpStatus.type).toBe('unknown'); // New format doesn't use Success/Error headings
+      expect(aorpStatus.type).toBe('success'); // New format returns success for successful operations
       expect(markdown).toContain('relations');
       expect(markdown).toContain('Found 2 relations for task 1');
     });
@@ -376,7 +377,7 @@ describe('Task Relations Tool', () => {
       const markdown = (result as any).content[0].text;
       const parsed = parseMarkdown(markdown);
       const aorpStatus = parsed.getAorpStatus();
-      expect(aorpStatus.type).toBe('unknown'); // New format doesn't use Success/Error headings
+      expect(aorpStatus.type).toBe('success'); // New format returns success for successful operations
       expect(markdown).toContain('Found 0 relations for task 1');
     });
 
@@ -394,7 +395,7 @@ describe('Task Relations Tool', () => {
       const markdown = (result as any).content[0].text;
       const parsed = parseMarkdown(markdown);
       const aorpStatus = parsed.getAorpStatus();
-      expect(aorpStatus.type).toBe('unknown'); // New format doesn't use Success/Error headings
+      expect(aorpStatus.type).toBe('success'); // New format returns success for successful operations
       expect(markdown).toContain('Found 0 relations for task 1');
     });
 

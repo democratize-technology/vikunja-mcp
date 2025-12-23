@@ -134,7 +134,8 @@ describe('Users Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ get-current-user:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-current-user");
     });
   });
 
@@ -148,7 +149,8 @@ describe('Users Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ get-current-user:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-current-user");
       expect(markdown).toContain('Current user retrieved successfully');
     });
 
@@ -176,7 +178,8 @@ describe('Users Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ search-users:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** search-users");
       expect(markdown).toContain('Found 2 users');
     });
 
@@ -190,7 +193,8 @@ describe('Users Tool', () => {
       });
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ search-users:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** search-users");
     });
 
     it('should support pagination parameters', async () => {
@@ -223,7 +227,8 @@ describe('Users Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ get-user-settings:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-user-settings");
       expect(markdown).toContain('User settings retrieved successfully');
     });
 
@@ -254,7 +259,8 @@ describe('Users Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ update-user-settings:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** update-user-settings");
       expect(markdown).toContain('User settings updated successfully');
     });
 
@@ -444,7 +450,8 @@ describe('Users Tool', () => {
       expect(mockClient.users.getUser).toHaveBeenCalled();
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ get-current-user:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** get-current-user");
       expect(markdown).toContain('Current user retrieved successfully');
     });
 

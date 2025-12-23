@@ -155,7 +155,8 @@ describe('Teams Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ list-teams:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** list-teams");
       expect(markdown).toContain('Retrieved 2 teams');
     });
 
@@ -209,7 +210,8 @@ describe('Teams Tool', () => {
       expect(result.content[0].type).toBe('text');
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ create-team:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** create-team");
       expect(markdown).toContain('Team "Test Team" created successfully');
     });
 
@@ -289,7 +291,8 @@ describe('Teams Tool', () => {
       expect(mockClient.teams.deleteTeam).toHaveBeenCalledWith(1);
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ delete-team:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** delete-team");
       expect(markdown).toContain('Team deleted successfully');
     });
 
@@ -302,7 +305,8 @@ describe('Teams Tool', () => {
       expect(mockClient.teams.deleteTeam).toHaveBeenCalledWith(5);
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ delete-team:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** delete-team");
     });
 
     it('should handle team not found error', async () => {
@@ -337,7 +341,8 @@ describe('Teams Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ delete-team:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** delete-team");
       expect(markdown).toContain('Team deleted successfully');
     });
 
@@ -373,7 +378,8 @@ describe('Teams Tool', () => {
       expect(global.fetch).toHaveBeenCalled();
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ delete-team:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** delete-team");
     });
   });
 
@@ -437,7 +443,8 @@ describe('Teams Tool', () => {
       expect(mockClient.teams.getTeams).toHaveBeenCalled();
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-      expect(markdown).toContain("✅ list-teams:");
+      expect(markdown).toContain("## ✅ Success");
+      expect(markdown).toContain("**Operation:** list-teams");
       expect(markdown).toContain('Retrieved 1 team');
     });
   });

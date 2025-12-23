@@ -69,8 +69,8 @@ describe('Tasks CRUD - Final Coverage', () => {
       expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('get-task');
       expect(markdown).toContain('Retrieved task "Test Task Title"');
-      expect(markdown).toContain('TaskId');
-      expect(markdown).toContain('Timestamp');
+      expect(markdown).toContain('**taskId:**');
+      expect(markdown).toContain('**timestamp:**');
 
       expect(result.content[0].type).toBe('text');
     });
@@ -93,7 +93,7 @@ describe('Tasks CRUD - Final Coverage', () => {
 
       expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('Retrieved task "undefined"');
-      expect(markdown).toContain('TaskId');
+      expect(markdown).toContain('**taskId:**');
     });
 
     it('should handle task with null title gracefully', async () => {
@@ -114,7 +114,7 @@ describe('Tasks CRUD - Final Coverage', () => {
 
       expect(markdown).toContain("## ✅ Success");
       expect(markdown).toContain('Retrieved task "null"');
-      expect(markdown).toContain('TaskId');
+      expect(markdown).toContain('**taskId:**');
     });
   });
 
