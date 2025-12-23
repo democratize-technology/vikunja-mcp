@@ -5,6 +5,7 @@
 
 import CircuitBreaker from 'opossum';
 import { logger } from './logger';
+import { isAuthenticationError } from './auth-error-handler';
 
 /**
  * Simple circuit breaker registry for tracking and managing circuit breakers
@@ -65,6 +66,9 @@ export interface RetryOptions {
   errorThresholdPercentage?: number;
   volumeThreshold?: number;
   shouldRetry?: (error: Error | ErrorWithCode) => boolean;
+  initialDelay?: number;
+  backoffFactor?: number;
+  maxDelay?: number;
 }
 
 // Production-ready defaults
@@ -73,7 +77,10 @@ const DEFAULT_OPTIONS: Required<Omit<RetryOptions, 'shouldRetry'>> = {
   timeout: 30000,
   resetTimeout: 30000,
   errorThresholdPercentage: 50,
-  volumeThreshold: 5
+  volumeThreshold: 5,
+  initialDelay: 1000,
+  backoffFactor: 2,
+  maxDelay: 30000
 };
 
 /**
@@ -116,8 +123,38 @@ export async function withRetry<T>(
   operation: () => Promise<T>,
   options: RetryOptions = {}
 ): Promise<T> {
-  const breaker = createCircuitBreaker(operation, 'anonymous', options);
-  return breaker.fire() as Promise<T>;
+  const opts = { ...DEFAULT_OPTIONS, ...options };
+  let lastError: unknown;
+  let delay = opts.initialDelay || 1000;
+
+  for (let attempt = 0; attempt <= (opts.maxRetries || 3); attempt++) {
+    try {
+      // Use circuit breaker for the operation
+      const breaker = createCircuitBreaker(operation, 'anonymous', opts);
+      return await breaker.fire() as Promise<T>;
+    } catch (error) {
+      lastError = error;
+
+      // Check if we should retry this error
+      const shouldRetry = opts.shouldRetry
+        ? opts.shouldRetry(error as Error)
+        : isRetryableError(error as Error);
+
+      // If this is the last attempt or error is not retryable, throw
+      if (attempt === (opts.maxRetries || 3) || !shouldRetry) {
+        throw error;
+      }
+
+      // Log retry attempt
+      logger.debug(`Retry attempt ${attempt + 1}/${opts.maxRetries || 3} after ${delay}ms`);
+
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay = Math.min(delay * (opts.backoffFactor || 2), opts.maxDelay || 30000);
+    }
+  }
+
+  throw lastError;
 }
 
 /**
@@ -149,6 +186,11 @@ export function getHealthStats(breaker: CircuitBreaker): CircuitBreaker.Stats {
  */
 export function isRetryableError(error: unknown): error is ErrorWithCode {
   if (error instanceof Error) {
+    // Authentication errors are retryable
+    if (isAuthenticationError(error)) {
+      return true;
+    }
+
     const message = error.message.toLowerCase();
     return message.includes('timeout') ||
            message.includes('connection') ||
@@ -167,10 +209,16 @@ export function isTransientError(error: unknown): error is ErrorWithCode {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     return message.includes('timeout') ||
+           message.includes('timed out') ||
            message.includes('connection') ||
            message.includes('network') ||
            message.includes('rate limit') ||
-           message.includes('socket hang up') ||
+           message.includes('socket') ||
+           message.includes('hang up') ||
+           message.includes('econnreset') ||
+           message.includes('etimedout') ||
+           message.includes('reset by peer') ||
+           message.includes('closed unexpectedly') ||
            (error as ErrorWithCode).code === 'ECONNRESET' ||
            (error as ErrorWithCode).code === 'ETIMEDOUT';
   }

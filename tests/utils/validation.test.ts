@@ -712,27 +712,30 @@ describe('Security Validation Utilities', () => {
     });
   });
 
-  describe('DOMPurify Integration', () => {
-    it('should integrate DOMPurify for enhanced XSS protection', () => {
-      // Test that DOMPurify is working with our integration
-      const testCases = [
-        { input: '<script>alert("xss")</script>', expected: '' },
-        { input: 'javascript:alert("xss")', expected: '' },
-        { input: '<img src=x onerror=alert("xss")>', expected: '' },
-        { input: '<svg onload=alert("xss")>', expected: '' }
+  describe('XSS Protection', () => {
+    it('should reject dangerous content with StorageDataError', () => {
+      // Current security approach: reject dangerous content rather than sanitize
+      const dangerousInputs = [
+        '<script>alert("xss")</script>',
+        'javascript:alert("xss")',
+        '<img src=x onerror=alert("xss")>',
+        '<svg onload=alert("xss")>',
+        '<iframe src="evil.com"></iframe>',
+        'onload="alert(1)"'
       ];
 
-      testCases.forEach(({ input, expected }) => {
-        const result = sanitizeString(input);
-        expect(result).toBe(expected);
+      dangerousInputs.forEach(input => {
+        expect(() => sanitizeString(input)).toThrow(StorageDataError);
       });
     });
 
-    it('should allow safe HTML content when configured', () => {
-      // Test that safe HTML can pass through if properly configured
+    it('should escape safe HTML content', () => {
+      // Test that safe HTML tags are escaped rather than stripped
       const safeInput = '<b>Bold text</b><em>Emphasis</em>';
-      // With our current strict sanitization, this will be empty
       const result = sanitizeString(safeInput);
+      // HTML entities should be escaped
+      expect(result).toContain('&lt;b&gt;');
+      expect(result).toContain('&lt;em&gt;');
       expect(typeof result).toBe('string');
     });
   });
