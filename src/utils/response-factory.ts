@@ -87,9 +87,12 @@ export function createTaskResponse(
   // Handle both task data structure and arbitrary data objects
   const responseData = data && typeof data === 'object' && 'tasks' in data ? data.tasks : data;
 
+  // Respect success flag from metadata, default to true
+  const successFlag = metadata?.success !== undefined ? metadata.success : true;
+
   const responseMetadata: ResponseMetadata = {
     timestamp: new Date().toISOString(),
-    success: true,
+    success: successFlag,
     operation,
     ...metadata,
   };
@@ -98,7 +101,12 @@ export function createTaskResponse(
     responseMetadata.sessionId = sessionId;
   }
 
-  return createSuccessResponse(operation, message, responseData as ResponseData, responseMetadata);
+  // Use createErrorResponse for failed operations, createSuccessResponse for successful ones
+  if (successFlag) {
+    return createSuccessResponse(operation, message, responseData as ResponseData, responseMetadata);
+  } else {
+    return createErrorResponse(operation, message, 'OPERATION_FAILED', responseMetadata);
+  }
 }
 
 /**

@@ -192,7 +192,7 @@ describe('Bulk operations', () => {
         expect(markdown).toContain("## ✅ Success");
         expect(markdown).toContain('Successfully updated 2 tasks');
         expect(markdown).toContain('**Operation:** update-task');
-        expect(markdown).toContain('**Count**: 2');
+        expect(markdown).toContain('**count:** 2');
       });
 
       it('should handle successful bulk update with message response', async () => {
@@ -212,7 +212,7 @@ describe('Bulk operations', () => {
         const markdown = result.content[0].text;
         const parsed = parseMarkdown(markdown);
         expect(markdown).toContain("## ✅ Success");
-        expect(markdown).toContain('**Count**: 2');
+        expect(markdown).toContain('**count:** 2');
       });
 
       it('should handle repeat_mode conversion', async () => {
@@ -288,7 +288,7 @@ describe('Bulk operations', () => {
       });
 
       it('should handle bulk update that reports success but didnt actually update', async () => {
-        const mockTask = { id: 1, title: 'Task 1', done: false }; // Value not updated
+        const mockTask = { id: 1, title: 'Task 1', project_id: 1, done: false }; // Value not updated
         mockClient.tasks.bulkUpdateTasks.mockResolvedValue([mockTask]);
 
         // This should trigger fallback due to value mismatch
@@ -371,7 +371,7 @@ describe('Bulk operations', () => {
         expect(markdown).toContain("## ✅ Success");
         expect(markdown).toContain('Successfully deleted 2 tasks');
         expect(markdown).toContain('**Operation:** delete-task');
-        expect(markdown).toContain('**Count**: 2');
+        expect(markdown).toContain('**count:** 2');
       });
 
       it('should handle partial deletion success', async () => {
@@ -499,7 +499,7 @@ describe('Bulk operations', () => {
         expect(markdown).toContain("## ✅ Success");
         expect(markdown).toContain('Successfully created 1 tasks');
         expect(markdown).toContain('**Operation:** create-tasks');
-        expect(markdown).toContain('**Count**: 1');
+        expect(markdown).toContain('**count:** 1');
       });
 
       it('should handle labels and assignees', async () => {
@@ -663,7 +663,7 @@ describe('Bulk operations', () => {
       });
 
       const markdown = result.content[0].text;
-      expect(markdown).toContain('**Count**: 25');
+      expect(markdown).toContain('**count:** 25');
     });
   });
 });

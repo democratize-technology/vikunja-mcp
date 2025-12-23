@@ -1,15 +1,10 @@
 /**
  * Bulk operations for tasks with performance optimizations
  *
- * This file maintains backward compatibility while delegating to the new modular structure.
+ * This file maintains backward compatibility while using the simplified implementation.
  */
 
-import { BulkOperationProcessor } from './bulk';
-
-// Re-export functions for backward compatibility
-export const bulkUpdateTasks = BulkOperationProcessor.bulkUpdateTasks.bind(BulkOperationProcessor);
-export const bulkDeleteTasks = BulkOperationProcessor.bulkDeleteTasks.bind(BulkOperationProcessor);
-export const bulkCreateTasks = BulkOperationProcessor.bulkCreateTasks.bind(BulkOperationProcessor);
+export { bulkUpdateTasks, bulkDeleteTasks, bulkCreateTasks } from './bulk-operations-simplified';
 
 // Re-export types for backward compatibility
 export type {
@@ -17,4 +12,4 @@ export type {
   BulkDeleteArgs,
   BulkCreateArgs,
   BulkCreateTaskData
-} from './bulk';
+} from './bulk-operations-simplified';

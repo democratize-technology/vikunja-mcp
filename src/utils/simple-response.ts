@@ -82,7 +82,7 @@ export function createErrorResponse(
   errorCode: string = 'UNKNOWN_ERROR',
   metadata?: ResponseMetadata
 ): SimpleResponse {
-  const content = formatErrorMessage(operation, message, errorCode);
+  const content = formatErrorMessage(operation, message, errorCode, metadata);
 
   return {
     content,
@@ -148,9 +148,41 @@ export function formatSuccessMessage(
 export function formatErrorMessage(
   operation: string,
   message: string,
-  errorCode: string
+  errorCode: string,
+  metadata?: ResponseMetadata
 ): string {
-  return `## ❌ Error\n\n${message}\n\n**Error Code:** ${errorCode}\n\n`;
+  let output = `## ❌ Error\n\n${message}\n\n**Error Code:** ${errorCode}`;
+
+  // Include important metadata fields in error output
+  if (metadata) {
+    // Add operation if different from default
+    if (metadata.operation && metadata.operation !== operation) {
+      output += `\n\n**Operation:** ${metadata.operation}`;
+    }
+
+    // Add failed IDs if present
+    if (metadata.failedIds && Array.isArray(metadata.failedIds)) {
+      output += `\n\n**FailedIds**:\n${JSON.stringify(metadata.failedIds)}`;
+    }
+
+    // Add failed count if present
+    if (typeof metadata.failedCount === 'number') {
+      output += `\n\n**FailedCount**:\n${metadata.failedCount}`;
+    }
+
+    // Add failures array if present
+    if (metadata.failures && Array.isArray(metadata.failures)) {
+      output += `\n\n**Failures**:\n${JSON.stringify(metadata.failures, null, 2)}`;
+    }
+
+    // Add count if present
+    if (metadata.count !== undefined) {
+      output += `\n\n**count:** ${metadata.count}`;
+    }
+  }
+
+  output += '\n\n';
+  return output;
 }
 
 /**
