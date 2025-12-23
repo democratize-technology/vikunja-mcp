@@ -596,16 +596,27 @@ export function validateFilterExpression(expression: unknown): FilterExpression 
  */
 export function safeJsonStringify(obj: unknown): string {
   try {
-    // Create a safe copy to prevent prototype pollution
-    const safeObj = createSafeObjectCopy(obj);
+    // Validate the object structure first - this will throw for invalid structures
+    const validated = validateFilterExpression(obj);
 
-    // Recursively sanitize string values in the object
+    // Create a safe copy to prevent prototype pollution
+    const safeObj = createSafeObjectCopy(validated);
+
+    // Check for circular references before sanitizing
+    if (safeObj === null) {
+      throw new Error('Circular reference detected');
+    }
+
+    // Recursively sanitize string values in the object (but not operators)
     const sanitizedObj = sanitizeObjectStrings(safeObj);
 
     const jsonString = JSON.stringify(sanitizedObj);
     return jsonString; // No need to sanitize the JSON string itself since we sanitized values
   } catch (error) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, `Failed to stringify object: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (error instanceof StorageDataError) {
+      throw error; // Re-throw StorageDataError as-is
+    }
+    throw new StorageDataError(`Failed to stringify object: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -615,12 +626,17 @@ export function safeJsonStringify(obj: unknown): string {
  */
 export function safeJsonParse(jsonString: string): FilterExpression {
   if (typeof jsonString !== 'string') {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'JSON string must be a string');
+    throw new StorageDataError('JSON string must be a string');
+  }
+
+  // Check for maximum length
+  if (jsonString.length > 50000) {
+    throw new StorageDataError('JSON string exceeds maximum length');
   }
 
   // Check for prototype pollution patterns before parsing
   if (containsPrototypePollution(jsonString)) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'JSON contains potentially dangerous prototype pollution patterns');
+    throw new StorageDataError('JSON contains potentially dangerous prototype pollution patterns');
   }
 
   try {
@@ -633,12 +649,12 @@ export function safeJsonParse(jsonString: string): FilterExpression {
     return validateFilterExpression(safeObj);
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new MCPError(ErrorCode.VALIDATION_ERROR, `Invalid JSON: ${error.message}`);
+      throw new StorageDataError(`Invalid JSON: ${error.message}`);
     }
-    if (error instanceof MCPError) {
+    if (error instanceof StorageDataError) {
       throw error; // Re-throw our validation errors
     }
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, `Failed to parse JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new StorageDataError(`Failed to parse JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -655,10 +671,19 @@ export function validateId(id: number, fieldName: string): void {
  * Validate and convert ID from various formats
  */
 export function validateAndConvertId(id: unknown, fieldName: string): number {
+  // Handle booleans - true converts to 1, false is rejected
+  if (typeof id === 'boolean') {
+    if (id === true) {
+      return 1;
+    }
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
+  }
+
   if (typeof id === 'string') {
-    // Allow string representation of numbers
-    const parsed = parseInt(id, 10);
-    if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    // Use Number() instead of parseInt for better conversion handling
+    // This handles hex strings like '0x42', exponential like '1e5', etc.
+    const parsed = Number(id);
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
       throw new MCPError(ErrorCode.VALIDATION_ERROR, `${fieldName} must be a positive integer`);
     }
     return parsed;
@@ -771,11 +796,17 @@ function isSafeProperty(key: string): boolean {
 
 /**
  * Recursively sanitizes all string values in an object
+ * Skips known operator values to avoid HTML entity encoding
  */
-function sanitizeObjectStrings(obj: unknown, visited = new WeakSet()): unknown {
+function sanitizeObjectStrings(obj: unknown, visited = new WeakSet(), key: string | null = null): unknown {
   // Handle null and primitive types
   if (obj === null || typeof obj !== 'object') {
     if (typeof obj === 'string') {
+      // Don't sanitize known operator values
+      const knownOperators = ['=', '!=', '>', '>=', '<', '<=', 'like', 'in', 'not in', '&&', '||'];
+      if (knownOperators.includes(obj)) {
+        return obj;
+      }
       return sanitizeString(obj);
     }
     return obj;
@@ -789,7 +820,7 @@ function sanitizeObjectStrings(obj: unknown, visited = new WeakSet()): unknown {
 
   // Handle arrays
   if (Array.isArray(obj)) {
-    return obj.map(item => sanitizeObjectStrings(item, visited));
+    return obj.map(item => sanitizeObjectStrings(item, visited, key));
   }
 
   // Handle Date objects (don't modify)
@@ -804,7 +835,7 @@ function sanitizeObjectStrings(obj: unknown, visited = new WeakSet()): unknown {
     if (isSafeProperty(key)) {
       try {
         const value = (obj as Record<string, unknown>)[key];
-        sanitizedObj[key] = sanitizeObjectStrings(value, visited);
+        sanitizedObj[key] = sanitizeObjectStrings(value, visited, key);
       } catch {
         // Skip properties that cause errors during sanitization
         continue;

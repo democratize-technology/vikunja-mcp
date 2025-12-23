@@ -115,7 +115,7 @@ export function formatSuccessMessage(
   if (metadata && typeof metadata === 'object') {
     const metadataEntries = Object.entries(metadata).filter(([_, value]) => value !== undefined && value !== null);
     if (metadataEntries.length > 0) {
-      content += formatObjectData(metadata as Record<string, unknown>);
+      content += formatObjectData(metadata);
     }
   }
 

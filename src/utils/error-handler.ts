@@ -183,11 +183,18 @@ class SecureErrorHandler {
       message = error;
     } else if (error === null || error === undefined) {
       message = 'Unknown error';
-    } else if (typeof error === 'object' && !error.hasOwnProperty('message')) {
+    } else if (typeof error === 'object' && Object.prototype.hasOwnProperty.call(error, 'message')) {
+      // Plain objects with message property
+      message = (error as { message: unknown }).message as string;
+    } else if (typeof error === 'object') {
       // Plain objects without message property become "Unknown error"
       message = 'Unknown error';
-    } else {
+    } else if (typeof error === 'number' || typeof error === 'boolean') {
+      // Handle primitives explicitly
       message = String(error);
+    } else {
+      // Fallback for symbol, bigint, etc.
+      message = 'Unknown error';
     }
 
     const sanitized = this.sanitize(message);
