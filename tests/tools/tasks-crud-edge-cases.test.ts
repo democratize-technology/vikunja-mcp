@@ -385,12 +385,13 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       // Mock successful getTask
       const mockTask = { id: 1, title: 'Test Task' };
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
-      
+
       // Mock deleteTask to fail with string
       mockClient.tasks.deleteTask.mockRejectedValue('String error message');
 
+      // The error handler now preserves string messages for better debugging
       await expect(deleteTask({ id: 1 })).rejects.toThrow(
-        'Failed to delete task: Unknown error'
+        'Failed to delete task: String error message'
       );
     });
   });
@@ -409,8 +410,9 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       // Mock getTask to fail with string
       mockClient.tasks.getTask.mockRejectedValue('Database connection lost');
 
+      // The error handler now preserves string messages for better debugging
       await expect(getTask({ id: 1 })).rejects.toThrow(
-        'Failed to get task: Unknown error'
+        'Failed to get task: Database connection lost'
       );
     });
 
@@ -418,6 +420,7 @@ describe('Tasks CRUD - Edge Cases and Defensive Programming', () => {
       // Mock getTask to fail with undefined
       mockClient.tasks.getTask.mockRejectedValue(undefined);
 
+      // Undefined errors still show as "Unknown error"
       await expect(getTask({ id: 1 })).rejects.toThrow(
         'Failed to get task: Unknown error'
       );
