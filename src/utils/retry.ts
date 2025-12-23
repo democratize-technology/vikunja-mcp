@@ -32,15 +32,15 @@ class CircuitBreakerRegistry {
     await Promise.all(promises);
   }
 
-  getAllStats(): Record<string, any> {
-    const stats: Record<string, any> = {};
+  getAllStats(): Record<string, unknown> {
+    const stats: Record<string, unknown> = {};
     for (const [name, breaker] of this.breakers.entries()) {
       stats[name] = breaker.stats;
     }
     return stats;
   }
 
-  getAllStatsSync(): Record<string, any> {
+  getAllStatsSync(): Record<string, unknown> {
     return this.getAllStats();
   }
 }
@@ -133,6 +133,11 @@ export async function withNamedRetry<T>(
 }
 
 /**
+ * Alias for withNamedRetry for backward compatibility
+ */
+export const withCircuitBreaker = withNamedRetry;
+
+/**
  * Get circuit breaker health stats
  */
 export function getHealthStats(breaker: CircuitBreaker): CircuitBreaker.Stats {
@@ -182,7 +187,7 @@ export const RETRY_CONFIG = {
     maxDelay: 10000,
     backoffFactor: 2,
     enableCircuitBreaker: true,
-    circuitBreakerName: 'auth_connect'
+    circuitBreakerName: 'vikunja-auth-connect'
   },
   NETWORK_ERRORS: {
     maxRetries: 5,
@@ -190,7 +195,7 @@ export const RETRY_CONFIG = {
     maxDelay: 30000,
     backoffFactor: 1.5,
     enableCircuitBreaker: true,
-    circuitBreakerName: 'api_operations'
+    circuitBreakerName: 'vikunja-api-operations'
   },
   TASK_OPERATIONS: {
     maxRetries: 3,
@@ -198,7 +203,7 @@ export const RETRY_CONFIG = {
     maxDelay: 15000,
     backoffFactor: 2,
     enableCircuitBreaker: true,
-    circuitBreakerName: 'task_create'
+    circuitBreakerName: 'vikunja-task-create'
   },
   BULK_OPERATIONS: {
     maxRetries: 2,
@@ -206,7 +211,7 @@ export const RETRY_CONFIG = {
     maxDelay: 20000,
     backoffFactor: 1.5,
     enableCircuitBreaker: true,
-    circuitBreakerName: 'bulk_operations'
+    circuitBreakerName: 'vikunja-bulk-operations'
   }
 } as const;
 
@@ -218,11 +223,22 @@ export const CIRCUIT_BREAKER_NAMES = {
   AUTH_REFRESH: 'vikunja-auth-refresh',
   AUTH_STATUS: 'vikunja-auth-status',
   API_OPERATIONS: 'vikunja-api-operations',
+  CLIENT_OPERATIONS: 'vikunja-client-operations',
+  FILTER_OPERATIONS: 'vikunja-filter-operations',
   TASK_CREATE: 'vikunja-task-create',
   TASK_UPDATE: 'vikunja-task-update',
   TASK_DELETE: 'vikunja-task-delete',
   TASK_GET: 'vikunja-task-get',
-  BULK_OPERATIONS: 'vikunja-bulk-operations'
+  TASK_LIST: 'vikunja-task-list',
+  TASK_RELATIONS: 'vikunja-task-relations',
+  TASK_ASSIGNEES: 'vikunja-task-assignees',
+  TASK_LABELS: 'vikunja-task-labels',
+  PROJECT_CRUD: 'vikunja-project-crud',
+  PROJECT_HIERARCHY: 'vikunja-project-hierarchy',
+  PROJECT_SHARING: 'vikunja-project-sharing',
+  BULK_OPERATIONS: 'vikunja-bulk-operations',
+  BULK_IMPORT: 'vikunja-bulk-import',
+  BULK_EXPORT: 'vikunja-bulk-export'
 } as const;
 
 /**
