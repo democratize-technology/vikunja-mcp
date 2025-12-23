@@ -16,6 +16,7 @@ import type { AuthManager } from '../auth/AuthManager';
 import type { VikunjaClientFactory } from '../client/VikunjaClientFactory';
 
 import { registerAuthTool } from './auth';
+import { registerTasksTool } from './tasks';
 import { registerTaskCrudTool } from './task-crud';
 import { registerTaskBulkTool } from './task-bulk';
 import { registerTaskAssigneesTool } from './task-assignees';
@@ -42,7 +43,10 @@ export function registerTools(
 
   registerAuthTool(server, authManager);
 
-  // Register individual task tools instead of monolithic tasks tool
+  // Register the comprehensive tasks tool (expected by tests)
+  registerTasksTool(server, authManager, clientFactory);
+
+  // Register individual task tools for more granular operations
   registerTaskCrudTool(server, authManager, clientFactory);
   registerTaskBulkTool(server, authManager, clientFactory);
   registerTaskAssigneesTool(server, authManager, clientFactory);
