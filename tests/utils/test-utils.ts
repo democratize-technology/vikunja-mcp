@@ -94,12 +94,19 @@ export function createTestableAuthManager(credentials?: string): TestableAuthMan
  * Creates a mock AuthManager for testing with controllable behavior
  */
 export function createMockTestableAuthManager(authenticated: boolean = true, token: string = 'test-token'): jest.Mocked<TestableAuthManager> {
-  return {
+  const mockAuthManager = {
     isAuthenticated: jest.fn().mockReturnValue(authenticated),
     getCredentials: jest.fn().mockReturnValue(token),
     getAuthType: jest.fn().mockReturnValue(token.startsWith('eyJ') ? 'jwt' : 'api_token'),
     hasJwtAuth: jest.fn().mockReturnValue(token.startsWith('eyJ')),
+    getSession: jest.fn().mockReturnValue({
+      apiUrl: 'https://api.vikunja.test',
+      apiToken: token,
+      authType: token.startsWith('eyJ') ? 'jwt' : 'api_token',
+    }),
     _validateCredentials: jest.fn().mockReturnValue(authenticated),
     _detectAuthType: jest.fn().mockReturnValue(token.startsWith('eyJ') ? 'jwt' : 'api_token'),
   };
+
+  return mockAuthManager as jest.Mocked<TestableAuthManager>;
 }
