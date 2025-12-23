@@ -59,7 +59,7 @@ export function createSuccessResponse(
   data?: ResponseData,
   metadata?: ResponseMetadata
 ): SimpleResponse {
-  const content = formatSuccessMessage(operation, message, data);
+  const content = formatSuccessMessage(operation, message, data, metadata);
 
   return {
     content,
@@ -106,9 +106,18 @@ export function createErrorResponse(
 export function formatSuccessMessage(
   operation: string,
   message: string,
-  data?: ResponseData
+  data?: ResponseData,
+  metadata?: Record<string, unknown>
 ): string {
   let content = `## ✅ Success\n\n${message}\n\n**Operation:** ${operation}\n\n`;
+
+  // Include metadata first if provided
+  if (metadata && typeof metadata === 'object') {
+    const metadataEntries = Object.entries(metadata).filter(([_, value]) => value !== undefined && value !== null);
+    if (metadataEntries.length > 0) {
+      content += formatObjectData(metadata as Record<string, unknown>);
+    }
+  }
 
   if (data) {
     // Check for known collection types first

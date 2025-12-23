@@ -154,7 +154,18 @@ class SecureErrorHandler {
       );
     }
 
-    return this.transform(error, `Failed to ${operation}`);
+    // For status code errors, convert non-Error objects to "Unknown error"
+    let message: string;
+    if (error instanceof Error) {
+      message = error.message;
+    } else if (typeof error === 'string') {
+      message = error;
+    } else {
+      message = 'Unknown error';
+    }
+
+    const sanitized = this.sanitize(message);
+    return new MCPError(ErrorCode.API_ERROR, `Failed to ${operation}: ${sanitized}`);
   }
 
   /**
@@ -165,7 +176,20 @@ class SecureErrorHandler {
       return error;
     }
 
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    let message: string;
+    if (error instanceof Error) {
+      message = error.message;
+    } else if (typeof error === 'string') {
+      message = error;
+    } else if (error === null || error === undefined) {
+      message = 'Unknown error';
+    } else if (typeof error === 'object' && !error.hasOwnProperty('message')) {
+      // Plain objects without message property become "Unknown error"
+      message = 'Unknown error';
+    } else {
+      message = String(error);
+    }
+
     const sanitized = this.sanitize(message);
 
     return new MCPError(ErrorCode.API_ERROR, `${context}: ${sanitized}`);
@@ -321,7 +345,7 @@ export const wrapAuthError = (error: unknown, operation: string): MCPError => {
     return errorHandler.handleStatusCode(error, operation);
   }
 
-  return errorHandler.transform(error, `Authentication error: ${operation}`);
+  return errorHandler.transform(error, 'Authentication error');
 };
 
 export const createValidationError = (message: string): MCPError =>
