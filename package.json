@@ -65,7 +65,8 @@
     "object-sizeof": "^2.6.5",
     "opossum": "^9.0.0",
     "tslib": "^2.8.1",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "zod": "^3.25.28"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
@@ -85,8 +86,7 @@
     "prettier": "^3.0.0",
     "ts-jest": "^29.4.1",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0",
-    "zod": "^3.25.28"
+    "typescript": "^5.0.0"
   },
   "jest": {
     "preset": "ts-jest",
