@@ -4,6 +4,12 @@ import { MCPError, ErrorCode } from '../../../src/types/index';
 
 // Mock the client
 jest.mock('../../../src/client');
+
+// Mock withRetry to call the operation directly without circuit breaker caching
+jest.mock('../../../src/utils/retry', () => ({
+  ...jest.requireActual('../../../src/utils/retry'),
+  withRetry: async <T>(operation: () => Promise<T>) => operation(),
+}));
 const mockGetClientFromContext = jest.mocked(getClientFromContext);
 
 describe('Label operations', () => {
@@ -16,7 +22,8 @@ describe('Label operations', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Use resetAllMocks to also reset mock implementations (not just call history)
+    jest.resetAllMocks();
     mockGetClientFromContext.mockResolvedValue(mockClient as any);
   });
 

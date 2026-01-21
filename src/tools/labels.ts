@@ -62,7 +62,9 @@ export function registerLabelsTool(server: McpServer, authManager: AuthManager, 
             if (args.perPage) params.per_page = args.perPage;
             if (args.search) params.s = args.search;
 
-            const labels = await client.labels.getLabels(params);
+            const labelsResult = await client.labels.getLabels(params);
+            // Handle null/undefined response from API
+            const labels = labelsResult ?? [];
 
             const response = createStandardResponse(
               'list-labels',
