@@ -137,6 +137,15 @@ tests/
 - **Edge Cases**: Test malformed API responses, auth failures, network errors
 - **Race Conditions**: Dedicated test files for concurrent operations
 
+### Integration Testing
+
+Run MCP integration tests against real Vikunja:
+```bash
+npm run test:mcp
+```
+
+For manual testing with Claude, see `docs/MCP-TEST-CHECKLIST.md`.
+
 ## Key Dependencies & Integration
 
 ### Core Dependencies
