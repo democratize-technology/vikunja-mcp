@@ -42,6 +42,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
       description: z.string().optional(),
 
       // Member operations
+      memberSubcommand: z.enum(['list', 'add', 'remove', 'update']).optional(),
       userId: z.union([z.string(), z.number()]).optional(),
       admin: z.boolean().optional(),
     },
@@ -120,13 +121,45 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
             }
 
-            validateAndConvertId(args.id, 'id');
+            const teamId = validateAndConvertId(args.id, 'id');
+            const session = authManager.getSession();
 
-            // Note: node-vikunja doesn't have getTeam method, this is a placeholder
-            throw new MCPError(
-              ErrorCode.NOT_IMPLEMENTED,
-              'Get team by ID is not yet implemented in the node-vikunja library',
+            // Make direct API call to get team
+            const response = await fetch(`${session.apiUrl}/teams/${teamId}`, {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${session.apiToken}`,
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw handleStatusCodeError(
+                { statusCode: response.status, message: errorText },
+                'get team',
+                teamId,
+                `Failed to get team ${teamId}: ${errorText}`
+              );
+            }
+
+            const team = (await response.json()) as Team;
+
+            const standardResponse = createStandardResponse(
+              'get-team',
+              `Retrieved team "${team.name}"`,
+              { team },
+              { teamId },
             );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: formatAorpAsMarkdown(standardResponse),
+                },
+              ],
+            };
           }
 
           case 'update': {
@@ -134,7 +167,7 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
             }
 
-            validateAndConvertId(args.id, 'id');
+            const teamId = validateAndConvertId(args.id, 'id');
 
             if (!args.name && !args.description) {
               throw new MCPError(
@@ -143,11 +176,48 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               );
             }
 
-            // Note: node-vikunja doesn't have updateTeam method, this is a placeholder
-            throw new MCPError(
-              ErrorCode.NOT_IMPLEMENTED,
-              'Update team is not yet implemented in the node-vikunja library',
+            const session = authManager.getSession();
+            const updateData: Partial<Team> = {};
+            if (args.name !== undefined) updateData.name = args.name;
+            if (args.description !== undefined) updateData.description = args.description;
+
+            // Make direct API call to update team
+            const response = await fetch(`${session.apiUrl}/teams/${teamId}`, {
+              method: 'PUT',
+              headers: {
+                Authorization: `Bearer ${session.apiToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(updateData),
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw handleStatusCodeError(
+                { statusCode: response.status, message: errorText },
+                'update team',
+                teamId,
+                `Failed to update team ${teamId}: ${errorText}`
+              );
+            }
+
+            const team = (await response.json()) as Team;
+
+            const standardResponse = createStandardResponse(
+              'update-team',
+              `Team "${team.name}" updated successfully`,
+              { team },
+              { teamId, affectedFields: Object.keys(updateData) },
             );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: formatAorpAsMarkdown(standardResponse),
+                },
+              ],
+            };
           }
 
           case 'delete': {
@@ -223,13 +293,207 @@ export function registerTeamsTool(server: McpServer, authManager: AuthManager, _
               throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Team ID is required');
             }
 
-            validateAndConvertId(args.id, 'id');
+            const teamId = validateAndConvertId(args.id, 'id');
+            const session = authManager.getSession();
+            const memberSubcommand = args.memberSubcommand || 'list';
 
-            // Note: node-vikunja doesn't have team member methods, this is a placeholder
-            throw new MCPError(
-              ErrorCode.NOT_IMPLEMENTED,
-              'Team member operations are not yet implemented in the node-vikunja library',
-            );
+            switch (memberSubcommand) {
+              case 'list': {
+                // Make direct API call to list team members
+                const response = await fetch(`${session.apiUrl}/teams/${teamId}/members`, {
+                  method: 'GET',
+                  headers: {
+                    Authorization: `Bearer ${session.apiToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                });
+
+                if (!response.ok) {
+                  const errorText = await response.text();
+                  throw handleStatusCodeError(
+                    { statusCode: response.status, message: errorText },
+                    'list team members',
+                    teamId,
+                    `Failed to list members for team ${teamId}: ${errorText}`
+                  );
+                }
+
+                const members = await response.json();
+
+                const standardResponse = createStandardResponse(
+                  'list-team-members',
+                  `Retrieved ${Array.isArray(members) ? members.length : 1} member${(!Array.isArray(members) || members.length !== 1) ? 's' : ''}`,
+                  { members: Array.isArray(members) ? members : [members] },
+                  { teamId, count: Array.isArray(members) ? members.length : 1 },
+                );
+
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: formatAorpAsMarkdown(standardResponse),
+                    },
+                  ],
+                };
+              }
+
+              case 'add': {
+                if (args.userId === undefined) {
+                  throw new MCPError(ErrorCode.VALIDATION_ERROR, 'User ID is required');
+                }
+
+                const userId = validateAndConvertId(args.userId, 'userId');
+
+                // Make direct API call to add member to team
+                const memberData: { username: string; admin?: boolean } = {
+                  username: String(userId),
+                };
+                if (args.admin !== undefined) memberData.admin = args.admin;
+
+                const response = await fetch(`${session.apiUrl}/teams/${teamId}/members`, {
+                  method: 'PUT',
+                  headers: {
+                    Authorization: `Bearer ${session.apiToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(memberData),
+                });
+
+                if (!response.ok) {
+                  const errorText = await response.text();
+                  throw handleStatusCodeError(
+                    { statusCode: response.status, message: errorText },
+                    'add team member',
+                    teamId,
+                    `Failed to add user ${userId} to team ${teamId}: ${errorText}`
+                  );
+                }
+
+                const member = await response.json();
+
+                const standardResponse = createStandardResponse(
+                  'add-team-member',
+                  `User ${userId} added to team successfully`,
+                  { member },
+                  { teamId, userId, admin: args.admin },
+                );
+
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: formatAorpAsMarkdown(standardResponse),
+                    },
+                  ],
+                };
+              }
+
+              case 'remove': {
+                if (args.userId === undefined) {
+                  throw new MCPError(ErrorCode.VALIDATION_ERROR, 'User ID is required');
+                }
+
+                const userId = validateAndConvertId(args.userId, 'userId');
+
+                // Make direct API call to remove member from team
+                const response = await fetch(`${session.apiUrl}/teams/${teamId}/members/${userId}`, {
+                  method: 'DELETE',
+                  headers: {
+                    Authorization: `Bearer ${session.apiToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                });
+
+                if (!response.ok) {
+                  const errorText = await response.text();
+                  throw handleStatusCodeError(
+                    { statusCode: response.status, message: errorText },
+                    'remove team member',
+                    teamId,
+                    `Failed to remove user ${userId} from team ${teamId}: ${errorText}`
+                  );
+                }
+
+                const result = await response.json();
+
+                const standardResponse = createStandardResponse(
+                  'remove-team-member',
+                  `User ${userId} removed from team successfully`,
+                  { message: result },
+                  { teamId, userId },
+                );
+
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: formatAorpAsMarkdown(standardResponse),
+                    },
+                  ],
+                };
+              }
+
+              case 'update': {
+                if (args.userId === undefined) {
+                  throw new MCPError(ErrorCode.VALIDATION_ERROR, 'User ID is required');
+                }
+
+                if (args.admin === undefined) {
+                  throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Admin flag is required for updating member');
+                }
+
+                const userId = validateAndConvertId(args.userId, 'userId');
+
+                // Make direct API call to update member (using PUT with updated admin flag)
+                const memberData = {
+                  username: String(userId),
+                  admin: args.admin,
+                };
+
+                const response = await fetch(`${session.apiUrl}/teams/${teamId}/members/${userId}`, {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${session.apiToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(memberData),
+                });
+
+                if (!response.ok) {
+                  const errorText = await response.text();
+                  throw handleStatusCodeError(
+                    { statusCode: response.status, message: errorText },
+                    'update team member',
+                    teamId,
+                    `Failed to update user ${userId} in team ${teamId}: ${errorText}`
+                  );
+                }
+
+                const member = await response.json();
+
+                const standardResponse = createStandardResponse(
+                  'update-team-member',
+                  `User ${userId} updated in team successfully`,
+                  { member },
+                  { teamId, userId, admin: args.admin },
+                );
+
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                  text: formatAorpAsMarkdown(standardResponse),
+                    },
+                  ],
+                };
+              }
+
+              default:
+                throw new MCPError(
+                  ErrorCode.VALIDATION_ERROR,
+                  `Invalid member subcommand: ${String(memberSubcommand)}`,
+                );
+            }
           }
 
           default:
