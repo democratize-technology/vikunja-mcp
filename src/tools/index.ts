@@ -34,6 +34,28 @@ import { registerWebhooksTool } from './webhooks';
 import { registerBatchImportTool } from './batch-import';
 import { registerExportTool } from './export';
 
+// Re-export for testing
+export {
+  registerAuthTool,
+  registerTasksTool,
+  registerTaskCrudTool,
+  registerTaskBulkTool,
+  registerTaskAssigneesTool,
+  registerTaskCommentsTool,
+  registerTaskRemindersTool,
+  registerTaskLabelsTool,
+  registerTaskRelationsTool,
+  registerProjectsTool,
+  registerLabelsTool,
+  registerTeamsTool,
+  registerUsersTool,
+  registerFiltersTool,
+  registerTemplatesTool,
+  registerWebhooksTool,
+  registerBatchImportTool,
+  registerExportTool,
+};
+
 export function registerTools(
   server: McpServer, 
   authManager: AuthManager, 

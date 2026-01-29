@@ -3,7 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AuthManager } from '../../src/auth/AuthManager';
 import { createMockTestableAuthManager } from '../utils/test-utils';
 import {
-  registerTaskCrudTool,
+  registerTasksTool,
   registerTaskBulkTool,
   registerTaskAssigneesTool,
   registerTaskCommentsTool,
@@ -177,13 +177,13 @@ describe('Tasks Tool', () => {
       tool: jest.fn() as jest.MockedFunction<(name: string, description: string, schema: any, handler: any) => void>,
     } as MockServer;
 
-    // Register the individual tools
-    registerTaskCrudTool(mockServer, mockAuthManager);
+    // Register the comprehensive tasks tool
+    registerTasksTool(mockServer, mockAuthManager);
 
-    // Get the CRUD tool handler
+    // Get the tasks tool handler
     expect(mockServer.tool).toHaveBeenCalledWith(
-      'vikunja_task_crud',
-      'Manage individual tasks: create, get, update, delete, list',
+      'vikunja_tasks',
+      'Manage tasks with comprehensive operations (create, update, delete, list, assign, attach files, comment, bulk operations)',
       expect.any(Object),
       expect.any(Function),
     );
