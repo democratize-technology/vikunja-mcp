@@ -186,11 +186,76 @@ export function formatErrorMessage(
 }
 
 /**
+ * Format a single Task object with rich details
+ */
+function formatTaskItem(task: Task, index: number): string {
+  const parts: string[] = [];
+
+  // Header with title and ID
+  parts.push(`### ${index + 1}. **${task.title}** (ID: ${task.id})`);
+
+  // Status
+  const status = task.done ? '✅ Done' : '❌ Not Done';
+  parts.push(`- **Status:** ${status}`);
+
+  // Priority (if set)
+  if (task.priority !== undefined && task.priority > 0) {
+    const stars = '⭐'.repeat(Math.min(task.priority, 5));
+    parts.push(`- **Priority:** ${stars} (${task.priority}/5)`);
+  }
+
+  // Due date (if set)
+  if (task.due_date) {
+    parts.push(`- **Due:** ${task.due_date}`);
+  }
+
+  // Progress (if set)
+  if (task.percent_done !== undefined && task.percent_done > 0) {
+    parts.push(`- **Progress:** ${task.percent_done}%`);
+  }
+
+  // Project ID (if set)
+  if (task.project_id) {
+    parts.push(`- **Project:** ${task.project_id}`);
+  }
+
+  // Labels (if any)
+  if (task.labels && task.labels.length > 0) {
+    const labelTitles = task.labels.map(l => l.title).join(', ');
+    parts.push(`- **Labels:** ${labelTitles}`);
+  }
+
+  // Assignees (if any)
+  if (task.assignees && task.assignees.length > 0) {
+    const assigneeNames = task.assignees.map(a => {
+      const email = a.email ? ` (${a.email})` : '';
+      return `${a.username}${email}`;
+    }).join(', ');
+    parts.push(`- **Assignees:** ${assigneeNames}`);
+  }
+
+  // Description (if exists)
+  if (task.description) {
+    parts.push(`- **Description:** ${task.description}`);
+  }
+
+  return parts.join('\n') + '\n';
+}
+
+/**
  * Format array data items
  */
 function formatDataItems(items: DataItem[]): string {
   return items.map((item, index) => {
     if (typeof item === 'object' && item !== null) {
+      // Check if this is a Task object with rich data
+      const task = item as unknown as Task;
+      if (task.title && (task.description || task.priority !== undefined ||
+          task.due_date || task.labels || task.assignees || task.done !== undefined)) {
+        return formatTaskItem(task, index);
+      }
+
+      // Fallback to simple formatting for other object types
       const id = item.id || index + 1;
       const title = item.title || item.name || JSON.stringify(item);
       return `${index + 1}. **${title}** (ID: ${id})`;

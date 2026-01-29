@@ -210,8 +210,10 @@ describe('Tasks Tool', () => {
             const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list-tasks');
-      expect(markdown).toContain('**Count**: 1');
-      // Task data not in markdown - filtered server-side
+      expect(markdown).toContain('**count:**');
+      expect(markdown).toContain('1');
+      // Task data now in markdown with rich formatting
+      expect(markdown).toContain('**Status:**');
     });
 
     it('should include labels and assignees in response', async () => {
@@ -226,7 +228,14 @@ describe('Tasks Tool', () => {
 
       const markdown = result.content[0].text;
       const parsed = parseMarkdown(markdown);
-            // Task details not in markdown - AORP contains metadata only
+
+      // Now task details SHOULD be in markdown with rich formatting
+      expect(markdown).toContain('Test Task'); // Title
+      expect(markdown).toContain('**Labels:**');
+      expect(markdown).toContain('Important');
+      expect(markdown).toContain('**Assignees:**');
+      expect(markdown).toContain('user1');
+      expect(markdown).toContain('**Status:**'); // Should show status
     });
     it('should list tasks with default options', async () => {
       const mockTasks: Task[] = [mockTask];
@@ -244,8 +253,7 @@ describe('Tasks Tool', () => {
             const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list-tasks');
-      expect(markdown).toContain('Count');
-      expect(markdown).toContain('Count');
+      expect(markdown).toContain('**count:**');
     });
 
     it('should list tasks with all options specified', async () => {
@@ -273,7 +281,7 @@ describe('Tasks Tool', () => {
             const aorpStatus = parsed.getAorpStatus();
       expect(aorpStatus.type).toBe('success');
       expect(markdown).toContain('list-tasks');
-      expect(markdown).toContain('Count');
+      expect(markdown).toContain('**count:**');
     });
 
     it('should handle multiple sort fields', async () => {
