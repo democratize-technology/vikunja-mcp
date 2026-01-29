@@ -1,6 +1,6 @@
 {
   "name": "@democratize-technology/vikunja-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Model Context Protocol server for Vikunja task management - Simplified architecture with enterprise-grade security and reliability",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
