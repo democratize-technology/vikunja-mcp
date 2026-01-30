@@ -6,10 +6,10 @@
 
 export { bulkUpdateTasks, bulkDeleteTasks, bulkCreateTasks } from './bulk-operations-simplified';
 
-// Re-export types for backward compatibility
+// Re-export types from canonical location (BulkOperationValidator)
 export type {
   BulkUpdateArgs,
   BulkDeleteArgs,
   BulkCreateArgs,
   BulkCreateTaskData
-} from './bulk-operations-simplified';
+} from './bulk/BulkOperationValidator';

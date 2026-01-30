@@ -8,6 +8,7 @@ import type { BatchResult } from '../../../utils/performance/batch-processor';
 import type { Task, VikunjaClient } from 'node-vikunja';
 import { BatchProcessorFactory, BulkOperationValidator, BulkOperationErrorHandler, type BulkUpdateArgs, type BulkDeleteArgs, type BulkCreateArgs, type BulkCreateTaskData } from './index';
 import { convertRepeatConfiguration } from '../validation';
+import { REPEAT_MODE_MAP } from '../constants';
 
 import { formatAorpAsMarkdown } from '../../../utils/response-factory';
 /**
@@ -78,12 +79,7 @@ export const BulkOperationProcessor = {
 
     // Handle repeat_mode conversion
     if (args.field === 'repeat_mode' && typeof args.value === 'string') {
-      const modeMap: Record<string, number> = {
-        default: 0,
-        month: 1,
-        from_current: 2,
-      };
-      bulkOperation.value = modeMap[args.value] ?? args.value;
+      bulkOperation.value = REPEAT_MODE_MAP[args.value] ?? args.value;
     }
 
     // Call the proper bulk update API

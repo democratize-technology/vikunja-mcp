@@ -10,6 +10,7 @@
 import { logger } from '../utils/logger';
 import { SimpleFilterStorage, storageManager } from './SimpleFilterStorage';
 import type { FilterStorage, SavedFilter } from '../types/filters';
+import { StorageDataError } from '../utils/storage-errors';
 
 // Export the main storage implementation
 export { SimpleFilterStorage, storageManager };
@@ -17,19 +18,8 @@ export { SimpleFilterStorage, storageManager };
 // Export storage interface and types
 export type { FilterStorage, SavedFilter };
 
-// Export error classes
-export class StorageDataError extends Error {
-  public readonly code: string;
-
-  constructor(message: string, code: string = 'STORAGE_DATA_ERROR', cause?: Error) {
-    super(message);
-    this.name = 'StorageDataError';
-    this.code = code;
-    if (cause) {
-      this.cause = cause;
-    }
-  }
-}
+// Re-export error classes from canonical location
+export { StorageDataError };
 
 /**
  * Factory function to create filter storage instance

@@ -33,3 +33,11 @@ export const AUTH_ERROR_MESSAGES = {
 // Bulk operation constants
 export const BULK_OPERATION_BATCH_SIZE = 10;
 export const MAX_BULK_OPERATION_TASKS = 100;
+
+// Repeat mode mapping for bulk update API
+// Maps user-friendly string values to Vikunja API numeric codes
+export const REPEAT_MODE_MAP: Record<string, number> = {
+  default: 0,
+  month: 1,
+  from_current: 2,
+} as const;

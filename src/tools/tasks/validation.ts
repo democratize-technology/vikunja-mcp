@@ -2,6 +2,7 @@
  * Validation utilities for task operations
  */
 
+import type { Task } from 'node-vikunja';
 import { MCPError, ErrorCode } from '../../types';
 import { validateId as validateSharedId } from '../../utils/validation';
 
@@ -86,4 +87,46 @@ export async function processBatches<T, R>(
     results.push(...batchResults);
   }
   return results;
+}
+
+/**
+ * Apply field update to a task object for bulk operations
+ * Maps field names to their corresponding task properties
+ *
+ * @param task - The task object to update (will be mutated)
+ * @param field - The field name to update (optional, will be checked)
+ * @param value - The new value
+ * @returns The same task object with the field applied
+ */
+export function applyFieldUpdate(task: Task, field: string | undefined, value: unknown): Task {
+  if (!field) return task;
+
+  switch (field) {
+    case 'done':
+      task.done = value as boolean;
+      break;
+    case 'priority':
+      task.priority = value as number;
+      break;
+    case 'due_date':
+      task.due_date = value as string;
+      break;
+    case 'project_id':
+      task.project_id = value as number;
+      break;
+    case 'repeat_after':
+      task.repeat_after = value as number;
+      break;
+    case 'repeat_mode':
+      (task as Record<string, unknown>).repeat_mode = value;
+      break;
+    case 'assignees':
+    case 'labels':
+      // These are handled separately with special API calls
+      break;
+    default:
+      // Unknown field - leave task unchanged
+      break;
+  }
+  return task;
 }

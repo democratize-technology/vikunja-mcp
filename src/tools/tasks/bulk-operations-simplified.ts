@@ -8,16 +8,11 @@ import type { Assignee } from '../../types';
 import { withRetry } from '../../utils/retry';
 import { BatchProcessor } from '../../utils/performance/batch-processor';
 import type { Task } from 'node-vikunja';
-import { convertRepeatConfiguration, validateDateString, validateId } from './validation';
+import { convertRepeatConfiguration, applyFieldUpdate } from './validation';
 import { formatAorpAsMarkdown } from '../../utils/response-factory';
-import { MAX_BULK_OPERATION_TASKS, AUTH_ERROR_MESSAGES } from './constants';
-
-// ==================== TYPES ====================
-
-export interface BulkUpdateArgs { taskIds?: number[]; field?: string; value?: unknown; }
-export interface BulkDeleteArgs { taskIds?: number[]; }
-export interface BulkCreateTaskData { title: string; description?: string; dueDate?: string; priority?: number; labels?: number[]; assignees?: number[]; repeatAfter?: number; repeatMode?: 'day' | 'week' | 'month' | 'year'; }
-export interface BulkCreateArgs { projectId?: number; tasks?: BulkCreateTaskData[]; }
+import { AUTH_ERROR_MESSAGES, REPEAT_MODE_MAP } from './constants';
+import { bulkOperationValidator } from './bulk/BulkOperationValidator';
+import type { BulkUpdateArgs, BulkDeleteArgs, BulkCreateArgs, BulkCreateTaskData } from './bulk/BulkOperationValidator';
 
 // ==================== BATCH PROCESSORS ====================
 
@@ -27,57 +22,20 @@ const processors = {
   create: new BatchProcessor({ maxConcurrency: 8, batchSize: 15, enableMetrics: true, batchDelay: 0 }),
 };
 
-// ==================== VALIDATION ====================
+// ==================== VALIDATION WRAPPERS ====================
 
-const allowedFields = ['done', 'priority', 'due_date', 'project_id', 'assignees', 'labels', 'repeat_after', 'repeat_mode'];
+// Re-use validation logic from BulkOperationValidator to eliminate duplication
+const validateBulkUpdate = (args: BulkUpdateArgs): void => {
+  bulkOperationValidator.validateBulkUpdate(args);
+  bulkOperationValidator.preprocessFieldValue(args);
+  bulkOperationValidator.validateFieldConstraints(args);
+};
 
-function validateBulkUpdate(args: BulkUpdateArgs): void {
-  if (!args.taskIds || args.taskIds.length === 0) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'taskIds array is required for bulk update operation');
-  if (args.taskIds.length > MAX_BULK_OPERATION_TASKS) throw new MCPError(ErrorCode.VALIDATION_ERROR, `Too many tasks for bulk operation. Maximum allowed: ${MAX_BULK_OPERATION_TASKS}. Consider breaking into smaller batches.`);
-  args.taskIds.forEach((id) => validateId(id, 'task ID'));
-  if (!args.field) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'field is required for bulk update operation');
-  if (args.value === undefined) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'value is required for bulk update operation');
-  if (!allowedFields.includes(args.field)) throw new MCPError(ErrorCode.VALIDATION_ERROR, `Invalid field: ${args.field}. Allowed: ${allowedFields.join(', ')}`);
-  if (args.field === 'priority' && typeof args.value === 'number' && (args.value < 0 || args.value > 5)) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Priority must be between 0 and 5');
-  if (args.field === 'due_date' && typeof args.value === 'string') validateDateString(args.value, 'due_date');
-  if (args.field === 'project_id' && typeof args.value === 'number') validateId(args.value, 'project_id');
-  if (['assignees', 'labels'].includes(args.field)) {
-    if (!Array.isArray(args.value)) throw new MCPError(ErrorCode.VALIDATION_ERROR, `${args.field} must be an array of numbers`);
-    (args.value as number[]).forEach((id) => validateId(id, `${args.field} ID`));
-  }
-  if (args.field === 'done' && typeof args.value !== 'boolean') throw new MCPError(ErrorCode.VALIDATION_ERROR, 'done field must be a boolean value (true or false)');
-  if (args.field === 'repeat_after' && typeof args.value === 'number' && args.value < 0) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'repeat_after must be a non-negative number');
-  if (args.field === 'repeat_mode' && typeof args.value === 'string' && !['day', 'week', 'month', 'year'].includes(args.value)) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, `Invalid repeat_mode: ${args.value}. Valid modes: day, week, month, year`);
-  }
-}
+const validateBulkCreate = (args: BulkCreateArgs): void => bulkOperationValidator.validateBulkCreate(args);
+const validateBulkDelete = (args: BulkDeleteArgs): void => bulkOperationValidator.validateBulkDelete(args);
 
-function preprocessFieldValue(args: BulkUpdateArgs): void {
-  if (args.field === 'done' && typeof args.value === 'string') args.value = args.value === 'true' ? true : args.value === 'false' ? false : args.value;
-  if (args.field && ['priority', 'project_id', 'repeat_after'].includes(args.field) && typeof args.value === 'string') {
-    const num = Number(args.value);
-    if (!isNaN(num)) args.value = num;
-  }
-}
-
-function validateBulkCreate(args: BulkCreateArgs): void {
-  if (!args.projectId) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'projectId is required for bulk create operation');
-  validateId(args.projectId, 'projectId');
-  if (!args.tasks || args.tasks.length === 0) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'tasks array is required and must contain at least one task');
-  if (args.tasks.length > MAX_BULK_OPERATION_TASKS) throw new MCPError(ErrorCode.VALIDATION_ERROR, `Too many tasks for bulk operation. Maximum allowed: ${MAX_BULK_OPERATION_TASKS}. Consider breaking into smaller batches.`);
-  args.tasks.forEach((task, i) => {
-    if (!task.title?.trim()) throw new MCPError(ErrorCode.VALIDATION_ERROR, `Task at index ${i} must have a non-empty title`);
-    if (task.dueDate) validateDateString(task.dueDate, `tasks[${i}].dueDate`);
-    if (task.assignees) task.assignees.forEach((id) => validateId(id, `tasks[${i}].assignee ID`));
-    if (task.labels) task.labels.forEach((id) => validateId(id, `tasks[${i}].label ID`));
-  });
-}
-
-function validateBulkDelete(args: BulkDeleteArgs): void {
-  if (!args.taskIds || args.taskIds.length === 0) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'taskIds array is required for bulk delete operation');
-  if (args.taskIds.length > MAX_BULK_OPERATION_TASKS) throw new MCPError(ErrorCode.VALIDATION_ERROR, `Too many tasks for bulk operation. Maximum allowed: ${MAX_BULK_OPERATION_TASKS}. Consider breaking into smaller batches.`);
-  args.taskIds.forEach((id) => validateId(id, 'task ID'));
-}
+// Re-export types for backward compatibility
+export type { BulkUpdateArgs, BulkDeleteArgs, BulkCreateArgs, BulkCreateTaskData };
 
 // ==================== RESPONSE HELPERS ====================
 
@@ -93,7 +51,6 @@ const successResponse = (op: string, msg: string, tasks: Task[], meta: Record<st
 
 export async function bulkUpdateTasks(args: BulkUpdateArgs): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
-    preprocessFieldValue(args);
     validateBulkUpdate(args);
     // Validation ensures taskIds exists
     const taskIds = args.taskIds ?? [];
@@ -102,13 +59,7 @@ export async function bulkUpdateTasks(args: BulkUpdateArgs): Promise<{ content: 
     const updateWithFallback = async (): Promise<{ content: Array<{ type: 'text'; text: string }> }> => {
       const updateResult = await processors.update.processBatches(taskIds, async (taskId) => {
         const current = await client.tasks.getTask(taskId);
-        const update: Task = { ...current };
-        if (args.field === 'done') update.done = args.value as boolean;
-        else if (args.field === 'priority') update.priority = args.value as number;
-        else if (args.field === 'due_date') update.due_date = args.value as string;
-        else if (args.field === 'project_id') update.project_id = args.value as number;
-        else if (args.field === 'repeat_after') update.repeat_after = args.value as number;
-        else if (args.field === 'repeat_mode') (update as Record<string, unknown>).repeat_mode = args.value;
+        const update = applyFieldUpdate({ ...current }, args.field, args.value);
 
         const updated = await client.tasks.updateTask(taskId, update);
 
@@ -151,8 +102,7 @@ export async function bulkUpdateTasks(args: BulkUpdateArgs): Promise<{ content: 
       if (!args.field) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Field required');
       const bulkOp = { task_ids: taskIds, field: args.field, value: args.value };
       if (args.field === 'repeat_mode' && typeof args.value === 'string') {
-        const modeMap: Record<string, number> = { default: 0, month: 1, from_current: 2 };
-        bulkOp.value = modeMap[args.value] ?? args.value;
+        bulkOp.value = REPEAT_MODE_MAP[args.value] ?? args.value;
       }
 
       const result = await client.tasks.bulkUpdateTasks(bulkOp);

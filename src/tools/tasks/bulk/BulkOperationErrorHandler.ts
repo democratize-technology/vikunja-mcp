@@ -11,6 +11,7 @@ import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
 import { BatchProcessorFactory } from './index';
 import { AUTH_ERROR_MESSAGES } from '../constants';
+import { applyFieldUpdate } from '../validation';
 import type { BulkUpdateArgs } from './BulkOperationValidator';
 import type { BatchResult } from '../../../utils/performance/batch-processor';
 
@@ -57,35 +58,8 @@ export const bulkOperationErrorHandler = {
     // Fetch current task to preserve required fields
     const currentTask = await client.tasks.getTask(taskId);
 
-    // Build update object based on field, preserving existing data
-    const updateData: Task = { ...currentTask };
-
-    switch (args.field) {
-      case 'done':
-        updateData.done = args.value as boolean;
-        break;
-      case 'priority':
-        updateData.priority = args.value as number;
-        break;
-      case 'due_date':
-        updateData.due_date = args.value as string;
-        break;
-      case 'project_id':
-        updateData.project_id = args.value as number;
-        break;
-      case 'assignees':
-        // Handled separately below
-        break;
-      case 'labels':
-        // Handled separately below
-        break;
-      case 'repeat_after':
-        updateData.repeat_after = args.value as number;
-        break;
-      case 'repeat_mode':
-        Object.assign(updateData, { repeat_mode: args.value });
-        break;
-    }
+    // Apply field update using shared utility
+    const updateData = applyFieldUpdate({ ...currentTask }, args.field, args.value);
 
     // Update the task
     const updatedTask = await client.tasks.updateTask(taskId, updateData);
