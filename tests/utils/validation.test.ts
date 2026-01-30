@@ -43,17 +43,17 @@ describe('Security Validation Utilities', () => {
     });
 
     it('should throw error for non-string values', () => {
-      expect(() => sanitizeString(123)).toThrow(StorageDataError);
-      expect(() => sanitizeString(null)).toThrow(StorageDataError);
-      expect(() => sanitizeString(undefined)).toThrow(StorageDataError);
-      expect(() => sanitizeString({})).toThrow(StorageDataError);
-      expect(() => sanitizeString([])).toThrow(StorageDataError);
+      expect(() => sanitizeString(123)).toThrow(MCPError);
+      expect(() => sanitizeString(null)).toThrow(MCPError);
+      expect(() => sanitizeString(undefined)).toThrow(MCPError);
+      expect(() => sanitizeString({})).toThrow(MCPError);
+      expect(() => sanitizeString([])).toThrow(MCPError);
     });
 
     it('should throw error for strings exceeding maximum length', () => {
       const longString = 'a'.repeat(1001);
       expect(() => sanitizeString(longString)).toThrow(
-        new StorageDataError('String value exceeds maximum length of 1000')
+        new MCPError(ErrorCode.VALIDATION_ERROR, 'String value exceeds maximum length of 1000')
       );
     });
 
@@ -84,7 +84,7 @@ describe('Security Validation Utilities', () => {
 
       // Test that all patterns throw errors
       xssPatterns.forEach((pattern, index) => {
-        expect(() => sanitizeString(pattern)).toThrow(StorageDataError);
+        expect(() => sanitizeString(pattern)).toThrow(MCPError);
       });
     });
 
@@ -97,7 +97,7 @@ describe('Security Validation Utilities', () => {
       ];
 
       encodedXss.forEach(pattern => {
-        expect(() => sanitizeString(pattern)).toThrow(StorageDataError);
+        expect(() => sanitizeString(pattern)).toThrow(MCPError);
         expect(() => sanitizeString(pattern)).toThrow('String contains potentially dangerous content');
       });
     });
@@ -122,10 +122,10 @@ describe('Security Validation Utilities', () => {
     });
 
     it('should throw error for non-string values', () => {
-      expect(() => validateField(123)).toThrow(StorageDataError);
-      expect(() => validateField(null)).toThrow(StorageDataError);
-      expect(() => validateField(undefined)).toThrow(StorageDataError);
-      expect(() => validateField({})).toThrow(StorageDataError);
+      expect(() => validateField(123)).toThrow(MCPError);
+      expect(() => validateField(null)).toThrow(MCPError);
+      expect(() => validateField(undefined)).toThrow(MCPError);
+      expect(() => validateField({})).toThrow(MCPError);
     });
 
     it('should block prototype pollution attempts', () => {
@@ -133,7 +133,7 @@ describe('Security Validation Utilities', () => {
 
       pollutionPatterns.forEach(pattern => {
         expect(() => validateField(pattern)).toThrow(
-          new StorageDataError('Invalid field name: potential prototype pollution')
+          new MCPError(ErrorCode.VALIDATION_ERROR, 'Invalid field name: potential prototype pollution')
         );
       });
     });
@@ -142,7 +142,7 @@ describe('Security Validation Utilities', () => {
       const invalidFields = ['invalidField', 'createdAt', 'updatedAt', 'custom', 'hack'];
 
       invalidFields.forEach(field => {
-        expect(() => validateField(field)).toThrow(StorageDataError);
+        expect(() => validateField(field)).toThrow(MCPError);
       });
     });
   });
@@ -157,16 +157,16 @@ describe('Security Validation Utilities', () => {
     });
 
     it('should throw error for non-string values', () => {
-      expect(() => validateOperator(123)).toThrow(StorageDataError);
-      expect(() => validateOperator(null)).toThrow(StorageDataError);
-      expect(() => validateOperator(undefined)).toThrow(StorageDataError);
+      expect(() => validateOperator(123)).toThrow(MCPError);
+      expect(() => validateOperator(null)).toThrow(MCPError);
+      expect(() => validateOperator(undefined)).toThrow(MCPError);
     });
 
     it('should reject invalid operators', () => {
       const invalidOperators = ['===', '!==', 'like%', '%like', 'regex', 'matches'];
 
       invalidOperators.forEach(operator => {
-        expect(() => validateOperator(operator)).toThrow(StorageDataError);
+        expect(() => validateOperator(operator)).toThrow(MCPError);
       });
     });
   });
@@ -178,16 +178,16 @@ describe('Security Validation Utilities', () => {
     });
 
     it('should throw error for non-string values', () => {
-      expect(() => validateLogicalOperator(123)).toThrow(StorageDataError);
-      expect(() => validateLogicalOperator(null)).toThrow(StorageDataError);
-      expect(() => validateLogicalOperator(undefined)).toThrow(StorageDataError);
+      expect(() => validateLogicalOperator(123)).toThrow(MCPError);
+      expect(() => validateLogicalOperator(null)).toThrow(MCPError);
+      expect(() => validateLogicalOperator(undefined)).toThrow(MCPError);
     });
 
     it('should reject invalid logical operators', () => {
       const invalidOperators = ['AND', 'OR', 'and', 'or', '&', '|'];
 
       invalidOperators.forEach(operator => {
-        expect(() => validateLogicalOperator(operator)).toThrow(StorageDataError);
+        expect(() => validateLogicalOperator(operator)).toThrow(MCPError);
       });
     });
   });
@@ -206,9 +206,9 @@ describe('Security Validation Utilities', () => {
     });
 
     it('should reject infinite and NaN numbers', () => {
-      expect(() => validateValue(Infinity)).toThrow(StorageDataError);
-      expect(() => validateValue(-Infinity)).toThrow(StorageDataError);
-      expect(() => validateValue(NaN)).toThrow(StorageDataError);
+      expect(() => validateValue(Infinity)).toThrow(MCPError);
+      expect(() => validateValue(-Infinity)).toThrow(MCPError);
+      expect(() => validateValue(NaN)).toThrow(MCPError);
     });
 
     it('should accept boolean values', () => {
@@ -229,7 +229,7 @@ describe('Security Validation Utilities', () => {
     it('should reject arrays exceeding size limit', () => {
       const largeArray = Array.from({ length: 101 }, (_, i) => `item${i}`);
       expect(() => validateValue(largeArray)).toThrow(
-        new StorageDataError('Array values cannot exceed 100 elements')
+        new MCPError(ErrorCode.VALIDATION_ERROR, 'Array values cannot exceed 100 elements')
       );
     });
 
@@ -239,25 +239,25 @@ describe('Security Validation Utilities', () => {
 
     it('should reject arrays with mixed types', () => {
       expect(() => validateValue([1, 'string', true])).toThrow(
-        new StorageDataError('Array elements must be all strings or all finite numbers, not mixed')
+        new MCPError(ErrorCode.VALIDATION_ERROR, 'Array elements must be all strings or all finite numbers, not mixed')
       );
     });
 
     it('should reject arrays with infinite numbers', () => {
-      expect(() => validateValue([1, 2, Infinity])).toThrow(StorageDataError);
+      expect(() => validateValue([1, 2, Infinity])).toThrow(MCPError);
     });
 
     it('should reject invalid types', () => {
-      expect(() => validateValue({})).toThrow(StorageDataError);
-      expect(() => validateValue(null)).toThrow(StorageDataError);
-      expect(() => validateValue(undefined)).toThrow(StorageDataError);
-      expect(() => validateValue(() => {})).toThrow(StorageDataError);
-      expect(() => validateValue(new Date())).toThrow(StorageDataError);
+      expect(() => validateValue({})).toThrow(MCPError);
+      expect(() => validateValue(null)).toThrow(MCPError);
+      expect(() => validateValue(undefined)).toThrow(MCPError);
+      expect(() => validateValue(() => {})).toThrow(MCPError);
+      expect(() => validateValue(new Date())).toThrow(MCPError);
     });
 
     it('should sanitize strings in arrays', () => {
       const arrayWithXss = ['<script>alert(1)</script>', 'normal string'];
-      expect(() => validateValue(arrayWithXss)).toThrow(StorageDataError);
+      expect(() => validateValue(arrayWithXss)).toThrow(MCPError);
     });
   });
 
@@ -276,10 +276,10 @@ describe('Security Validation Utilities', () => {
     });
 
     it('should throw error for non-object inputs', () => {
-      expect(() => validateCondition(null)).toThrow(StorageDataError);
-      expect(() => validateCondition(undefined)).toThrow(StorageDataError);
-      expect(() => validateCondition('string')).toThrow(StorageDataError);
-      expect(() => validateCondition(123)).toThrow(StorageDataError);
+      expect(() => validateCondition(null)).toThrow(MCPError);
+      expect(() => validateCondition(undefined)).toThrow(MCPError);
+      expect(() => validateCondition('string')).toThrow(MCPError);
+      expect(() => validateCondition(123)).toThrow(MCPError);
     });
 
     it('should throw error for missing required properties', () => {
@@ -293,7 +293,7 @@ describe('Security Validation Utilities', () => {
       ];
 
       incompleteConditions.forEach(condition => {
-        expect(() => validateCondition(condition)).toThrow(StorageDataError);
+        expect(() => validateCondition(condition)).toThrow(MCPError);
       });
     });
 
@@ -303,14 +303,14 @@ describe('Security Validation Utilities', () => {
     });
 
     it('should cascade validation errors from field, operator, and value validation', () => {
-      expect(() => validateCondition({ field: '__proto__', operator: '=', value: 'test' })).toThrow(StorageDataError);
-      expect(() => validateCondition({ field: 'title', operator: 'invalid', value: 'test' })).toThrow(StorageDataError);
-      expect(() => validateCondition({ field: 'title', operator: '=', value: { invalid: 'object' } })).toThrow(StorageDataError);
+      expect(() => validateCondition({ field: '__proto__', operator: '=', value: 'test' })).toThrow(MCPError);
+      expect(() => validateCondition({ field: 'title', operator: 'invalid', value: 'test' })).toThrow(MCPError);
+      expect(() => validateCondition({ field: 'title', operator: '=', value: { invalid: 'object' } })).toThrow(MCPError);
     });
 
     it('should provide detailed error messages with index information', () => {
       const condition = { field: 'invalidField', operator: '=', value: 'test' };
-      expect(() => validateCondition(condition)).toThrow(StorageDataError);
+      expect(() => validateCondition(condition)).toThrow(MCPError);
     });
   });
 
@@ -345,20 +345,20 @@ describe('Security Validation Utilities', () => {
     });
 
     it('should throw error for non-object inputs', () => {
-      expect(() => validateFilterExpression(null)).toThrow(StorageDataError);
-      expect(() => validateFilterExpression(undefined)).toThrow(StorageDataError);
-      expect(() => validateFilterExpression('string')).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(null)).toThrow(MCPError);
+      expect(() => validateFilterExpression(undefined)).toThrow(MCPError);
+      expect(() => validateFilterExpression('string')).toThrow(MCPError);
     });
 
     it('should throw error for missing groups array', () => {
-      expect(() => validateFilterExpression({ operator: '&&' })).toThrow(StorageDataError);
-      expect(() => validateFilterExpression({ groups: 'not an array' })).toThrow(StorageDataError);
-      expect(() => validateFilterExpression({ groups: null })).toThrow(StorageDataError);
+      expect(() => validateFilterExpression({ operator: '&&' })).toThrow(MCPError);
+      expect(() => validateFilterExpression({ groups: 'not an array' })).toThrow(MCPError);
+      expect(() => validateFilterExpression({ groups: null })).toThrow(MCPError);
     });
 
     it('should throw error for empty groups array', () => {
       expect(() => validateFilterExpression({ groups: [] })).toThrow(
-        new StorageDataError('Filter expression must have at least one group')
+        new MCPError(ErrorCode.VALIDATION_ERROR, 'Filter expression must have at least one group')
       );
     });
 
@@ -380,7 +380,7 @@ describe('Security Validation Utilities', () => {
       }
 
       expect(() => validateFilterExpression(deepExpression)).toThrow(
-        new StorageDataError('Filter expression exceeds maximum nesting depth of 10')
+        new MCPError(ErrorCode.VALIDATION_ERROR, 'Filter expression exceeds maximum nesting depth of 10')
       );
     });
 
@@ -399,7 +399,7 @@ describe('Security Validation Utilities', () => {
         }]
       };
 
-      expect(() => validateFilterExpression(largeExpression)).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(largeExpression)).toThrow(MCPError);
     });
 
     it('should handle nested expressions with total condition count validation', () => {
@@ -417,7 +417,7 @@ describe('Security Validation Utilities', () => {
 
       // 10 groups * 6 conditions = 60 total conditions, exceeds MAX_CONDITIONS (50)
       expect(() => validateFilterExpression(largeNestedExpression)).toThrow(
-        new StorageDataError('Filter expression cannot exceed 50 total conditions')
+        new MCPError(ErrorCode.VALIDATION_ERROR, 'Filter expression cannot exceed 50 total conditions')
       );
     });
 
@@ -435,7 +435,7 @@ describe('Security Validation Utilities', () => {
         ]
       };
 
-      expect(() => validateFilterExpression(invalidExpression)).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(invalidExpression)).toThrow(MCPError);
     });
 
     it('should handle optional operator at expression level', () => {
@@ -479,7 +479,7 @@ describe('Security Validation Utilities', () => {
       };
       circular.groups.push(circular); // Add circular reference in groups array
 
-      expect(() => safeJsonStringify(circular)).toThrow(StorageDataError);
+      expect(() => safeJsonStringify(circular)).toThrow(MCPError);
     });
 
     it('should throw error for invalid expressions', () => {
@@ -493,7 +493,7 @@ describe('Security Validation Utilities', () => {
       ];
 
       invalidExpressions.forEach(expression => {
-        expect(() => safeJsonStringify(expression)).toThrow(StorageDataError);
+        expect(() => safeJsonStringify(expression)).toThrow(MCPError);
       });
     });
 
@@ -502,7 +502,7 @@ describe('Security Validation Utilities', () => {
       const problematic: any = { groups: [] };
       problematic.groups[0] = problematic; // This should create a circular reference
 
-      expect(() => safeJsonStringify(problematic)).toThrow(StorageDataError);
+      expect(() => safeJsonStringify(problematic)).toThrow(MCPError);
     });
 
     it('should preserve all validated data in output', () => {
@@ -537,15 +537,15 @@ describe('Security Validation Utilities', () => {
     });
 
     it('should throw error for non-string inputs', () => {
-      expect(() => safeJsonParse(123)).toThrow(StorageDataError);
-      expect(() => safeJsonParse(null)).toThrow(StorageDataError);
-      expect(() => safeJsonParse({})).toThrow(StorageDataError);
+      expect(() => safeJsonParse(123)).toThrow(MCPError);
+      expect(() => safeJsonParse(null)).toThrow(MCPError);
+      expect(() => safeJsonParse({})).toThrow(MCPError);
     });
 
     it('should throw error for strings exceeding maximum length', () => {
       const longString = '{"test":"' + 'a'.repeat(50001) + '"}';
       expect(() => safeJsonParse(longString)).toThrow(
-        new StorageDataError('JSON string exceeds maximum length')
+        new MCPError(ErrorCode.VALIDATION_ERROR, 'JSON string exceeds maximum length')
       );
     });
 
@@ -559,20 +559,20 @@ describe('Security Validation Utilities', () => {
       ];
 
       invalidJsonStrings.forEach(jsonString => {
-        expect(() => safeJsonParse(jsonString)).toThrow(StorageDataError);
+        expect(() => safeJsonParse(jsonString)).toThrow(MCPError);
       });
     });
 
     it('should validate parsed data structure', () => {
       const jsonStringWithInvalidData = '{"groups": [{"conditions": [{"field": "__proto__", "operator": "=", "value": "test"}], "operator": "&&"}]}';
 
-      expect(() => safeJsonParse(jsonStringWithInvalidData)).toThrow(StorageDataError);
+      expect(() => safeJsonParse(jsonStringWithInvalidData)).toThrow(MCPError);
     });
 
     it('should handle malformed JSON that could cause ReDoS', () => {
       const maliciousJson = '{"test":"' + '{'.repeat(1000) + '"}';
 
-      expect(() => safeJsonParse(maliciousJson)).toThrow(StorageDataError);
+      expect(() => safeJsonParse(maliciousJson)).toThrow(MCPError);
     });
 
     it('should round-trip with safeJsonStringify', () => {
@@ -725,7 +725,7 @@ describe('Security Validation Utilities', () => {
       ];
 
       dangerousInputs.forEach(input => {
-        expect(() => sanitizeString(input)).toThrow(StorageDataError);
+        expect(() => sanitizeString(input)).toThrow(MCPError);
       });
     });
 

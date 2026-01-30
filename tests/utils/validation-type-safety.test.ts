@@ -8,7 +8,7 @@ import {
   validateValue,
   validateFilterExpression,
 } from '../../src/utils/validation';
-import { StorageDataError } from '../../src/utils/storage-errors';
+import { MCPError } from '../../src/types/errors';
 import type { FilterExpression } from '../../src/types/filters';
 
 describe('Type Safety Validation Tests', () => {
@@ -19,27 +19,27 @@ describe('Type Safety Validation Tests', () => {
 
       // Before fix: this would unsafely cast to string[] | number[]
       // After fix: this should throw proper error
-      expect(() => validateValue(mixedArray)).toThrow(StorageDataError);
+      expect(() => validateValue(mixedArray)).toThrow(MCPError);
     });
 
     it('should safely handle arrays with null/undefined elements', () => {
       const arrayWithNull = [1, null, 2];
       const arrayWithUndefined = [1, undefined, 2];
 
-      expect(() => validateValue(arrayWithNull)).toThrow(StorageDataError);
-      expect(() => validateValue(arrayWithUndefined)).toThrow(StorageDataError);
+      expect(() => validateValue(arrayWithNull)).toThrow(MCPError);
+      expect(() => validateValue(arrayWithUndefined)).toThrow(MCPError);
     });
 
     it('should safely handle arrays with object elements', () => {
       const arrayOfObjects = [{}, { key: 'value' }];
 
-      expect(() => validateValue(arrayOfObjects)).toThrow(StorageDataError);
+      expect(() => validateValue(arrayOfObjects)).toThrow(MCPError);
     });
 
     it('should safely handle arrays with nested arrays', () => {
       const arrayOfArrays = [[1, 2], [3, 4]];
 
-      expect(() => validateValue(arrayOfArrays)).toThrow(StorageDataError);
+      expect(() => validateValue(arrayOfArrays)).toThrow(MCPError);
     });
   });
 
@@ -95,7 +95,7 @@ describe('Type Safety Validation Tests', () => {
 
       // Before fix: type assertion might bypass Array.isArray check
       // After fix: should properly reject non-array groups
-      expect(() => validateFilterExpression(arrayLikeObject as any)).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(arrayLikeObject as any)).toThrow(MCPError);
     });
 
     it('should safely handle objects where groups property is a string', () => {
@@ -104,7 +104,7 @@ describe('Type Safety Validation Tests', () => {
         toString: () => '{"groups": ["not", "an", "array"]}'
       };
 
-      expect(() => validateFilterExpression(invalidObject as any)).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(invalidObject as any)).toThrow(MCPError);
     });
 
     it('should safely handle objects with circular references', () => {

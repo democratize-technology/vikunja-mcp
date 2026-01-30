@@ -8,7 +8,7 @@ import {
   validateValue,
   validateFilterExpression,
 } from '../../src/utils/validation';
-import { StorageDataError } from '../../src/utils/storage-errors';
+import { MCPError } from '../../src/types/errors';
 import type { FilterExpression } from '../../src/types/filters';
 
 describe('Type Safety Verification Tests', () => {
@@ -16,7 +16,7 @@ describe('Type Safety Verification Tests', () => {
     it('should handle mixed-type arrays safely (was line 260 unsafe assertion)', () => {
       const mixedArray = [1, 'string', 2];
 
-      expect(() => validateValue(mixedArray)).toThrow(StorageDataError);
+      expect(() => validateValue(mixedArray)).toThrow(MCPError);
       expect(() => validateValue(mixedArray)).toThrow('Array elements must be all strings or all finite numbers, not mixed');
     });
 
@@ -24,14 +24,14 @@ describe('Type Safety Verification Tests', () => {
       const arrayWithNull = [1, null, 2];
       const arrayWithUndefined = [1, undefined, 2];
 
-      expect(() => validateValue(arrayWithNull)).toThrow(StorageDataError);
-      expect(() => validateValue(arrayWithUndefined)).toThrow(StorageDataError);
+      expect(() => validateValue(arrayWithNull)).toThrow(MCPError);
+      expect(() => validateValue(arrayWithUndefined)).toThrow(MCPError);
     });
 
     it('should handle arrays with object elements safely', () => {
       const arrayOfObjects = [{}, { key: 'value' }];
 
-      expect(() => validateValue(arrayOfObjects)).toThrow(StorageDataError);
+      expect(() => validateValue(arrayOfObjects)).toThrow(MCPError);
       expect(() => validateValue(arrayOfObjects)).toThrow('Array elements must be all strings or all finite numbers, not mixed');
     });
 
@@ -62,8 +62,8 @@ describe('Type Safety Verification Tests', () => {
       const arrayWithInfinity = [1, 2, Infinity];
       const arrayWithNaN = [1, 2, NaN];
 
-      expect(() => validateValue(arrayWithInfinity)).toThrow(StorageDataError);
-      expect(() => validateValue(arrayWithNaN)).toThrow(StorageDataError);
+      expect(() => validateValue(arrayWithInfinity)).toThrow(MCPError);
+      expect(() => validateValue(arrayWithNaN)).toThrow(MCPError);
     });
   });
 
@@ -73,7 +73,7 @@ describe('Type Safety Verification Tests', () => {
         groups: 'not an array'
       };
 
-      expect(() => validateFilterExpression(invalidObject)).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(invalidObject)).toThrow(MCPError);
       expect(() => validateFilterExpression(invalidObject)).toThrow('Invalid filter expression');
     });
 
@@ -86,7 +86,7 @@ describe('Type Safety Verification Tests', () => {
         }
       };
 
-      expect(() => validateFilterExpression(arrayLikeObject as any)).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(arrayLikeObject as any)).toThrow(MCPError);
     });
 
     it('should handle objects with missing groups property safely', () => {
@@ -94,12 +94,12 @@ describe('Type Safety Verification Tests', () => {
         operator: '&&'
       };
 
-      expect(() => validateFilterExpression(noGroupsObject as any)).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(noGroupsObject as any)).toThrow(MCPError);
     });
 
     it('should handle null expression safely', () => {
-      expect(() => validateFilterExpression(null)).toThrow(StorageDataError);
-      expect(() => validateFilterExpression(undefined)).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(null)).toThrow(MCPError);
+      expect(() => validateFilterExpression(undefined)).toThrow(MCPError);
     });
 
     it('should still accept valid filter expressions', () => {
@@ -213,7 +213,7 @@ describe('Type Safety Verification Tests', () => {
         }))
       };
 
-      expect(() => validateFilterExpression(deepExpression)).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(deepExpression)).toThrow(MCPError);
     });
 
     it('should handle expressions with many conditions safely', () => {
@@ -229,7 +229,7 @@ describe('Type Safety Verification Tests', () => {
         }]
       };
 
-      expect(() => validateFilterExpression(largeExpression)).toThrow(StorageDataError);
+      expect(() => validateFilterExpression(largeExpression)).toThrow(MCPError);
     });
   });
 });

@@ -16,7 +16,6 @@
 
 import { z } from 'zod';
 import type { FilterExpression, FilterField, FilterOperator, LogicalOperator } from '../types/filters';
-import { StorageDataError } from './storage-errors';
 import { MCPError, ErrorCode } from '../types/errors';
 
 /**
@@ -63,11 +62,11 @@ const LogicalOperatorSchema: z.ZodType<LogicalOperator> = z.enum(['&&', '||']);
  */
 export function sanitizeString(value: string): string {
   if (typeof value !== 'string') {
-    throw new StorageDataError('Value must be a string');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Value must be a string');
   }
 
   if (value.length > MAX_STRING_LENGTH) {
-    throw new StorageDataError(`String value exceeds maximum length of ${MAX_STRING_LENGTH}`);
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, `String value exceeds maximum length of ${MAX_STRING_LENGTH}`);
   }
 
   // Step 1: Check for dangerous HTML/JavaScript patterns and REJECT them (don't sanitize)
@@ -243,7 +242,7 @@ export function sanitizeString(value: string): string {
     // Reset regex lastIndex to avoid state issues with global flags
     pattern.lastIndex = 0;
     if (pattern.test(lowerValue)) {
-      throw new StorageDataError('String contains potentially dangerous content');
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'String contains potentially dangerous content');
     }
   }
 
@@ -280,13 +279,13 @@ export function sanitizeString(value: string): string {
  */
 export function validateField(field: string): FilterField {
   if (typeof field !== 'string') {
-    throw new StorageDataError('Field must be a string');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Field must be a string');
   }
 
   // Check for prototype pollution attempts first
   const pollutionPatterns = ['__proto__', 'constructor', 'prototype', '__defineGetter__', '__defineSetter__', '__lookupGetter__', '__lookupSetter__'];
   if (pollutionPatterns.includes(field)) {
-    throw new StorageDataError('Invalid field name: potential prototype pollution');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Invalid field name: potential prototype pollution');
   }
 
   try {
@@ -294,9 +293,9 @@ export function validateField(field: string): FilterField {
     return result;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new StorageDataError(`Invalid field: ${error.issues[0]?.message || 'Unknown validation error'}`);
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, `Invalid field: ${error.issues[0]?.message || 'Unknown validation error'}`);
     }
-    throw new StorageDataError('Invalid field: Validation failed');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Invalid field: Validation failed');
   }
 }
 
@@ -305,7 +304,7 @@ export function validateField(field: string): FilterField {
  */
 export function validateOperator(operator: string): FilterOperator {
   if (typeof operator !== 'string') {
-    throw new StorageDataError('Operator must be a string');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Operator must be a string');
   }
 
   try {
@@ -313,9 +312,9 @@ export function validateOperator(operator: string): FilterOperator {
     return result;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new StorageDataError(`Invalid operator: ${error.issues[0]?.message || 'Unknown validation error'}`);
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, `Invalid operator: ${error.issues[0]?.message || 'Unknown validation error'}`);
     }
-    throw new StorageDataError('Invalid operator: Validation failed');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Invalid operator: Validation failed');
   }
 }
 
@@ -324,7 +323,7 @@ export function validateOperator(operator: string): FilterOperator {
  */
 export function validateLogicalOperator(operator: string): LogicalOperator {
   if (typeof operator !== 'string') {
-    throw new StorageDataError('Logical operator must be a string');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Logical operator must be a string');
   }
 
   try {
@@ -332,9 +331,9 @@ export function validateLogicalOperator(operator: string): LogicalOperator {
     return result;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new StorageDataError(`Invalid logical operator: ${error.issues[0]?.message || 'Unknown validation error'}`);
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, `Invalid logical operator: ${error.issues[0]?.message || 'Unknown validation error'}`);
     }
-    throw new StorageDataError('Invalid logical operator: Validation failed');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Invalid logical operator: Validation failed');
   }
 }
 
@@ -344,7 +343,7 @@ export function validateLogicalOperator(operator: string): LogicalOperator {
 export function validateValue(value: unknown): string | number | boolean | string[] | number[] {
   // Handle null/undefined
   if (value === null || value === undefined) {
-    throw new StorageDataError('Invalid value type');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Invalid value type');
   }
 
   // Handle string values
@@ -360,7 +359,7 @@ export function validateValue(value: unknown): string | number | boolean | strin
   // Handle number values with infinite/NaN checks
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) {
-      throw new StorageDataError('Numeric values must be finite, not infinite or NaN');
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Numeric values must be finite, not infinite or NaN');
     }
     return value;
   }
@@ -368,7 +367,7 @@ export function validateValue(value: unknown): string | number | boolean | strin
   // Handle array values
   if (Array.isArray(value)) {
     if (value.length > 100) {
-      throw new StorageDataError('Array values cannot exceed 100 elements');
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Array values cannot exceed 100 elements');
     }
 
     if (value.length === 0) {
@@ -378,7 +377,7 @@ export function validateValue(value: unknown): string | number | boolean | strin
     // Check array type consistency with proper type guards
     const firstElementType = typeof value[0];
     if (firstElementType !== 'string' && firstElementType !== 'number') {
-      throw new StorageDataError('Array elements must be all strings or all finite numbers, not mixed');
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Array elements must be all strings or all finite numbers, not mixed');
     }
 
     // Validate all elements are of the same type and valid
@@ -388,24 +387,24 @@ export function validateValue(value: unknown): string | number | boolean | strin
 
       // Additional safety: reject null/undefined/object elements
       if (element === null || element === undefined || typeof element === 'object') {
-        throw new StorageDataError('Array elements must be strings, numbers, or booleans, not objects');
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Array elements must be strings, numbers, or booleans, not objects');
       }
 
       if (elementType !== firstElementType) {
-        throw new StorageDataError('Array elements must be all strings or all finite numbers, not mixed');
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Array elements must be all strings or all finite numbers, not mixed');
       }
 
       if (firstElementType === 'number') {
         // Type-safe numeric validation without casting
         if (typeof element !== 'number' || !Number.isFinite(element)) {
-          throw new StorageDataError('Array numeric values must be finite, not infinite or NaN');
+          throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Array numeric values must be finite, not infinite or NaN');
         }
       }
 
       if (firstElementType === 'string') {
         // Type-safe string validation with comprehensive sanitization
         if (typeof element !== 'string') {
-          throw new StorageDataError('Array string elements must be strings');
+          throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Array string elements must be strings');
         }
 
         // Apply comprehensive input sanitization to all string array elements
@@ -413,7 +412,7 @@ export function validateValue(value: unknown): string | number | boolean | strin
         try {
           (value as string[])[i] = sanitizeString(element);
         } catch (sanitizationError) {
-          throw new StorageDataError(`Array element ${i} contains potentially dangerous content: ${sanitizationError instanceof Error ? sanitizationError.message : 'Unknown error'}`);
+          throw new MCPError(ErrorCode.VALIDATION_ERROR, `Array element ${i} contains potentially dangerous content: ${sanitizationError instanceof Error ? sanitizationError.message : 'Unknown error'}`);
         }
       }
     }
@@ -427,12 +426,12 @@ export function validateValue(value: unknown): string | number | boolean | strin
       return value as number[];
     } else {
       // This should never happen due to earlier validation
-      throw new StorageDataError('Array contains unsupported element types');
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Array contains unsupported element types');
     }
   }
 
   // Reject all other types
-  throw new StorageDataError('Invalid value type');
+  throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Invalid value type');
 }
 
 /**
@@ -464,9 +463,9 @@ export function validateCondition(condition: unknown): {
     return result;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new StorageDataError(`Invalid condition: ${error.issues[0]?.message || 'Condition validation failed'}`);
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, `Invalid condition: ${error.issues[0]?.message || 'Condition validation failed'}`);
     }
-    throw new StorageDataError('Invalid condition: Validation failed');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Invalid condition: Validation failed');
   }
 }
 
@@ -505,7 +504,7 @@ export function validateFilterExpression(expression: unknown): FilterExpression 
 
     // Additional runtime checks for edge cases Zod might not catch
     if (result.groups.length === 0) {
-      throw new StorageDataError('Filter expression must have at least one group');
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Filter expression must have at least one group');
     }
 
     // Validate each condition individually for additional safety
@@ -515,14 +514,14 @@ export function validateFilterExpression(expression: unknown): FilterExpression 
 
       // Type guard to ensure group is defined
       if (!group) {
-        throw new StorageDataError(`Group ${i} is undefined`);
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, `Group ${i} is undefined`);
       }
 
       // Validate operator with stricter validation
       try {
         validateLogicalOperator(group.operator);
       } catch (error) {
-        throw new StorageDataError(`Group ${i} has invalid operator: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new MCPError(ErrorCode.VALIDATION_ERROR, `Group ${i} has invalid operator: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Validate each condition individually
@@ -531,7 +530,7 @@ export function validateFilterExpression(expression: unknown): FilterExpression 
         try {
           validateCondition(condition);
         } catch (error) {
-          throw new StorageDataError(`Group ${i}, condition ${j}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          throw new MCPError(ErrorCode.VALIDATION_ERROR, `Group ${i}, condition ${j}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
         totalConditions++;
       }
@@ -539,7 +538,7 @@ export function validateFilterExpression(expression: unknown): FilterExpression 
 
     // Final check for total conditions
     if (totalConditions > MAX_CONDITIONS) {
-      throw new StorageDataError(`Filter expression cannot exceed ${MAX_CONDITIONS} total conditions`);
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, `Filter expression cannot exceed ${MAX_CONDITIONS} total conditions`);
     }
 
     // Type-safe return - Zod has validated the structure
@@ -551,23 +550,23 @@ export function validateFilterExpression(expression: unknown): FilterExpression 
       if (firstIssue) {
         // Handle empty groups array
         if (firstIssue.code === 'too_small' && firstIssue.path.length > 0 && firstIssue.path[firstIssue.path.length - 1] === 'groups') {
-          throw new StorageDataError('Filter expression must have at least one group');
+          throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Filter expression must have at least one group');
         }
         // Handle exceed maximum nesting depth or array size
         if (firstIssue.code === 'too_big') {
           if (firstIssue.message.includes('Array must contain at most 10 element(s)')) {
-            throw new StorageDataError('Filter expression exceeds maximum nesting depth of 10');
+            throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Filter expression exceeds maximum nesting depth of 10');
           }
           if (firstIssue.message.includes('conditions') || firstIssue.message.includes('50') || firstIssue.message.includes('Array must contain at most 50')) {
-            throw new StorageDataError('Filter expression cannot exceed 50 total conditions');
+            throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Filter expression cannot exceed 50 total conditions');
           }
           // Generic too_big error for filter expressions
-          throw new StorageDataError('Filter expression exceeds maximum nesting depth of 10');
+          throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Filter expression exceeds maximum nesting depth of 10');
         }
 
         // Handle "Required" errors which might indicate missing required fields in deeply nested structures
         if (firstIssue.code === 'invalid_type' && firstIssue.message === 'Required') {
-          throw new StorageDataError('Filter expression exceeds maximum nesting depth of 10');
+          throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Filter expression exceeds maximum nesting depth of 10');
         }
 
         // Check if any issue mentions conditions or 50
@@ -576,17 +575,17 @@ export function validateFilterExpression(expression: unknown): FilterExpression 
           issue.message.includes('50') ||
           issue.message.includes('Array must contain at most 50')
         )) {
-          throw new StorageDataError('Filter expression cannot exceed 50 total conditions');
+          throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Filter expression cannot exceed 50 total conditions');
         }
       }
 
       const errorDetails = error.issues.map(issue => issue.message).join('; ');
-      throw new StorageDataError(`Invalid filter expression: ${errorDetails}`);
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, `Invalid filter expression: ${errorDetails}`);
     }
-    if (error instanceof StorageDataError) {
-      throw error; // Re-throw our own validation errors
+    if (error instanceof MCPError) {
+      throw error; // Re-throw MCPError as-is
     }
-    throw new StorageDataError(`Filter expression validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, `Filter expression validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -613,10 +612,10 @@ export function safeJsonStringify(obj: unknown): string {
     const jsonString = JSON.stringify(sanitizedObj);
     return jsonString; // No need to sanitize the JSON string itself since we sanitized values
   } catch (error) {
-    if (error instanceof StorageDataError) {
-      throw error; // Re-throw StorageDataError as-is
+    if (error instanceof MCPError) {
+      throw error; // Re-throw MCPError as-is
     }
-    throw new StorageDataError(`Failed to stringify object: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, `Failed to stringify object: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -626,17 +625,17 @@ export function safeJsonStringify(obj: unknown): string {
  */
 export function safeJsonParse(jsonString: string): FilterExpression {
   if (typeof jsonString !== 'string') {
-    throw new StorageDataError('JSON string must be a string');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'JSON string must be a string');
   }
 
   // Check for maximum length
   if (jsonString.length > 50000) {
-    throw new StorageDataError('JSON string exceeds maximum length');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'JSON string exceeds maximum length');
   }
 
   // Check for prototype pollution patterns before parsing
   if (containsPrototypePollution(jsonString)) {
-    throw new StorageDataError('JSON contains potentially dangerous prototype pollution patterns');
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'JSON contains potentially dangerous prototype pollution patterns');
   }
 
   try {
@@ -649,12 +648,12 @@ export function safeJsonParse(jsonString: string): FilterExpression {
     return validateFilterExpression(safeObj);
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new StorageDataError(`Invalid JSON: ${error.message}`);
+      throw new MCPError(ErrorCode.VALIDATION_ERROR, `Invalid JSON: ${error.message}`);
     }
-    if (error instanceof StorageDataError) {
+    if (error instanceof MCPError) {
       throw error; // Re-throw our validation errors
     }
-    throw new StorageDataError(`Failed to parse JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new MCPError(ErrorCode.VALIDATION_ERROR, `Failed to parse JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
