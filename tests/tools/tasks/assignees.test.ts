@@ -59,6 +59,27 @@ describe('Assignee operations', () => {
       expect(markdown).toContain('Users assigned to task successfully');
     });
 
+    it('should warn when assignees are not persisted (silent API failure)', async () => {
+      // Simulate the Vikunja API silently not persisting assignees
+      const mockTaskNoAssignees = {
+        id: 123,
+        title: 'Test Task',
+        assignees: [], // API returned success but assignees didn't persist
+      };
+
+      mockClient.tasks.bulkAssignUsersToTask.mockResolvedValue({});
+      mockClient.tasks.getTask.mockResolvedValue(mockTaskNoAssignees);
+
+      const result = await assignUsers({
+        id: 123,
+        assignees: [1, 2],
+      });
+
+      const markdown = result.content[0].text;
+      expect(markdown).toContain('not persisted');
+      expect(markdown).toContain('JWT authentication');
+    });
+
     it('should throw error when task id is missing', async () => {
       await expect(assignUsers({ assignees: [1, 2] })).rejects.toThrow(
         'Task id is required for assign operation'

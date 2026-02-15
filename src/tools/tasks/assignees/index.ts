@@ -21,11 +21,19 @@ export async function assignUsers(args: {
     // Perform the assignment operation
     await AssigneeOperationsService.assignUsersToTask(taskId, assigneeIds);
 
+    // Verify assignees actually persisted (catches silent API failures)
+    const missingIds = await AssigneeOperationsService.verifyAssignees(taskId, assigneeIds);
+
     // Fetch updated task data
     const task = await AssigneeOperationsService.fetchTaskWithAssignees(taskId);
 
-    // Format and return response
+    // Format and return response, with warning if verification failed
     const response = AssigneeResponseFormatter.formatAssignResponse(task);
+    if (missingIds.length > 0) {
+      response.success = false;
+      response.message = `Assignee operation reported success, but user(s) [${missingIds.join(', ')}] were not persisted. ` +
+        `This is a known Vikunja API limitation with API token auth. Try using JWT authentication instead.`;
+    }
     return AssigneeResponseFormatter.formatMcpResponse(response);
 
   } catch (error) {
