@@ -2,14 +2,13 @@
  * Label operations for tasks
  */
 
-import type { StandardTaskResponse, MinimalTask } from '../../types';
-import type { SimpleResponse } from '../../utils/simple-response';
+import type { MinimalTask } from '../../types';
 import { MCPError, ErrorCode } from '../../types';
 import { getClientFromContext } from '../../client';
 import { isAuthenticationError } from '../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../utils/retry';
 import { validateId } from './validation';
-import { formatAorpAsMarkdown } from '../../utils/response-factory';
+import { createSimpleResponse, formatAorpAsMarkdown } from '../../utils/response-factory';
 
 /**
  * Add labels to a task
@@ -67,22 +66,18 @@ export async function applyLabels(args: {
     // Fetch the updated task to show current labels
     const task = await client.tasks.getTask(args.id);
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'update',
-      message: `Label${labelIds.length > 1 ? 's' : ''} applied to task successfully`,
-      task: task,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        affectedFields: ['labels'],
-      },
-    };
+    const response = createSimpleResponse(
+      'apply-label',
+      `Label${labelIds.length > 1 ? 's' : ''} applied to task successfully`,
+      { task },
+      { metadata: { affectedFields: ['labels'] } }
+    );
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as unknown as SimpleResponse),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
@@ -143,22 +138,18 @@ export async function removeLabels(args: {
     // Fetch the updated task to show current labels
     const task = await client.tasks.getTask(args.id);
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'update',
-      message: `Label${labelIds.length > 1 ? 's' : ''} removed from task successfully`,
-      task: task,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        affectedFields: ['labels'],
-      },
-    };
+    const response = createSimpleResponse(
+      'remove-label',
+      `Label${labelIds.length > 1 ? 's' : ''} removed from task successfully`,
+      { task },
+      { metadata: { affectedFields: ['labels'] } }
+    );
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as unknown as SimpleResponse),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
@@ -197,22 +188,18 @@ export async function listTaskLabels(args: {
       title: task.title,
     };
 
-    const response: StandardTaskResponse = {
-      success: true,
-      operation: 'get',
-      message: `Task has ${labels.length} label(s)`,
-      task: { ...minimalTask, labels: labels },
-      metadata: {
-        timestamp: new Date().toISOString(),
-        count: labels.length,
-      },
-    };
+    const response = createSimpleResponse(
+      'list-labels',
+      `Task has ${labels.length} label(s)`,
+      { task: { ...minimalTask, labels: labels } },
+      { metadata: { count: labels.length } }
+    );
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: formatAorpAsMarkdown(response as unknown as SimpleResponse),
+          text: formatAorpAsMarkdown(response),
         },
       ],
     };
