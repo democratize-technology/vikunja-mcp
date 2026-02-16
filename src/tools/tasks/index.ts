@@ -25,6 +25,7 @@ import { assignUsers, unassignUsers, listAssignees } from './assignees';
 import { handleComment } from './comments';
 import { addReminder, removeReminder, listReminders } from './reminders';
 import { applyLabels, removeLabels, listTaskLabels } from './labels';
+import { listBuckets, assignBucket } from './buckets';
 
 
 /**
@@ -146,6 +147,8 @@ export function registerTasksTool(
         'apply-label',
         'remove-label',
         'list-labels',
+        'list-buckets',
+        'assign-bucket',
       ]),
       // Task creation/update fields
       title: z.string().optional(),
@@ -193,6 +196,9 @@ export function registerTasksTool(
       // Reminder fields
       reminderDate: z.string().optional(),
       reminderId: z.number().optional(),
+      // Bucket fields
+      viewId: z.number().optional(),
+      bucketId: z.number().optional(),
       // Add relation schema
       ...relationSchema,
       // Session ID for AORP response tracking
@@ -286,6 +292,13 @@ export function registerTasksTool(
 
           case 'list-labels':
             return listTaskLabels(args as Parameters<typeof listTaskLabels>[0]);
+
+          // Handle bucket operations
+          case 'list-buckets':
+            return listBuckets(args as Parameters<typeof listBuckets>[0], authManager);
+
+          case 'assign-bucket':
+            return assignBucket(args as Parameters<typeof assignBucket>[0], authManager);
 
           default:
             throw new MCPError(
