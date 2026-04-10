@@ -61,7 +61,7 @@ export function registerTemplatesTool(server: McpServer, authManager: AuthManage
       // Instantiation fields
       projectName: z.string().optional(),
       parentProjectId: z.number().optional(),
-      variables: z.record(z.string()).optional(),
+      variables: z.record(z.string(), z.string()).optional(),
     },
     async (args) => {
       try {

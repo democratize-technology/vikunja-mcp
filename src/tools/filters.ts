@@ -124,7 +124,7 @@ export function registerFiltersTool(server: McpServer, authManager: AuthManager,
     'Manage and build advanced filters for tasks and projects with validation',
     {
       action: z.enum(['list', 'get', 'create', 'update', 'delete', 'build', 'validate']),
-      parameters: z.record(z.unknown()),
+      parameters: z.record(z.string(), z.unknown()),
     },
     async ({ action, parameters }) => {
       logger.info(`Executing vikunja_filters action: ${action}`);
