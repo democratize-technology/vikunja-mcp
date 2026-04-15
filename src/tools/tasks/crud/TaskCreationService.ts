@@ -21,6 +21,7 @@ export interface CreateTaskArgs {
   title?: string;
   description?: string;
   dueDate?: string;
+  startDate?: string;
   priority?: number;
   labels?: number[];
   assignees?: number[];
@@ -63,6 +64,9 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
     if (args.dueDate) {
       validateDateString(args.dueDate, 'dueDate');
     }
+    if (args.startDate) {
+      validateDateString(args.startDate, 'startDate');
+    }
 
     // Validate assignee IDs upfront
     if (args.assignees && args.assignees.length > 0) {
@@ -80,6 +84,7 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
     // Add optional fields with sanitized values
     if (sanitizedDescription !== undefined) newTask.description = sanitizedDescription;
     if (args.dueDate !== undefined) newTask.due_date = args.dueDate;
+    if (args.startDate !== undefined) newTask.start_date = args.startDate;
     if (args.priority !== undefined) newTask.priority = args.priority;
 
     // Handle repeat configuration
