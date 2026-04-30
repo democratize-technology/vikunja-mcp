@@ -154,12 +154,13 @@ class SecureErrorHandler {
       );
     }
 
-    // For status code errors, convert non-Error objects to "Unknown error"
+    // Only real Error instances contribute their message to the output. Any
+    // other shape (plain strings, objects, null, etc.) becomes "Unknown
+    // error" so that arbitrary upstream API payloads never leak into the
+    // user-visible MCP error surface.
     let message: string;
     if (error instanceof Error) {
       message = error.message;
-    } else if (typeof error === 'string') {
-      message = error;
     } else {
       message = 'Unknown error';
     }
@@ -181,19 +182,13 @@ class SecureErrorHandler {
       message = error.message;
     } else if (typeof error === 'string') {
       message = error;
-    } else if (error === null || error === undefined) {
-      message = 'Unknown error';
-    } else if (typeof error === 'object' && Object.prototype.hasOwnProperty.call(error, 'message')) {
-      // Plain objects with message property
-      message = (error as { message: unknown }).message as string;
-    } else if (typeof error === 'object') {
-      // Plain objects without message property become "Unknown error"
-      message = 'Unknown error';
     } else if (typeof error === 'number' || typeof error === 'boolean') {
-      // Handle primitives explicitly
       message = String(error);
     } else {
-      // Fallback for symbol, bigint, etc.
+      // Plain objects (even those with a message property), null, undefined,
+      // symbols, and bigints all become "Unknown error" here. Extracting
+      // .message from untrusted plain objects would let arbitrary upstream
+      // payloads into user-visible MCP errors.
       message = 'Unknown error';
     }
 

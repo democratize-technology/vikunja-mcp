@@ -121,10 +121,22 @@ describe('Error Handler Utilities', () => {
     it('should handle non-Error objects', () => {
       const error = { status: 'failed', reason: 'timeout' };
       const result = transformApiError(error, 'Updating task');
-      
+
       expect(result).toBeInstanceOf(MCPError);
       expect(result.code).toBe(ErrorCode.API_ERROR);
       expect(result.message).toBe('Updating task: Unknown error');
+    });
+
+    it('should not extract .message from plain objects', () => {
+      // Plain objects are untrusted: a thrown {message: ...} could be
+      // any upstream payload, not a real Error. Surfacing its .message
+      // would leak that payload into the user-visible MCP error.
+      const error = { message: 'raw upstream payload', extra: 'xyz' };
+      const result = transformApiError(error, 'Fetching projects');
+
+      expect(result).toBeInstanceOf(MCPError);
+      expect(result.code).toBe(ErrorCode.API_ERROR);
+      expect(result.message).toBe('Fetching projects: Unknown error');
     });
 
     it('should handle primitive error values', () => {
