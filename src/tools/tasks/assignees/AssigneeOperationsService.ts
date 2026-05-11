@@ -107,5 +107,24 @@ export const AssigneeOperationsService = {
       title: task.title,
       assignees: assignees,
     };
+  },
+
+  /**
+   * Verify that requested assignees were actually persisted by re-fetching the task.
+   * Returns the IDs that were requested but are missing from the task.
+   * This catches the known Vikunja API issue where assignee operations return
+   * success but don't persist when using API token auth.
+   */
+  async verifyAssignees(taskId: number, requestedIds: number[]): Promise<number[]> {
+    try {
+      const task = await AssigneeOperationsService.fetchTaskWithAssignees(taskId);
+      const persistedIds = new Set(
+        AssigneeOperationsService.extractAssignees(task).map((a: Assignee) => a.id)
+      );
+      return requestedIds.filter(id => !persistedIds.has(id));
+    } catch {
+      // If we can't verify, don't block — return empty (assume OK)
+      return [];
+    }
   }
 };

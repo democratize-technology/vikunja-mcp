@@ -124,9 +124,26 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
     // Fetch the complete task with labels and assignees
     const completeTask = createdTask.id ? await client.tasks.getTask(createdTask.id) : createdTask;
 
+    // Verify assignees persisted (catches silent Vikunja API failures with API token auth)
+    let assigneeWarning: string | undefined;
+    if (args.assignees && args.assignees.length > 0 && completeTask.id) {
+      const persistedIds = new Set(
+        (completeTask.assignees || []).map((a: { id?: number }) => a.id)
+      );
+      const missingIds = args.assignees.filter(id => !persistedIds.has(id));
+      if (missingIds.length > 0) {
+        assigneeWarning = `Warning: Assignee(s) [${missingIds.join(', ')}] were not persisted. ` +
+          `This is a known Vikunja API limitation with API token auth. Try using JWT authentication instead.`;
+      }
+    }
+
+    const taskMessage = assigneeWarning
+      ? `Task created, but assignees may not have been saved. ${assigneeWarning}`
+      : 'Task created successfully';
+
     const response = createTaskResponse(
       'create-task',
-      'Task created successfully',
+      taskMessage,
       { task: completeTask },
       {
         timestamp: new Date().toISOString(),
