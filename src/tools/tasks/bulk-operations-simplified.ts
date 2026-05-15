@@ -100,6 +100,15 @@ export async function bulkUpdateTasks(args: BulkUpdateArgs): Promise<{ content: 
 
     try {
       if (!args.field) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Field required');
+
+      // The native Vikunja bulk endpoint truncates fields it does not receive
+      // (description, priority, ...) when moving tasks across projects, which
+      // silently corrupts task data. Route project_id moves through the
+      // field-preserving per-task path (getTask + merge + updateTask) instead.
+      if (args.field === 'project_id') {
+        return await updateWithFallback();
+      }
+
       const bulkOp = { task_ids: taskIds, field: args.field, value: args.value };
       if (args.field === 'repeat_mode' && typeof args.value === 'string') {
         bulkOp.value = REPEAT_MODE_MAP[args.value] ?? args.value;
