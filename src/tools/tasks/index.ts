@@ -25,6 +25,7 @@ import { assignUsers, unassignUsers, listAssignees } from './assignees';
 import { handleComment } from './comments';
 import { addReminder, removeReminder, listReminders } from './reminders';
 import { applyLabels, removeLabels, listTaskLabels } from './labels';
+import { setTaskBucket } from './buckets';
 
 
 /**
@@ -121,7 +122,7 @@ export function registerTasksTool(
 ): void {
   server.tool(
     'vikunja_tasks',
-    'Manage tasks with comprehensive operations (create, update, delete, list, assign, attach files, comment, bulk operations)',
+    'Manage tasks with comprehensive operations (create, update, delete, list, assign, attach files, comment, bulk operations, set Kanban bucket)',
     {
       subcommand: z.enum([
         'create',
@@ -146,6 +147,7 @@ export function registerTasksTool(
         'apply-label',
         'remove-label',
         'list-labels',
+        'set-bucket',
       ]),
       // Task creation/update fields
       title: z.string().optional(),
@@ -155,6 +157,9 @@ export function registerTasksTool(
       priority: z.number().min(0).max(5).optional(),
       labels: z.array(z.number()).optional(),
       assignees: z.array(z.number()).optional(),
+      // Kanban bucket fields (set-bucket subcommand)
+      bucketId: z.number().optional(),
+      viewId: z.number().optional(),
       // Recurring task fields
       repeatAfter: z.number().min(0).optional(),
       repeatMode: z.enum(['day', 'week', 'month', 'year']).optional(),
@@ -286,6 +291,9 @@ export function registerTasksTool(
 
           case 'list-labels':
             return listTaskLabels(args as Parameters<typeof listTaskLabels>[0]);
+
+          case 'set-bucket':
+            return setTaskBucket(args as Parameters<typeof setTaskBucket>[0], authManager);
 
           default:
             throw new MCPError(

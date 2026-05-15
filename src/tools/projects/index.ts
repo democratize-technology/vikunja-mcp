@@ -53,6 +53,8 @@ import {
   type AuthShareArgs
 } from './sharing';
 
+import { listBuckets, type ListBucketsArgs } from './buckets';
+
 /**
  * Legacy single-tool interface for backward compatibility
  * Registers a single tool with all subcommands like the original implementation
@@ -64,11 +66,12 @@ export function registerProjectsTool(
 ): void {
   server.tool(
     'vikunja_projects',
-    'Manage projects with full CRUD operations, hierarchy management, and sharing capabilities',
+    'Manage projects with full CRUD operations, hierarchy management, sharing capabilities, and Kanban bucket listing',
     {
       subcommand: z.enum(['list', 'get', 'create', 'update', 'delete', 'archive', 'unarchive',
         'get-children', 'get-tree', 'get-breadcrumb', 'move',
-        'create-share', 'list-shares', 'get-share', 'delete-share', 'auth-share'
+        'create-share', 'list-shares', 'get-share', 'delete-share', 'auth-share',
+        'list-buckets'
       ]),
       // CRUD arguments
       id: z.number().positive().optional(),
@@ -83,6 +86,8 @@ export function registerProjectsTool(
       // Hierarchy arguments
       maxDepth: z.number().min(1).max(20).optional(),
       includeArchived: z.boolean().optional(),
+      // Kanban bucket arguments (list-buckets subcommand)
+      viewId: z.number().positive().optional(),
       // Sharing arguments
       projectId: z.number().positive().optional(),
       shareId: z.string().optional(),
@@ -218,6 +223,14 @@ export function registerProjectsTool(
             if (args.password !== undefined) authShareArgs.password = args.password;
             return await authProjectShare(authShareArgs);
           }
+
+          // Kanban bucket operations
+          case 'list-buckets':
+            if (!args.id) {
+              throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Project ID is required for list-buckets operation');
+            }
+            validateId(args.id, 'id');
+            return await listBuckets(args as ListBucketsArgs, authManager);
 
           default:
             throw new MCPError(ErrorCode.VALIDATION_ERROR, `Unknown subcommand: ${String(args.subcommand)}`);
