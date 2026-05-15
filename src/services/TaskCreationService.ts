@@ -2,6 +2,7 @@ import { logger } from '../utils/logger';
 import type { TaskCreationData } from '../types';
 import { MCPError, ErrorCode } from '../types';
 import { isAuthenticationError } from '../utils/auth-error-handler';
+import { setTaskLabels } from '../utils/label-bulk';
 import type { Task, Label, User } from 'node-vikunja';
 import type { TypedVikunjaClient } from '../types/node-vikunja-extended';
 import type { ImportedTask } from '../parsers/InputParserFactory';
@@ -267,9 +268,7 @@ export class TaskCreationService {
     if (labelIds.length > 0 && createdTask.id) {
       try {
         // Try to update labels
-        const updateResult = await client.tasks.updateTaskLabels(createdTask.id, {
-          label_ids: labelIds,
-        });
+        await setTaskLabels(client, createdTask.id, labelIds);
 
         // Verify the labels were actually assigned (API tokens may silently fail)
         const labelsActuallyAssigned = await this.verifyLabelAssignment(client, createdTask.id, labelIds);
@@ -280,7 +279,6 @@ export class TaskCreationService {
             taskId: createdTask.id,
             labelIds,
             labelNames: task.labels,
-            updateResult,
           });
           warnings.push(`Labels specified but not assigned (API token limitation). Consider using JWT authentication for label support.`);
         } else {
