@@ -86,8 +86,10 @@ export function registerProjectsTool(
       // Hierarchy arguments
       maxDepth: z.number().min(1).max(20).optional(),
       includeArchived: z.boolean().optional(),
-      // Kanban bucket arguments (list-buckets subcommand)
-      viewId: z.number().positive().optional(),
+      // Kanban bucket arguments (list-buckets subcommand).
+      // z.coerce tolerates MCP clients whose cached tool schema predates
+      // this param and therefore send it as a string over JSON-RPC.
+      viewId: z.coerce.number().positive().optional(),
       // Sharing arguments
       projectId: z.number().positive().optional(),
       shareId: z.string().optional(),

@@ -157,9 +157,11 @@ export function registerTasksTool(
       priority: z.number().min(0).max(5).optional(),
       labels: z.array(z.number()).optional(),
       assignees: z.array(z.number()).optional(),
-      // Kanban bucket fields (set-bucket subcommand)
-      bucketId: z.number().optional(),
-      viewId: z.number().optional(),
+      // Kanban bucket fields (set-bucket subcommand).
+      // z.coerce tolerates MCP clients whose cached tool schema predates
+      // these params and therefore send them as strings over JSON-RPC.
+      bucketId: z.coerce.number().optional(),
+      viewId: z.coerce.number().optional(),
       // Recurring task fields
       repeatAfter: z.number().min(0).optional(),
       repeatMode: z.enum(['day', 'week', 'month', 'year']).optional(),
