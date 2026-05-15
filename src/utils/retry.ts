@@ -124,14 +124,18 @@ export async function withRetry<T>(
   options: RetryOptions = {}
 ): Promise<T> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
+  const maxRetries = opts.maxRetries ?? 3;
   let lastError: unknown;
-  let delay = opts.initialDelay || 1000;
+  let delay = opts.initialDelay ?? 1000;
 
-  for (let attempt = 0; attempt <= (opts.maxRetries || 3); attempt++) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      // Use circuit breaker for the operation
-      const breaker = createCircuitBreaker(operation, 'anonymous', opts);
-      return await breaker.fire() as Promise<T>;
+      // Execute the operation directly. It must NOT be wrapped in a
+      // name-cached circuit breaker here: opossum binds the action at
+      // construction time, so a breaker reused under a fixed name re-runs
+      // whichever closure reached it first instead of this call's
+      // operation -- silently acting on the wrong task/label/assignee.
+      return await operation();
     } catch (error) {
       lastError = error;
 
@@ -141,16 +145,14 @@ export async function withRetry<T>(
         : isRetryableError(error as Error);
 
       // If this is the last attempt or error is not retryable, throw
-      if (attempt === (opts.maxRetries || 3) || !shouldRetry) {
+      if (attempt === maxRetries || !shouldRetry) {
         throw error;
       }
 
-      // Log retry attempt
-      logger.debug(`Retry attempt ${attempt + 1}/${opts.maxRetries || 3} after ${delay}ms`);
-
-      // Wait before retrying with exponential backoff
+      // Log and wait before retrying with exponential backoff
+      logger.debug(`Retrying operation after ${delay}ms`);
       await new Promise(resolve => setTimeout(resolve, delay));
-      delay = Math.min(delay * (opts.backoffFactor || 2), opts.maxDelay || 30000);
+      delay = Math.min(delay * (opts.backoffFactor ?? 2), opts.maxDelay ?? 30000);
     }
   }
 

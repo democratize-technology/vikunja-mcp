@@ -9,6 +9,7 @@ import type { Task, VikunjaClient } from 'node-vikunja';
 import { validateDateString, validateId, convertRepeatConfiguration } from '../validation';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { RETRY_CONFIG } from '../../../utils/retry';
+import { setTaskLabels } from '../../../utils/label-bulk';
 import { transformApiError, handleFetchError, handleStatusCodeError } from '../../../utils/error-handler';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { createTaskResponse } from './TaskResponseFormatter';
@@ -199,9 +200,7 @@ function buildUpdateData(currentTask: Task, args: UpdateTaskArgs): Task {
  */
 async function updateTaskLabels(client: VikunjaClient, taskId: number, labelIds: number[]): Promise<void> {
   try {
-    await client.tasks.updateTaskLabels(taskId, {
-      label_ids: labelIds,
-    });
+    await setTaskLabels(client, taskId, labelIds);
   } catch (labelError) {
     // Check if it's an auth error
     if (isAuthenticationError(labelError)) {
