@@ -29,16 +29,18 @@ describe('Security Validation Utilities', () => {
       expect(result).toBe('This is a valid string');
     });
 
-    it('should escape HTML special characters (when not XSS)', () => {
-      const testCases = [
-        { input: 'Hello <world>', expected: 'Hello &lt;world&gt;' },
-        { input: 'Test "quoted" string', expected: 'Test &quot;quoted&quot; string' },
-        { input: "Test 'single' quotes", expected: 'Test &#x27;single&#x27; quotes' },
-        { input: 'path/to/file', expected: 'path&#x2F;to&#x2F;file' }
+    it('should not HTML-escape special characters (Vikunja owns rendering)', () => {
+      const passthrough = [
+        'Hello <world>',
+        'Test "quoted" string',
+        "Test 'single' quotes",
+        'fix src/utils/validation.ts',
+        'key=value & other=thing',
+        'use `backticks` and C:\\paths',
       ];
 
-      testCases.forEach(({ input, expected }) => {
-        expect(sanitizeString(input)).toBe(expected);
+      passthrough.forEach((input) => {
+        expect(sanitizeString(input)).toBe(input);
       });
     });
 
@@ -729,14 +731,10 @@ describe('Security Validation Utilities', () => {
       });
     });
 
-    it('should escape safe HTML content', () => {
-      // Test that safe HTML tags are escaped rather than stripped
+    it('should pass safe HTML tags through unescaped', () => {
+      // Vikunja sanitizes description HTML itself; the wrapper does not escape.
       const safeInput = '<b>Bold text</b><em>Emphasis</em>';
-      const result = sanitizeString(safeInput);
-      // HTML entities should be escaped
-      expect(result).toContain('&lt;b&gt;');
-      expect(result).toContain('&lt;em&gt;');
-      expect(typeof result).toBe('string');
+      expect(sanitizeString(safeInput)).toBe(safeInput);
     });
   });
 });

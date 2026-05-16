@@ -8,9 +8,14 @@
  * blocklisting them previously rejected legitimate content (file paths, URLs,
  * prose containing words like "select"/"update", "#", "--", "constructor").
  *
+ * It does NOT HTML-escape values: these strings are JSON fields for the
+ * Vikunja API, not HTML this wrapper renders. Vikunja shows the task title
+ * as plain text (escaping displayed a literal "&#x2F;") and sanitizes the
+ * description's HTML itself, so escaping here only corrupted content.
+ *
  * What it still does:
- * - HTML-entity escaping of values (the Vikunja description field is HTML)
  * - Rejection of unambiguous <script>/<iframe> HTML injection
+ * - Unicode NFC normalization
  * - Stripping of zero-width / invisible Unicode used for spoofing
  * - Prototype-pollution-safe JSON parsing/stringifying for filter expressions
  */
@@ -63,8 +68,11 @@ const LogicalOperatorSchema: z.ZodType<LogicalOperator> = z.enum(['&&', '||']);
  */
 
 /**
- * Validate and sanitize a string value to prevent XSS using pattern matching + HTML escaping
- * Server-appropriate approach that avoids DOM parsing while providing comprehensive protection
+ * Validate a string value for use as a Vikunja API field.
+ *
+ * Rejects unambiguous <script>/<iframe> injection, then NFC-normalizes and
+ * strips invisible spoofing characters. It does NOT HTML-escape the value:
+ * see the module header for why escaping here corrupted titles and paths.
  */
 export function sanitizeString(value: string): string {
   if (typeof value !== 'string') {
@@ -75,14 +83,11 @@ export function sanitizeString(value: string): string {
     throw new MCPError(ErrorCode.VALIDATION_ERROR, `String value exceeds maximum length of ${MAX_STRING_LENGTH}`);
   }
 
-  // Step 1: Check for dangerous HTML/JavaScript patterns and REJECT them (don't sanitize)
-  // Convert to lowercase for case-insensitive pattern matching
+  // Step 1: Reject only unambiguous HTML/script injection. Blocklisting SQL,
+  // shell, path or LDAP/NoSQL "patterns" here only ever rejected legitimate
+  // task content (file paths, URLs, prose with words like "select"/"update").
   const lowerValue = value.toLowerCase();
 
-  // Reject only unambiguous HTML/script injection. Everything else is made
-  // safe by the entity-escaping step below; blocklisting SQL, shell, path or
-  // LDAP/NoSQL "patterns" here only ever rejected legitimate task content
-  // (file paths, URLs, prose with words like "select"/"update", "#", "--").
   const dangerousPatterns = [
     /<script[\s/>]/i,
     /<\/script\s*>/i,
@@ -96,32 +101,16 @@ export function sanitizeString(value: string): string {
     }
   }
 
-  // Step 2: Apply comprehensive sanitization for safe content
-
-  // First, normalize Unicode to prevent bypass attacks
+  // Step 2: Normalize Unicode. No HTML-entity escaping and no path-traversal
+  // rewriting: these values are JSON fields for the Vikunja API, not HTML or
+  // filesystem paths, and doing either here corrupted legitimate content.
   let normalizedValue = value.normalize('NFC');
 
-  // Remove dangerous Unicode characters that weren't caught by pattern matching
+  // Strip zero-width / invisible characters used for spoofing.
   normalizedValue = normalizedValue.replace(/[\u200b-\u200f\u2060\u180e\ufeff]/g, '');
   normalizedValue = normalizedValue.replace(/[\uFE00-\uFE0F]/g, '');
 
-  // Apply path traversal sanitization for file system safety
-  normalizedValue = normalizedValue.replace(/\.\.[/\\]/g, '...');
-  normalizedValue = normalizedValue.replace(/%2e%2e[/\\]/gi, '...');
-  normalizedValue = normalizedValue.replace(/\/etc\/passwd/gi, 'etc/passwd');
-  normalizedValue = normalizedValue.replace(/c:\\windows\\system32/gi, 'c:/windows/system32');
-
-  // Apply proper HTML escaping (order matters: & must be first)
-  return normalizedValue
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
-    .replace(/\\/g, '&#x5C;')  // Escape backslashes too
-    .replace(/`/g, '&#x60;')   // Escape backticks
-    .replace(/=/g, '&#x3D;')   // Escape equals signs in attributes
+  return normalizedValue;
 }
 
 /**

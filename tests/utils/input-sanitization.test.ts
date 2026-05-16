@@ -6,7 +6,9 @@
  * filesystem or LDAP/NoSQL sink behind it. It therefore:
  *   - rejects values past MAX_STRING_LENGTH (a generous DoS backstop)
  *   - rejects unambiguous <script>/<iframe> HTML injection
- *   - HTML-escapes everything else (the Vikunja description field is HTML)
+ *   - normalizes Unicode and strips invisible spoofing characters, but does
+ *     NOT HTML-escape: Vikunja owns rendering (plain-text title, and it
+ *     sanitizes the description HTML itself)
  *
  * These tests double as regression coverage for the previously over-broad
  * blocklist, which wrongly rejected file paths, external URLs and ordinary
@@ -111,13 +113,27 @@ describe('sanitizeString', () => {
     });
   });
 
-  describe('HTML escaping', () => {
-    it('escapes HTML-significant characters instead of rejecting them', () => {
-      expect(sanitizeString('a < b && c > d')).toBe('a &lt; b &amp;&amp; c &gt; d');
+  describe('passes content through without escaping', () => {
+    it('does not escape HTML-significant characters', () => {
+      expect(sanitizeString('a < b && c > d')).toBe('a < b && c > d');
     });
 
-    it('escapes slashes (entities render correctly in the Vikunja HTML field)', () => {
-      expect(sanitizeString('path/to/file')).toBe('path&#x2F;to&#x2F;file');
+    it('does not escape slashes (the task title is a plain-text field)', () => {
+      expect(sanitizeString('fix src/utils/validation.ts')).toBe(
+        'fix src/utils/validation.ts',
+      );
+    });
+
+    it('does not rewrite path-traversal substrings', () => {
+      const paths = [
+        '../config',
+        'see ../../etc/hosts and /etc/passwd',
+        'C:\\Windows\\System32',
+        '%2e%2e/secret',
+      ];
+      paths.forEach((path) => {
+        expect(sanitizeString(path)).toBe(path);
+      });
     });
 
     it('strips zero-width / invisible characters', () => {
@@ -149,7 +165,7 @@ describe('safeJsonParse prototype-pollution protection', () => {
 });
 
 describe('sanitizeLogData integration', () => {
-  it('escapes ordinary strings rather than failing on paths/prose', () => {
+  it('passes ordinary strings through rather than failing on paths/prose', () => {
     const out = sanitizeLogData({ note: 'see /home/nico/docker' }) as Record<
       string,
       string
