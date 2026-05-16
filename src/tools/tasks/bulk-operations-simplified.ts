@@ -6,6 +6,7 @@
 import { MCPError, ErrorCode, createStandardResponse, getClientFromContext, logger, isAuthenticationError, RETRY_CONFIG, transformApiError, handleFetchError } from '../../index';
 import type { Assignee } from '../../types';
 import { withRetry } from '../../utils/retry';
+import { setTaskLabels } from '../../utils/label-bulk';
 import { BatchProcessor } from '../../utils/performance/batch-processor';
 import type { Task } from 'node-vikunja';
 import { convertRepeatConfiguration, applyFieldUpdate } from './validation';
@@ -79,7 +80,7 @@ export async function bulkUpdateTasks(args: BulkUpdateArgs): Promise<{ content: 
           }
         }
         if (args.field === 'labels' && Array.isArray(args.value)) {
-          await withRetry(() => client.tasks.updateTaskLabels(taskId, { label_ids: args.value as number[] }), { ...RETRY_CONFIG.AUTH_ERRORS, shouldRetry: isAuthenticationError });
+          await withRetry(() => setTaskLabels(client, taskId, args.value as number[]), { ...RETRY_CONFIG.AUTH_ERRORS, shouldRetry: isAuthenticationError });
         }
         return updated;
       });
@@ -100,6 +101,16 @@ export async function bulkUpdateTasks(args: BulkUpdateArgs): Promise<{ content: 
 
     try {
       if (!args.field) throw new MCPError(ErrorCode.VALIDATION_ERROR, 'Field required');
+
+      // The native Vikunja bulk endpoint does not apply label relations and,
+      // for project_id moves, truncates fields it does not receive
+      // (description, priority, ...), silently corrupting task data. Route
+      // both through the field-preserving per-task path (getTask + merge +
+      // updateTask, plus a dedicated /labels/bulk call for labels) instead.
+      if (args.field === 'project_id' || args.field === 'labels') {
+        return await updateWithFallback();
+      }
+
       const bulkOp = { task_ids: taskIds, field: args.field, value: args.value };
       if (args.field === 'repeat_mode' && typeof args.value === 'string') {
         bulkOp.value = REPEAT_MODE_MAP[args.value] ?? args.value;
@@ -219,7 +230,7 @@ export async function bulkCreateTasks(args: BulkCreateArgs): Promise<{ content: 
 
         try {
           const labels = t.labels;
-          if (labels && labels.length > 0) await withRetry(() => client.tasks.updateTaskLabels(createdId, { label_ids: labels }), { maxRetries: RETRY_CONFIG.AUTH_ERRORS.maxRetries ?? 3, timeout: (RETRY_CONFIG.AUTH_ERRORS.initialDelay ?? 1000) + (RETRY_CONFIG.AUTH_ERRORS.maxDelay ?? 10000), shouldRetry: isAuthenticationError });
+          if (labels && labels.length > 0) await withRetry(() => setTaskLabels(client, createdId, labels), { maxRetries: RETRY_CONFIG.AUTH_ERRORS.maxRetries ?? 3, timeout: (RETRY_CONFIG.AUTH_ERRORS.initialDelay ?? 1000) + (RETRY_CONFIG.AUTH_ERRORS.maxDelay ?? 10000), shouldRetry: isAuthenticationError });
           const assignees = t.assignees;
           if (assignees && assignees.length > 0) {
             try {

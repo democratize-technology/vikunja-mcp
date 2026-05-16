@@ -18,6 +18,7 @@ describe('Label operations', () => {
       addLabelToTask: jest.fn(),
       removeLabelFromTask: jest.fn(),
       getTask: jest.fn(),
+      getTaskLabels: jest.fn(),
     },
   };
 
@@ -25,6 +26,8 @@ describe('Label operations', () => {
     // Use resetAllMocks to also reset mock implementations (not just call history)
     jest.resetAllMocks();
     mockGetClientFromContext.mockResolvedValue(mockClient as any);
+    // Default: task has no labels yet
+    mockClient.tasks.getTaskLabels.mockResolvedValue([]);
   });
 
   describe('applyLabels', () => {
@@ -65,6 +68,52 @@ describe('Label operations', () => {
 
       expect(mockClient.tasks.addLabelToTask).toHaveBeenCalledTimes(2);
       expect(result.content[0].text).toContain('Labels applied to task successfully');
+    });
+
+    it('should skip labels already present on the task', async () => {
+      const mockTask = { id: 1, title: 'Test Task', labels: [] };
+      // Label 1 is already on the task; only label 2 should be applied.
+      mockClient.tasks.getTaskLabels.mockResolvedValue([{ id: 1, title: 'research' }]);
+      mockClient.tasks.addLabelToTask.mockResolvedValue({});
+      mockClient.tasks.getTask.mockResolvedValue(mockTask);
+
+      const result = await applyLabels({ id: 1, labels: [1, 2] });
+
+      expect(mockClient.tasks.addLabelToTask).toHaveBeenCalledTimes(1);
+      expect(mockClient.tasks.addLabelToTask).toHaveBeenCalledWith(1, {
+        task_id: 1,
+        label_id: 2,
+      });
+      expect(result.content[0].text).toContain('already present');
+    });
+
+    it('should not abort when a label is already on the task', async () => {
+      const mockTask = { id: 1, title: 'Test Task', labels: [] };
+      // getTaskLabels reports nothing, but addLabelToTask races and rejects
+      // the first label as a duplicate; the rest must still be applied.
+      mockClient.tasks.addLabelToTask
+        .mockRejectedValueOnce(new Error('This label already exists on the task'))
+        .mockResolvedValueOnce({});
+      mockClient.tasks.getTask.mockResolvedValue(mockTask);
+
+      const result = await applyLabels({ id: 1, labels: [1, 2] });
+
+      expect(mockClient.tasks.addLabelToTask).toHaveBeenCalledTimes(2);
+      expect(result.content[0].text).toContain('Label applied to task successfully');
+    });
+
+    it('should report when every requested label is already present', async () => {
+      const mockTask = { id: 1, title: 'Test Task', labels: [] };
+      mockClient.tasks.getTaskLabels.mockResolvedValue([
+        { id: 1, title: 'research' },
+        { id: 2, title: 'ops' },
+      ]);
+      mockClient.tasks.getTask.mockResolvedValue(mockTask);
+
+      const result = await applyLabels({ id: 1, labels: [1, 2] });
+
+      expect(mockClient.tasks.addLabelToTask).not.toHaveBeenCalled();
+      expect(result.content[0].text).toContain('No labels applied');
     });
 
     it('should handle API errors gracefully', async () => {
@@ -108,16 +157,15 @@ describe('Label operations', () => {
 
   describe('listTaskLabels', () => {
     it('should list labels for a task successfully', async () => {
-      const mockTask = {
-        id: 1,
-        title: 'Test Task',
-        labels: [{ id: 1, title: 'research', hex_color: '3498db' }],
-      };
+      const mockTask = { id: 1, title: 'Test Task' };
+      mockClient.tasks.getTaskLabels.mockResolvedValue([
+        { id: 1, title: 'research', hex_color: '3498db' },
+      ]);
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
       const result = await listTaskLabels({ id: 1 });
 
-      expect(mockClient.tasks.getTask).toHaveBeenCalledWith(1);
+      expect(mockClient.tasks.getTaskLabels).toHaveBeenCalledWith(1);
       expect(result.content[0].text).toContain('Task has 1 label(s)');
     });
 
@@ -126,7 +174,8 @@ describe('Label operations', () => {
     });
 
     it('should handle task with no labels', async () => {
-      const mockTask = { id: 1, title: 'Test Task', labels: [] };
+      const mockTask = { id: 1, title: 'Test Task' };
+      mockClient.tasks.getTaskLabels.mockResolvedValue([]);
       mockClient.tasks.getTask.mockResolvedValue(mockTask);
 
       const result = await listTaskLabels({ id: 1 });

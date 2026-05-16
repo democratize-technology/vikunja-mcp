@@ -9,6 +9,7 @@ import type { Task, VikunjaClient } from 'node-vikunja';
 import { validateDateString, validateId, convertRepeatConfiguration } from '../validation';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { RETRY_CONFIG } from '../../../utils/retry';
+import { setTaskLabels } from '../../../utils/label-bulk';
 import { transformApiError, handleFetchError, handleStatusCodeError } from '../../../utils/error-handler';
 import { AUTH_ERROR_MESSAGES } from '../constants';
 import { createTaskResponse } from './TaskResponseFormatter';
@@ -18,6 +19,7 @@ export interface UpdateTaskArgs {
   id?: number;
   title?: string;
   description?: string;
+  projectId?: number;
   dueDate?: string;
   priority?: number;
   done?: boolean;
@@ -132,6 +134,7 @@ async function analyzeUpdateState(client: VikunjaClient, taskId: number, args: U
   const previousState: Record<string, unknown> = {};
   if (currentTask.title !== undefined) previousState.title = currentTask.title;
   if (currentTask.description !== undefined) previousState.description = currentTask.description;
+  if (currentTask.project_id !== undefined) previousState.project_id = currentTask.project_id;
   if (currentTask.due_date !== undefined) previousState.due_date = currentTask.due_date;
   if (currentTask.priority !== undefined) previousState.priority = currentTask.priority;
   if (currentTask.done !== undefined) previousState.done = currentTask.done;
@@ -143,6 +146,7 @@ async function analyzeUpdateState(client: VikunjaClient, taskId: number, args: U
 
   if (args.title !== undefined && args.title !== currentTask.title) affectedFields.push('title');
   if (args.description !== undefined && args.description !== currentTask.description) affectedFields.push('description');
+  if (args.projectId !== undefined && args.projectId !== currentTask.project_id) affectedFields.push('projectId');
   if (args.dueDate !== undefined && args.dueDate !== currentTask.due_date) affectedFields.push('dueDate');
   if (args.priority !== undefined && args.priority !== currentTask.priority) affectedFields.push('priority');
   if (args.done !== undefined && args.done !== currentTask.done) affectedFields.push('done');
@@ -168,6 +172,7 @@ function buildUpdateData(currentTask: Task, args: UpdateTaskArgs): Task {
     // Override with any provided updates
     ...(args.title !== undefined && { title: args.title }),
     ...(args.description !== undefined && { description: args.description }),
+    ...(args.projectId !== undefined && { project_id: args.projectId }),
     ...(args.dueDate !== undefined && { due_date: args.dueDate }),
     ...(args.priority !== undefined && { priority: args.priority }),
     ...(args.done !== undefined && { done: args.done }),
@@ -195,9 +200,7 @@ function buildUpdateData(currentTask: Task, args: UpdateTaskArgs): Task {
  */
 async function updateTaskLabels(client: VikunjaClient, taskId: number, labelIds: number[]): Promise<void> {
   try {
-    await client.tasks.updateTaskLabels(taskId, {
-      label_ids: labelIds,
-    });
+    await setTaskLabels(client, taskId, labelIds);
   } catch (labelError) {
     // Check if it's an auth error
     if (isAuthenticationError(labelError)) {

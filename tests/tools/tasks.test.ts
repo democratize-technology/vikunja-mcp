@@ -853,7 +853,7 @@ describe('Tasks Tool', () => {
 
       // Labels are updated via updateTaskLabels
       expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(1, {
-        label_ids: [1, 2],
+        labels: [{ id: 1 }, { id: 2 }],
       });
     });
 
@@ -2569,7 +2569,7 @@ describe('Tasks Tool', () => {
       const result = await callTool('bulk-create', { projectId: 1, tasks });
 
       expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(1, {
-        label_ids: [1, 2],
+        labels: [{ id: 1 }, { id: 2 }],
       });
       expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(1, {
         user_ids: [3, 4],

@@ -9,6 +9,7 @@ import type { Task, VikunjaClient } from 'node-vikunja';
 import { logger } from '../../../utils/logger';
 import { isAuthenticationError } from '../../../utils/auth-error-handler';
 import { withRetry, RETRY_CONFIG } from '../../../utils/retry';
+import { setTaskLabels } from '../../../utils/label-bulk';
 import { transformApiError, handleFetchError } from '../../../utils/error-handler';
 import { sanitizeString } from '../../../utils/validation';
 import { AUTH_ERROR_MESSAGES } from '../constants';
@@ -131,8 +132,12 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
       {
         timestamp: new Date().toISOString(),
         projectId: args.projectId,
-        labelsAdded: args.labels ? args.labels.length > 0 : false,
-        assigneesAdded: args.assignees ? args.assignees.length > 0 : false,
+        // Reflect what was actually persisted, not merely what was requested:
+        // if label/assignee attachment fails the task creation is rolled back
+        // and this response is never reached, so these flags are only true
+        // once the corresponding step has genuinely succeeded.
+        labelsAdded: creationState.labelsAdded,
+        assigneesAdded: creationState.assigneesAdded,
       },
       undefined, // verbosity (ignored - using standard AORP)
       undefined, // useOptimizedFormat (ignored - using standard AORP)
@@ -180,9 +185,7 @@ export async function createTask(args: CreateTaskArgs): Promise<{ content: Array
 async function addLabelsToTask(client: VikunjaClient, taskId: number, labelIds: number[]): Promise<void> {
   try {
     await withRetry(
-      () => client.tasks.updateTaskLabels(taskId, {
-        label_ids: labelIds,
-      }),
+      () => setTaskLabels(client, taskId, labelIds),
       {
         ...RETRY_CONFIG.AUTH_ERRORS,
         shouldRetry: (error) => isAuthenticationError(error)

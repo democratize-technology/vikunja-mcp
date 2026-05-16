@@ -1172,7 +1172,7 @@ describe('Templates Tool', () => {
       });
 
       // Should use 0 as fallback for null task ID
-      expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(0, { label_ids: [1, 2] });
+      expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(0, { labels: [{ id: 1 }, { id: 2 }] });
     });
 
     it('should handle variable names with regex special characters', async () => {

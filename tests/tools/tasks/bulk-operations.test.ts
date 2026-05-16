@@ -299,6 +299,42 @@ describe('Bulk operations', () => {
       });
     });
 
+    describe('Labels field', () => {
+      it('should set labels via the field-preserving fallback path', async () => {
+        mockClient.tasks.getTask.mockResolvedValue({ id: 1, title: 'Task 1' });
+        mockClient.tasks.updateTask.mockResolvedValue({ id: 1, title: 'Task 1' });
+        mockClient.tasks.updateTaskLabels.mockResolvedValue({});
+
+        const result = await bulkUpdateTasks({ taskIds: [1], field: 'labels', value: [3, 8] });
+
+        // labels must never go through the native /tasks/bulk endpoint
+        expect(mockClient.tasks.bulkUpdateTasks).not.toHaveBeenCalled();
+        expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(1, {
+          labels: [{ id: 3 }, { id: 8 }],
+        });
+        expect(result.content[0].text).toContain('## ✅ Success');
+      });
+
+      it('should coerce a stringified labels array', async () => {
+        mockClient.tasks.getTask.mockResolvedValue({ id: 1, title: 'Task 1' });
+        mockClient.tasks.updateTask.mockResolvedValue({ id: 1, title: 'Task 1' });
+        mockClient.tasks.updateTaskLabels.mockResolvedValue({});
+
+        const result = await bulkUpdateTasks({ taskIds: [1], field: 'labels', value: '[3, 8]' });
+
+        expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(1, {
+          labels: [{ id: 3 }, { id: 8 }],
+        });
+        expect(result.content[0].text).toContain('## ✅ Success');
+      });
+
+      it('should reject a labels value that is not a list of numbers', async () => {
+        await expect(
+          bulkUpdateTasks({ taskIds: [1], field: 'labels', value: 'not-a-list' }),
+        ).rejects.toThrow('labels must be an array of numbers');
+      });
+    });
+
     describe('Error handling', () => {
       it('should preserve MCPError instances', async () => {
         const mcpError = new MCPError(ErrorCode.NOT_FOUND, 'Task not found');
@@ -524,7 +560,7 @@ describe('Bulk operations', () => {
         });
 
         expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(1, {
-          label_ids: [1],
+          labels: [{ id: 1 }],
         });
         expect(mockClient.tasks.bulkAssignUsersToTask).toHaveBeenCalledWith(1, {
           user_ids: [1],
