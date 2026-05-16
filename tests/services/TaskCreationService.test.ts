@@ -251,7 +251,7 @@ describe('TaskCreationService', () => {
       expect(result.success).toBe(true);
       expect(result.warnings).toBeUndefined();
       expect(mockClient.tasks.updateTaskLabels).toHaveBeenCalledWith(123, {
-        label_ids: [1, 2],
+        labels: [{ id: 1 }, { id: 2 }],
       });
       expect(mockClient.tasks.getTask).toHaveBeenCalledWith(123);
     });
