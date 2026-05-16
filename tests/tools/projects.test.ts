@@ -1327,9 +1327,21 @@ describe('Projects Tool', () => {
       expect(markdown).toContain('Project 2');
     });
 
-    it('should require project ID', async () => {
+    it('should build the full forest when no id is given', async () => {
       mockAuthManager.isAuthenticated.mockReturnValue(true);
-      await expect(callTool('get-tree')).rejects.toThrow('Project ID is required');
+      const projects = [
+        { ...mockProject, id: 1, title: 'Root', parent_project_id: undefined },
+        { ...mockProject, id: 2, title: 'Child', parent_project_id: 1 },
+      ];
+      mockClient.projects.getProjects.mockResolvedValueOnce(projects);
+
+      const result = await callTool('get-tree');
+      const markdown = result.content[0].text;
+      const parsed = parseMarkdown(markdown);
+      const aorpStatus = parsed.getAorpStatus();
+      expect(aorpStatus.type).toBe('success');
+      expect(markdown).toContain('get-project-tree');
+      expect(markdown).toContain('Root');
     });
 
     it('should validate project ID', async () => {

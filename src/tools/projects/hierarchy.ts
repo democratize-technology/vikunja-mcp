@@ -132,9 +132,10 @@ export async function getProjectTree(
 ): Promise<McpResponse> {
   const { id, maxDepth = 10, includeArchived = false, verbosity, useOptimizedFormat, useAorp } = args;
 
-  // Validate that project ID is provided for tree operations
-  if (!id) {
-    throw new MCPError(ErrorCode.VALIDATION_ERROR, 'id must be a positive integer');
+  // A provided id must be a valid project id; an omitted id builds the full
+  // forest from every root project (the `else` branch below).
+  if (id !== undefined) {
+    validateId(id, 'project id');
   }
 
   try {
@@ -151,8 +152,7 @@ export async function getProjectTree(
     let totalNodes = 0;
     let actualDepth = 0;
 
-    if (id) {
-      validateId(id, 'project id');
+    if (id !== undefined) {
       const rootProject = allProjects.find((p: Project) => p.id === id);
       if (!rootProject) {
         throw new MCPError(ErrorCode.NOT_FOUND, `Project with ID ${id} not found`);
