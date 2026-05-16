@@ -50,55 +50,60 @@ describe('Security Validation Utilities', () => {
       expect(() => sanitizeString([])).toThrow(MCPError);
     });
 
-    it('should throw error for strings exceeding maximum length', () => {
-      const longString = 'a'.repeat(1001);
-      expect(() => sanitizeString(longString)).toThrow(
-        new MCPError(ErrorCode.VALIDATION_ERROR, 'String value exceeds maximum length of 1000')
+    it('should accept long strings well beyond the old 1000-char limit', () => {
+      const longDescription = 'a'.repeat(10000);
+      expect(sanitizeString(longDescription)).toBe(longDescription);
+    });
+
+    it('should throw error for strings exceeding the 1,000,000-char backstop', () => {
+      const hugeString = 'a'.repeat(1_000_001);
+      expect(() => sanitizeString(hugeString)).toThrow(
+        new MCPError(ErrorCode.VALIDATION_ERROR, 'String value exceeds maximum length of 1000000')
       );
     });
 
-    it('should detect and block XSS patterns', () => {
+    it('should still block unambiguous script/iframe injection', () => {
       const xssPatterns = [
         '<script>',
         '<SCRIPT>',
-        '<img src=x onerror=alert(1)>',
-        '<body onload=alert(1)>',
-        'javascript:alert(1)',
-        'JAVASCRIPT:alert(1)',
+        '<script src="evil.js">',
+        '</script>',
         '<iframe>',
-        '<object>',
-        '<embed>',
-        '<link>',
-        '<meta>',
-        '<style>',
-        '<svg>',
-        '<!-- malicious script -->',
-        'expression(alert(1))',
-        'eval("malicious")',
-        'Function("malicious")',
-        '<div onmouseover="alert(1)">',
-        '<a href="javascript:alert(1)">',
-        'data:text/html,<script>alert(1)</script>',
-        'data:application/javascript,alert(1)'
+        '<iframe src="evil">',
+        'data:text/html,<script>alert(1)</script>'
       ];
 
-      // Test that all patterns throw errors
-      xssPatterns.forEach((pattern, index) => {
+      xssPatterns.forEach((pattern) => {
         expect(() => sanitizeString(pattern)).toThrow(MCPError);
       });
     });
 
-    it('should detect XSS in HTML-encoded content', () => {
-      const encodedXss = [
-        '&lt;script&gt;alert(1)&lt;&#x2F;script&gt;',
-        '&lt;img src=x onerror=alert(1)&gt;',
-        '&lt;iframe&gt;',
-        '&lt;svg&gt;'
+    it('should accept content the old over-broad blocklist wrongly rejected', () => {
+      // Normal task content that must round-trip (escaped), never be rejected.
+      const safeButPreviouslyRejected = [
+        '<object>',
+        '<style>',
+        '<svg>',
+        '<!-- a note -->',
+        'expression(alert(1))',
+        'eval the results',
+        '<div onmouseover="x">',
+        'data:application/json,{}'
       ];
 
-      encodedXss.forEach(pattern => {
-        expect(() => sanitizeString(pattern)).toThrow(MCPError);
-        expect(() => sanitizeString(pattern)).toThrow('String contains potentially dangerous content');
+      safeButPreviouslyRejected.forEach((input) => {
+        expect(() => sanitizeString(input)).not.toThrow();
+      });
+    });
+
+    it('should accept already-HTML-encoded content (it is inert text)', () => {
+      const encoded = [
+        '&lt;script&gt;alert(1)&lt;&#x2F;script&gt;',
+        '&lt;iframe&gt;'
+      ];
+
+      encoded.forEach(pattern => {
+        expect(() => sanitizeString(pattern)).not.toThrow();
       });
     });
 
@@ -713,15 +718,10 @@ describe('Security Validation Utilities', () => {
   });
 
   describe('XSS Protection', () => {
-    it('should reject dangerous content with StorageDataError', () => {
-      // Current security approach: reject dangerous content rather than sanitize
+    it('should reject script and iframe injection', () => {
       const dangerousInputs = [
         '<script>alert("xss")</script>',
-        'javascript:alert("xss")',
-        '<img src=x onerror=alert("xss")>',
-        '<svg onload=alert("xss")>',
-        '<iframe src="evil.com"></iframe>',
-        'onload="alert(1)"'
+        '<iframe src="evil.com"></iframe>'
       ];
 
       dangerousInputs.forEach(input => {

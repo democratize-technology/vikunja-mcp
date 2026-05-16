@@ -1,17 +1,18 @@
 /**
- * Comprehensive Input Sanitization and Security Validation Layer
+ * Input validation and sanitization for the Vikunja MCP server.
  *
- * Provides enterprise-grade protection against:
- * - XSS attacks (script injection, HTML injection)
- * - SQL injection (UNION, boolean-based, time-based)
- * - Command injection (shell command execution)
- * - Path traversal attacks
- * - LDAP injection
- * - NoSQL injection
- * - Unicode and encoding bypasses
- * - Content Security Policy violations
+ * Task titles/descriptions and filter values handled here are only ever sent
+ * to the Vikunja REST API as JSON field values. They are never interpolated
+ * into SQL, a shell command, a filesystem path or an LDAP/NoSQL query, so the
+ * sanitization deliberately does NOT try to detect those injection classes —
+ * blocklisting them previously rejected legitimate content (file paths, URLs,
+ * prose containing words like "select"/"update", "#", "--", "constructor").
  *
- * Integration: Works seamlessly with existing security.ts credential masking
+ * What it still does:
+ * - HTML-entity escaping of values (the Vikunja description field is HTML)
+ * - Rejection of unambiguous <script>/<iframe> HTML injection
+ * - Stripping of zero-width / invisible Unicode used for spoofing
+ * - Prototype-pollution-safe JSON parsing/stringifying for filter expressions
  */
 
 import { z } from 'zod';
@@ -29,9 +30,14 @@ const MAX_NESTING_DEPTH = 10;
 const MAX_CONDITIONS = 50;
 
 /**
- * Maximum string length for filter values (prevents storage bloat)
+ * Maximum string length for sanitized values.
+ *
+ * Vikunja does not cap task description length (the column is a longtext and
+ * the field stores HTML), so this is only a generous backstop against
+ * pathological payloads — not a limit the wrapper should impose on real
+ * content. Descriptions of several thousand characters are routine.
  */
-const MAX_STRING_LENGTH = 1000;
+const MAX_STRING_LENGTH = 1_000_000;
 
 /**
  * Zod schemas for type-safe validation
@@ -73,174 +79,18 @@ export function sanitizeString(value: string): string {
   // Convert to lowercase for case-insensitive pattern matching
   const lowerValue = value.toLowerCase();
 
-  // Create fresh patterns each time to avoid regex state issues
+  // Reject only unambiguous HTML/script injection. Everything else is made
+  // safe by the entity-escaping step below; blocklisting SQL, shell, path or
+  // LDAP/NoSQL "patterns" here only ever rejected legitimate task content
+  // (file paths, URLs, prose with words like "select"/"update", "#", "--").
   const dangerousPatterns = [
-    // Enhanced XSS patterns - comprehensive script and injection detection
-    /<script[^>]*>/gi,
-    /<\/script>/gi,
-    /<iframe[^>]*>/gi,
-    /<\/iframe>/gi,
-    /<object[^>]*>/gi,
-    /<\/object>/gi,
-    /<embed[^>]*>/gi,
-    /<link[^>]*>/gi,
-    /<meta[^>]*>/gi,
-    /<svg[^>]*>/gi,
-    /<\/svg>/gi,
-    /<style[^>]*>/gi,
-    /<\/style>/gi,
-    /<img[^>]*on[^>]*>/gi,
-    /<div[^>]*on[^>]*>/gi,
-    /<a[^>]*on[^>]*>/gi,
-    /<body[^>]*on[^>]*>/gi,
-    /<form[^>]*on[^>]*>/gi,
-    /<input[^>]*on[^>]*>/gi,
-    /<button[^>]*on[^>]*>/gi,
-    /<select[^>]*on[^>]*>/gi,
-    /<textarea[^>]*on[^>]*>/gi,
-
-    // Event handlers with attributes (more specific to avoid false positives)
-    /on\w+\s*=\s*["'][^"']*["']/gi,
-    /onclick/gi,
-    /onload/gi,
-    /onerror/gi,
-    /onmouseover/gi,
-    /onmouseout/gi,
-    /onmousedown/gi,
-    /onmouseup/gi,
-    /onkeydown/gi,
-    /onkeyup/gi,
-    /onkeypress/gi,
-    /onfocus/gi,
-    /onblur/gi,
-    /onchange/gi,
-    /onsubmit/gi,
-    /onreset/gi,
-    /onselect/gi,
-    /onunload/gi,
-    /onabort/gi,
-    /oncanplay/gi,
-    /oncanplaythrough/gi,
-    /oncuechange/gi,
-    /ondurationchange/gi,
-    /onemptied/gi,
-    /onended/gi,
-    /onerror/gi,
-    /onloadeddata/gi,
-    /onloadedmetadata/gi,
-    /onloadstart/gi,
-    /onpause/gi,
-    /onplay/gi,
-    /onplaying/gi,
-    /onprogress/gi,
-    /onratechange/gi,
-    /onseeked/gi,
-    /onseeking/gi,
-    /onstalled/gi,
-    /onsuspend/gi,
-    /ontimeupdate/gi,
-    /onvolumechange/gi,
-    /onwaiting/gi,
-
-    // Dangerous protocols and schemes
-    /javascript:/gi,
-    /vbscript:/gi,
-    /data:text\/html/gi,
-    /data:application\/javascript/gi,
-    /data:text\/javascript/gi,
-    /data:text\/vbscript/gi,
-    /data:application\/x-javascript/gi,
-
-    // CSS-based attacks
-    /expression\s*\(/gi,
-    /@import/gi,
-    /url\s*\(/gi,
-    /binding\s*:/gi,
-    /behavior\s*:/gi,
-    /-moz-binding\s*:/gi,
-    /-o-link\s*:/gi,
-    /-webkit-binding\s*:/gi,
-
-    // SQL injection patterns
-    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|EXECUTE|TRUNCATE)\b)/gi,
-    /(\b(OR|AND)\s+\d+\s*=\s*\d+)/gi,
-    /(\b(OR|AND)\s+['"].*['"]\s*=\s*['"].*['"])/gi,
-    /(\b(WAITFOR\s+DELAY|SLEEP\s*\(|BENCHMARK\s*\(|DBMS_PIPE\.RECEIVE_MESSAGE)\b)/gi,
-    /(--|#|\/\*|\*\/)/gi,  // SQL comments
-    /(\b(INFORMATION_SCHEMA|SYS|MASTER|MSDB|MYSQL|PG_CATALOG)\b)/gi,
-    /(\b(XP_|SP_)\w+)/gi,  // SQL Server extended procedures
-
-    // Command injection patterns (more specific to avoid false positives)
-    // Removed the broad shell pattern to allow safe HTML tags that should be escaped instead of rejected
-    /(\b(wget|curl|nc|netcat|telnet|ssh|ftp|sftp)\b)/gi,
-    /(rm\s+-rf|del\s+\/s|format|fdisk|mkfs)/gi,
-    /(>\s*\/dev\/null|2>&1|\|\|)/gi,
-    /(\$\([^)]*\)|`[^`]*`)/gi,  // Command substitution
-
-    // Path traversal patterns
-    /(\.\.[/\\])/gi,
-    /(%2e%2e[/\\])/gi,
-    /(%2e%2e%2f)/gi,  // URL-encoded ../
-    /(%2e%2e%5c)/gi,  // URL-encoded ..\
-    /(\/etc\/passwd|\/etc\/shadow|\/proc\/)/gi,
-    /(c:\\\\windows\\\\system32|\\\\..\\\\)/gi,
-
-    // LDAP injection patterns
-    /(\*\)\([&*)]*)/gi,
-    /(\*\)([^)]*\*)*)/gi,
-    /(\|\()([^)]*)(\)\|)/gi,
-    /(!\()([^)]*)(\))/gi,
-
-    // NoSQL injection patterns
-    /(\$\w+\s*:)/gi,  // MongoDB operators like $gt, $lt, $where
-    /(\{\s*\$where\s*:)/gi,
-    /(\{\s*\$ne\s*:)/gi,
-    /(\{\s*\$gt\s*:)/gi,
-    /(\{\s*\$regex\s*:)/gi,
-
-    // HTML5 dangerous attributes
-    /formaction\s*=/gi,
-    /poster\s*=/gi,
-    /autofocus\s*=/gi,
-    /controls\s*=/gi,
-    /autoplay\s*=/gi,
-    /loop\s*=/gi,
-    /muted\s*=/gi,
-
-    // Unicode and encoding bypass attempts
-    /[\u200b-\u200f\u2060\u180e\ufeff]/g,  // Zero-width and invisible characters
-    /[\uFE00-\uFE0F]/g,  // Variation selectors
-    /\\u[0-9a-fA-F]{4}/g,  // Unicode escapes
-    /\\x[0-9a-fA-F]{2}/g,  // Hex escapes
-
-    // Prototype pollution patterns
-    /(__proto__|constructor|prototype)/gi,
-
-    // Content Security Policy violations
-    /(base64|atob|btoa|eval|Function|setTimeout|setInterval)\s*\(/gi,
-    /(document\.(write|writeln|open|close)|window\.(open|location|navigate))/gi,
-
-    // HTML-encoded dangerous content (prevent XSS through encoded vectors)
-    /&lt;script[^&]*&gt;/gi,
-    /&lt;\/script&gt;/gi,
-    /&lt;iframe[^&]*&gt;/gi,
-    /&lt;\/iframe&gt;/gi,
-    /&lt;object[^&]*&gt;/gi,
-    /&lt;svg[^&]*&gt;/gi,
-    /&lt;img[^&]*on[^&]*&gt;/gi,
-    /&lt;div[^&]*on[^&]*&gt;/gi,
-    /&lt;a[^&]*on[^&]*&gt;/gi,
-    /&lt;body[^&]*on[^&]*&gt;/gi,
-    /&lt;style[^&]*&gt;/gi,
-    /&lt;form[^&]*on[^&]*&gt;/gi,
-    /javascript:[^&]*/gi,
-    /on\w+[^&]*=/gi,
-    /&lt;!--.*?--&gt;/gis,  // HTML-encoded comments
+    /<script[\s/>]/i,
+    /<\/script\s*>/i,
+    /<iframe[\s/>]/i,
+    /<\/iframe\s*>/i,
   ];
 
   for (const pattern of dangerousPatterns) {
-    // Reset regex lastIndex to avoid state issues with global flags
-    pattern.lastIndex = 0;
     if (pattern.test(lowerValue)) {
       throw new MCPError(ErrorCode.VALIDATION_ERROR, 'String contains potentially dangerous content');
     }
