@@ -83,7 +83,7 @@ export function createTaskResponse(
   _metadata: TaskResponseMetadata = {
     timestamp: new Date().toISOString()
   },
-  _verbosity?: string, // Parameter kept for backward compatibility but ignored
+  verbosity?: string, // Controls task list detail level: 'summary' | 'detailed'
   _useOptimizedFormat?: boolean, // Parameter kept for backward compatibility but ignored
   _useAorp?: boolean, // Parameter kept for backward compatibility but ignored
   _aorpConfig?: AorpBuilderConfig,
@@ -97,7 +97,7 @@ export function createTaskResponse(
   if (taskData) {
     // Convert Task | Task[] to proper ResponseData format
     const formattedTaskData = Array.isArray(taskData) ? { tasks: taskData as ResponseData[] } : taskData as ResponseData;
-    const taskResult = createTaskAorpResponse(operation, message, formattedTaskData, _metadata);
+    const taskResult = createTaskAorpResponse(operation, message, formattedTaskData, _metadata, _sessionId, verbosity);
 
     // Add transformation property for compatibility
     const mockOptimizedResponse = {

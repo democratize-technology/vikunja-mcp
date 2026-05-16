@@ -70,7 +70,7 @@ async function listTasks(
         count: taskCount,
         ...(filteringResult.metadata || {}),
       },
-      undefined, // verbosity (ignored - using standard AORP)
+      args.verbosity, // verbosity: 'summary' | 'detailed' (controls list detail)
       undefined, // useOptimizedFormat (ignored - using standard AORP)
       undefined, // useAorp (ignored - always using AORP)
       undefined, // aorpConfig (using auto-generated)
@@ -176,6 +176,12 @@ export function registerTasksTool(
       // List specific filters
       allProjects: z.boolean().optional(),
       done: z.boolean().optional(),
+      verbosity: z
+        .enum(['summary', 'detailed'])
+        .optional()
+        .describe(
+          "Task list detail level. 'detailed' (default) shows full task info per result; 'summary' shows one compact line per task.",
+        ),
       // Comment fields
       comment: z.string().optional(),
       commentId: z.number().optional(),

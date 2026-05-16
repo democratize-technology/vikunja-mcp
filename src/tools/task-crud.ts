@@ -66,7 +66,8 @@ async function listTasks(
         filteringMethod: filteringMetadata.serverSideFilteringUsed ? 'server-side' :
                            filteringMetadata.serverSideFilteringAttempted ? 'client-side-fallback' : 'client-side',
         ...metadata,
-      }
+      },
+      args.verbosity
     );
 
     logger.debug('Task CRUD tool response', { operation: 'list', itemCount: tasks.length });
@@ -125,6 +126,12 @@ export function registerTaskCrudTool(
       // List specific filters
       allProjects: z.boolean().optional(),
       done: z.boolean().optional(),
+      verbosity: z
+        .enum(['summary', 'detailed'])
+        .optional()
+        .describe(
+          "Task list detail level. 'detailed' (default) shows full task info per result; 'summary' shows one compact line per task.",
+        ),
       // Session ID for AORP response tracking
       sessionId: z.string().optional(),
     },

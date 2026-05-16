@@ -82,7 +82,8 @@ export function createTaskResponse(
   message: string,
   data: { tasks?: ResponseData[] } | ResponseData,
   metadata?: ResponseMetadata,
-  sessionId?: string
+  sessionId?: string,
+  verbosity?: string
 ): SimpleResponse {
   // Handle both task data structure and arbitrary data objects
   const responseData = data && typeof data === 'object' && 'tasks' in data ? data.tasks : data;
@@ -103,7 +104,7 @@ export function createTaskResponse(
 
   // Use createErrorResponse for failed operations, createSuccessResponse for successful ones
   if (successFlag) {
-    return createSuccessResponse(operation, message, responseData as ResponseData, responseMetadata);
+    return createSuccessResponse(operation, message, responseData as ResponseData, responseMetadata, verbosity);
   } else {
     return createErrorResponse(operation, message, 'OPERATION_FAILED', responseMetadata);
   }

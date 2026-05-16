@@ -57,9 +57,10 @@ export function createSuccessResponse(
   operation: string,
   message: string,
   data?: ResponseData,
-  metadata?: ResponseMetadata
+  metadata?: ResponseMetadata,
+  verbosity?: string
 ): SimpleResponse {
-  const content = formatSuccessMessage(operation, message, data, metadata);
+  const content = formatSuccessMessage(operation, message, data, metadata, verbosity);
 
   return {
     content,
@@ -107,7 +108,8 @@ export function formatSuccessMessage(
   operation: string,
   message: string,
   data?: ResponseData,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
+  verbosity?: string
 ): string {
   let content = `## ✅ Success\n\n${message}\n\n**Operation:** ${operation}\n\n`;
 
@@ -125,13 +127,13 @@ export function formatSuccessMessage(
 
     if (collection && Array.isArray(collection)) {
       content += `**Results:** ${collection.length} item(s)\n\n`;
-      if (collection.length > 0 && collection.length <= 10) {
-        content += formatDataItems(collection as DataItem[]);
+      if (collection.length > 0) {
+        content += formatDataItems(collection as DataItem[], verbosity);
       }
     } else if (Array.isArray(data)) {
       content += `**Results:** ${data.length} item(s)\n\n`;
-      if (data.length > 0 && data.length <= 10) {
-        content += formatDataItems(data as DataItem[]);
+      if (data.length > 0) {
+        content += formatDataItems(data as DataItem[], verbosity);
       }
     } else if (data && typeof data === 'object') {
       content += formatObjectData(data as Record<string, unknown>);
@@ -186,6 +188,13 @@ export function formatErrorMessage(
 }
 
 /**
+ * Vikunja represents an unset date with a year-0001 sentinel rather than null.
+ */
+function hasRealDueDate(dueDate?: string | null): boolean {
+  return !!dueDate && !dueDate.startsWith('0001-01-01');
+}
+
+/**
  * Format a single Task object with rich details
  */
 function formatTaskItem(task: Task, index: number): string {
@@ -205,7 +214,7 @@ function formatTaskItem(task: Task, index: number): string {
   }
 
   // Due date (if set)
-  if (task.due_date) {
+  if (hasRealDueDate(task.due_date)) {
     parts.push(`- **Due:** ${task.due_date}`);
   }
 
@@ -243,16 +252,41 @@ function formatTaskItem(task: Task, index: number): string {
 }
 
 /**
- * Format array data items
+ * Format a single Task object as one compact line (verbosity: 'summary')
  */
-function formatDataItems(items: DataItem[]): string {
+function formatTaskSummaryItem(task: Task, index: number): string {
+  const meta: string[] = [task.done ? '✅' : '❌'];
+
+  if (task.priority !== undefined && task.priority > 0) {
+    meta.push(`P${task.priority}`);
+  }
+  if (task.project_id) {
+    meta.push(`proj ${task.project_id}`);
+  }
+  if (task.labels && task.labels.length > 0) {
+    meta.push(task.labels.map((l) => l.title).join(', '));
+  }
+  if (hasRealDueDate(task.due_date)) {
+    meta.push(`due ${task.due_date}`);
+  }
+
+  return `${index + 1}. **${task.title}** (ID: ${task.id}) — ${meta.join(' · ')}`;
+}
+
+/**
+ * Format array data items.
+ * Task collections honour the `verbosity` flag: 'detailed' (default) renders
+ * the full multi-line block, 'summary' renders one compact line per task.
+ */
+function formatDataItems(items: DataItem[], verbosity?: string): string {
+  const summary = verbosity === 'summary';
   return items.map((item, index) => {
     if (typeof item === 'object' && item !== null) {
       // Check if this is a Task object with rich data
       const task = item as unknown as Task;
       if (task.title && (task.description || task.priority !== undefined ||
           task.due_date || task.labels || task.assignees || task.done !== undefined)) {
-        return formatTaskItem(task, index);
+        return summary ? formatTaskSummaryItem(task, index) : formatTaskItem(task, index);
       }
 
       // Fallback to simple formatting for other object types

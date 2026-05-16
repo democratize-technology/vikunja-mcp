@@ -346,7 +346,7 @@ describe('simple-response - Task Formatting', () => {
       expect(result).toContain('0 item(s)');
     });
 
-    it('should handle more than 10 items (should not display)', () => {
+    it('should display all items even when there are more than 10', () => {
       const tasks: Task[] = Array.from({ length: 15 }, (_, i) => ({
         id: i + 1,
         project_id: 1,
@@ -364,9 +364,34 @@ describe('simple-response - Task Formatting', () => {
 
       expect(result).toContain('**Results:**');
       expect(result).toContain('15 item(s)');
-      // Items should not be displayed when > 10
+      // All items are displayed regardless of count (no arbitrary cap)
+      expect(result).toContain('### 1.');
+      expect(result).toContain('### 15.');
+    });
+
+    it('should render one compact line per task with verbosity "summary"', () => {
+      const tasks: Task[] = Array.from({ length: 15 }, (_, i) => ({
+        id: i + 1,
+        project_id: 1,
+        title: `Task ${i + 1}`,
+        done: false,
+        repeat_after: 0
+      }));
+
+      const result = formatSuccessMessage(
+        'list-tasks',
+        'Found 15 tasks',
+        { tasks },
+        { count: 15 },
+        'summary'
+      );
+
+      expect(result).toContain('15 item(s)');
+      // Summary mode lists every task on a single line, no multi-line detail
+      expect(result).toContain('1. **Task 1** (ID: 1)');
+      expect(result).toContain('15. **Task 15** (ID: 15)');
       expect(result).not.toContain('### 1.');
-      expect(result).not.toContain('Task 1');
+      expect(result).not.toContain('- **Status:**');
     });
 
     it('should handle exactly 10 items (should display)', () => {
